@@ -86,10 +86,14 @@ HTML_LAYOUT = """
         .notif-item:hover { background: #2a2a2a; }
         .notif-empty { padding: 15px; text-align: center; color: #888; font-size: 12px; }
 
-        .search-container { position: relative; margin-bottom: 15px; }
+        .search-container { position: relative; margin-bottom: 10px; }
         .search-box { width: 100%; padding: 12px 15px 12px 38px; background: #1e1e1e; border: 1px solid #00ff66; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
         .search-box:focus { box-shadow: 0 0 10px rgba(0,255,102,0.3); }
         .search-icon { position: absolute; left: 14px; top: 12px; color: #00ff66; }
+
+        .sort-controls { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; background: #1e1e1e; padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2a2a; }
+        .sort-label { font-size: 12px; color: #aaa; }
+        .sort-select { background: #2a2a2a; color: #00ff66; border: 1px solid #333; padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
 
         .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         .sidebar.active { left: 0; }
@@ -104,13 +108,13 @@ HTML_LAYOUT = """
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
         .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
-        .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
-        .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 12px 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+        .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 10px 4px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .stat-box:hover { background: #005c26; }
         .stat-box.active-card { background: #00e65c; color: #000; }
         .stat-box.active-card p, .stat-box.active-card h3 { color: #000 !important; }
-        .stat-box p { font-size: 11px; color: #aaa; pointer-events: none; }
-        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 16px; pointer-events: none; }
+        .stat-box p { font-size: 10px; color: #aaa; pointer-events: none; }
+        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 15px; pointer-events: none; }
 
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
@@ -224,19 +228,35 @@ HTML_LAYOUT = """
             <input type="text" id="search-input" class="search-box" oninput="filterCustomers()" placeholder="যেকোনো অক্ষর বা নম্বর দিয়ে সার্চ করুন...">
         </div>
 
+        <!-- সর্টিং নিয়ন্ত্রণ -->
+        <div class="sort-controls">
+            <span class="sort-label">সাজানোর ফিল্টার:</span>
+            <select id="sort-option" class="sort-select" onchange="filterCustomers()">
+                <option value="none">ডিফল্ট</option>
+                <option value="num-asc">নম্বর (ছোট থেকে বড়)</option>
+                <option value="num-desc">নম্বর (বড় থেকে ছোট)</option>
+                <option value="name-asc">নাম (A to Z)</option>
+                <option value="name-desc">নাম (Z to A)</option>
+            </select>
+        </div>
+
         <div id="sec-overview">
-            <div class="card">
+            <div class="card admin-only">
                 <div class="grid-stats">
-                    <div class="stat-box active-card" id="card-tel" onclick="filterByCard('টেলিফোন নম্বর', this)">
-                        <p>টেলিফোন নম্বর</p>
+                    <div class="stat-box active-card" id="card-total" onclick="filterByCard('all', this)">
+                        <p>টোটাল বিল/নম্বর</p>
+                        <h3 id="stat-total-count">0</h3>
+                    </div>
+                    <div class="stat-box" id="card-tel" onclick="filterByCard('টেলিফোন নম্বর', this)">
+                        <p>টেলিফোন</p>
                         <h3 id="stat-tel-count">0</h3>
                     </div>
                     <div class="stat-box" id="card-tel-wifi" onclick="filterByCard('টেলিফোন+ওয়াইফাই নম্বর', this)">
-                        <p>টেলিফোন+ওয়াইফাই</p>
+                        <p>টেলি+ওয়াইফাই</p>
                         <h3 id="stat-tel-wifi-count">0</h3>
                     </div>
                     <div class="stat-box" id="card-wifi" onclick="filterByCard('ওয়াইফাই নম্বর', this)">
-                        <p>ওয়াইফাই নম্বর</p>
+                        <p>ওয়াইফাই</p>
                         <h3 id="stat-wifi-count">0</h3>
                     </div>
                 </div>
@@ -547,6 +567,8 @@ HTML_LAYOUT = """
         function goHome() {
             navTo('sec-overview', document.querySelector('.menu-item'));
             document.getElementById('search-input').value = '';
+            document.getElementById('sort-option').value = 'none';
+            activeCategoryFilter = 'all';
             filterCustomers();
         }
 
@@ -574,20 +596,20 @@ HTML_LAYOUT = """
                 else if (c.service_type === 'ওয়াইফাই নম্বর') wifiCount++;
             });
 
+            document.getElementById('stat-total-count').innerText = data.length;
             document.getElementById('stat-tel-count').innerText = telCount;
             document.getElementById('stat-tel-wifi-count').innerText = telWifiCount;
             document.getElementById('stat-wifi-count').innerText = wifiCount;
         }
 
         function filterByCard(category, cardEl) {
-            if (activeCategoryFilter === category) {
-                activeCategoryFilter = 'all';
-                document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
-                document.getElementById('list-title').innerText = 'গ্রাহক ও সংযোগ তালিকা (সকল)';
+            activeCategoryFilter = category;
+            document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
+            cardEl.classList.add('active-card');
+            
+            if (category === 'all') {
+                document.getElementById('list-title').innerText = 'টোটাল বিল ও সংযোগ তালিকা (সকল)';
             } else {
-                activeCategoryFilter = category;
-                document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
-                cardEl.classList.add('active-card');
                 document.getElementById('list-title').innerText = 'গ্রাহক তালিকা: ' + category;
             }
             filterCustomers();
@@ -595,7 +617,9 @@ HTML_LAYOUT = """
 
         function filterCustomers() {
             const q = document.getElementById('search-input').value.toLowerCase().trim();
-            const filtered = customerDataCache.filter(c => {
+            const sortOpt = document.getElementById('sort-option').value;
+
+            let filtered = customerDataCache.filter(c => {
                 const matchCategory = (activeCategoryFilter === 'all') || (c.service_type === activeCategoryFilter);
                 const matchQuery = (c.name || '').toLowerCase().includes(q) ||
                                    (c.phone || '').includes(q) ||
@@ -604,6 +628,18 @@ HTML_LAYOUT = """
                                    (c.address || '').toLowerCase().includes(q);
                 return matchCategory && matchQuery;
             });
+
+            // সর্টিং লজিক
+            if (sortOpt === 'num-asc') {
+                filtered.sort((a, b) => (a.service_no || '').localeCompare(b.service_no || '', undefined, {numeric: true, sensitivity: 'base'}));
+            } else if (sortOpt === 'num-desc') {
+                filtered.sort((a, b) => (b.service_no || '').localeCompare(a.service_no || '', undefined, {numeric: true, sensitivity: 'base'}));
+            } else if (sortOpt === 'name-asc') {
+                filtered.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'bn'));
+            } else if (sortOpt === 'name-desc') {
+                filtered.sort((a, b) => (b.name || '').localeCompare(a.name || '', 'bn'));
+            }
+
             renderCustomers(filtered);
         }
 
