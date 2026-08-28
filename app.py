@@ -12,7 +12,6 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # is_deleted কলাম যুক্ত করা হয়েছে ট্র্যাশ বিনের জন্য
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +23,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, service_type TEXT, service_no TEXT, phone TEXT, amount REAL, 
+            name TEXT, service_type TEXT, service_no TEXT, phone TEXT, 
             address TEXT, note TEXT, is_deleted INTEGER DEFAULT 0
         )
     ''')
@@ -106,13 +105,13 @@ HTML_LAYOUT = """
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
         .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
-        .grid-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: center; }
+        .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center; }
         .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 12px 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .stat-box:hover { background: #005c26; }
         .stat-box.active-card { background: #00e65c; color: #000; }
         .stat-box.active-card p, .stat-box.active-card h3 { color: #000 !important; }
-        .stat-box p { font-size: 12px; color: #aaa; pointer-events: none; }
-        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 18px; pointer-events: none; }
+        .stat-box p { font-size: 11px; color: #aaa; pointer-events: none; }
+        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 16px; pointer-events: none; }
 
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
@@ -125,6 +124,9 @@ HTML_LAYOUT = """
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #333; padding: 8px; text-align: left; }
         th { background: #2a2a2a; color: #00ff66; }
+
+        .clickable-name { color: #00ff66; cursor: pointer; font-weight: bold; text-decoration: underline; }
+        .clickable-name:hover { color: #ffffff; }
 
         .auth-container { max-width: 400px; margin: 30px auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #2a2a2a; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
@@ -142,6 +144,12 @@ HTML_LAYOUT = """
         .action-link { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; margin-right: 4px; color: #fff; }
         .wa-link { background: #25D366; }
         .sms-link { background: #007bff; }
+
+        /* ডিটেইলস পপআপ মোডাল */
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e1e1e; border: 1px solid #00ff66; border-radius: 10px; padding: 20px; width: 90%; max-width: 450px; z-index: 1001; box-shadow: 0 5px 20px rgba(0,0,0,0.8); }
+        .modal-title { color: #00ff66; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+        .modal-item { margin-bottom: 8px; font-size: 13px; }
+        .modal-item span { color: #aaa; }
     </style>
 </head>
 <body>
@@ -155,8 +163,8 @@ HTML_LAYOUT = """
         <div class="menu-list">
             <button class="menu-item active" onclick="navTo('sec-overview', this)">📊 ওভারভিউ ও ডাটা</button>
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
-            <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. ইউজার তৈরি করুন</button>
-            <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. সকল ইউজার তথ্য</button>
+            <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. নতুন ইউজার তৈরি করুন</button>
+            <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</button>
             <button id="menu-deleted-cust" class="menu-item admin-only" onclick="navTo('sec-deleted-customers', this)">🗑️ ৪. ডিলিট হওয়া নম্বর তালিকা</button>
             <button id="menu-deleted-users" class="menu-item admin-only" onclick="navTo('sec-deleted-users', this)">🗑️ ৫. ডিলিট হওয়া ইউজার তালিকা</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
@@ -217,11 +225,7 @@ HTML_LAYOUT = """
         <div id="sec-overview">
             <div class="card">
                 <div class="grid-stats">
-                    <div class="stat-box active-card" id="card-all" onclick="filterByCard('all', this)">
-                        <p>টোটাল বিল</p>
-                        <h3 id="stat-total-bill">৳0</h3>
-                    </div>
-                    <div class="stat-box" id="card-tel" onclick="filterByCard('টেলিফোন নম্বর', this)">
+                    <div class="stat-box active-card" id="card-tel" onclick="filterByCard('টেলিফোন নম্বর', this)">
                         <p>টেলিফোন নম্বর</p>
                         <h3 id="stat-tel-count">0</h3>
                     </div>
@@ -241,18 +245,8 @@ HTML_LAYOUT = """
                 <div class="table-responsive">
                     <table>
                         <thead>
-                            <tr>
-                                <th>ক্র.নং</th>
-                                <th>নাম</th>
-                                <th>মোবাইল</th>
-                                <th>সেবার ধরন</th>
-                                <th>সংযোগ নম্বর</th>
-                                <th>বিল</th>
-                                <th>ঠিকানা</th>
-                                <th>তথ্য</th>
-                                <th>মেসেজ</th>
-                                <th class="admin-only">অ্যাকশন</th>
-                            </tr>
+                            <tr id="table-header-row">
+                                </tr>
                         </thead>
                         <tbody id="customer-table-body"></tbody>
                     </table>
@@ -282,14 +276,11 @@ HTML_LAYOUT = """
                 <label style="font-size:12px; color:#aaa;">৪. সার্ভিস/সংযোগ নম্বর লিখুন:</label>
                 <input type="text" id="cust-service-no" class="input-box" placeholder="যে নম্বরটি এড করতে চান" required>
 
-                <label style="font-size:12px; color:#aaa;">৫. বিলের পরিমাণ (টাকা):</label>
-                <input type="number" id="cust-amount" class="input-box" placeholder="বিল পরিমাণ" required>
-
-                <label style="font-size:12px; color:#aaa;">৬. ঠিকানা:</label>
+                <label style="font-size:12px; color:#aaa;">৫. ঠিকানা:</label>
                 <input type="text" id="cust-address" class="input-box" placeholder="গ্রাহকের ঠিকানা" required>
 
-                <label style="font-size:12px; color:#aaa;">৭. অতিরিক্ত তথ্য:</label>
-                <input type="text" id="cust-note" class="input-box" placeholder="অন্যান্য তথ্য/নোট">
+                <label style="font-size:12px; color:#aaa;">৬. অতিরিক্ত তথ্য / গোপন নোট:</label>
+                <input type="text" id="cust-note" class="input-box" placeholder="অন্যান্য তথ্য (কেবল এডমিন দেখতে পাবে)">
 
                 <button type="submit" class="submit-btn" id="cust-submit-btn">নম্বর সংরক্ষণ করুন</button>
             </form>
@@ -308,14 +299,16 @@ HTML_LAYOUT = """
         </div>
 
         <div id="sec-users" class="card hidden admin-only">
-            <div class="card-title">সকল নিবন্ধিত ইউজার ও পেন্ডিং আবেদন তালিকা</div>
+            <div class="card-title">সকল নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</div>
             <div class="table-responsive">
                 <table>
                     <thead>
                         <tr>
                             <th>নাম</th>
+                            <th>ইমেইল</th>
+                            <th>ফোন নম্বর</th>
                             <th>ইউজারনেম</th>
-                            <th>ফোন</th>
+                            <th>পাসওয়ার্ড</th>
                             <th>স্ট্যাটাস</th>
                             <th>অ্যাকশন</th>
                         </tr>
@@ -335,7 +328,6 @@ HTML_LAYOUT = """
                             <th>মোবাইল</th>
                             <th>সেবার ধরন</th>
                             <th>সংযোগ নম্বর</th>
-                            <th>বিল</th>
                             <th>অ্যাকশন</th>
                         </tr>
                     </thead>
@@ -379,6 +371,12 @@ HTML_LAYOUT = """
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="details-modal" class="modal hidden">
+        <div class="modal-title">📄 গ্রাহকের সম্পূর্ণ তথ্য</div>
+        <div id="details-modal-content"></div>
+        <button class="btn-danger" style="width:100%; margin-top:15px; padding:8px;" onclick="closeDetailsModal()">বন্ধ করুন</button>
     </div>
 
     <div id="group-modal" class="auth-container hidden" style="position:fixed; top:5%; left:5%; right:5%; z-index:1001; max-width:500px;">
@@ -435,7 +433,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে পাঠানো হয়েছে! এডমিনের অনুমোদনের পর লগইন করতে পারবেন।");
+                    alert("রেজিস্ট্রেশন সফল হয়েছে! এডমিনের অনুমোদনের পর লগইন করতে পারবেন।");
                     toggleAuthTab('login');
                 } else {
                     alert(res.message);
@@ -461,7 +459,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("ইউজার একাউন্ট তৈরি সফল হয়েছে!");
+                    alert("নতুন ইউজার একাউন্ট সফলভাবে তৈরি করা হয়েছে!");
                     document.getElementById('adm-user-name').value = '';
                     document.getElementById('adm-user-email').value = '';
                     document.getElementById('adm-user-phone').value = '';
@@ -499,7 +497,6 @@ HTML_LAYOUT = """
             });
         }
 
-        /* এডমিন ও ইউজার ট্যাগ সেটআপ */
         function setupRoleUI() {
             const isAdmin = currentUser.status === 'admin';
             document.querySelectorAll('.admin-only').forEach(el => {
@@ -514,6 +511,28 @@ HTML_LAYOUT = """
             } else {
                 badgeEl.innerText = "👤 USER (@" + currentUser.username + ")";
                 badgeEl.className = "role-badge user-badge-style";
+            }
+
+            // টেবিল হেডার ডাইনামিকভাবে ইউজার/এডমিন অনুযায়ী পরিবর্তন
+            const headerRow = document.getElementById('table-header-row');
+            if (isAdmin) {
+                headerRow.innerHTML = `
+                    <th>ক্র.নং</th>
+                    <th>নাম (ডিটেইলস)</th>
+                    <th>মোবাইল</th>
+                    <th>সেবার ধরন</th>
+                    <th>সংযোগ নম্বর</th>
+                    <th>ঠিকানা</th>
+                    <th>মেসেজ</th>
+                    <th>অ্যাকশন</th>
+                `;
+            } else {
+                headerRow.innerHTML = `
+                    <th>ক্র.নং</th>
+                    <th>সংযোগ নম্বর</th>
+                    <th>সেবার ধরন</th>
+                    <th>ঠিকানা</th>
+                `;
             }
         }
 
@@ -540,32 +559,32 @@ HTML_LAYOUT = """
         }
 
         function updateStats(data) {
-            let totalBill = 0, telCount = 0, telWifiCount = 0, wifiCount = 0;
+            let telCount = 0, telWifiCount = 0, wifiCount = 0;
             data.forEach(c => {
-                totalBill += parseFloat(c.amount || 0);
                 if (c.service_type === 'টেলিফোন নম্বর') telCount++;
                 else if (c.service_type === 'টেলিফোন+ওয়াইফাই নম্বর') telWifiCount++;
                 else if (c.service_type === 'ওয়াইফাই নম্বর') wifiCount++;
             });
 
-            document.getElementById('stat-total-bill').innerText = '৳' + totalBill;
             document.getElementById('stat-tel-count').innerText = telCount;
             document.getElementById('stat-tel-wifi-count').innerText = telWifiCount;
             document.getElementById('stat-wifi-count').innerText = wifiCount;
         }
 
         function filterByCard(category, cardEl) {
-            activeCategoryFilter = category;
-            document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
-            cardEl.classList.add('active-card');
-            
-            document.getElementById('list-title').innerText = category === 'all' ? 
-                'গ্রাহক ও সংযোগ তালিকা (সকল)' : 'গ্রাহক তালিকা: ' + category;
-            
+            if (activeCategoryFilter === category) {
+                activeCategoryFilter = 'all';
+                document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
+                document.getElementById('list-title').innerText = 'গ্রাহক ও সংযোগ তালিকা (সকল)';
+            } else {
+                activeCategoryFilter = category;
+                document.querySelectorAll('.stat-box').forEach(el => el.classList.remove('active-card'));
+                cardEl.classList.add('active-card');
+                document.getElementById('list-title').innerText = 'গ্রাহক তালিকা: ' + category;
+            }
             filterCustomers();
         }
 
-        /* ইনস্ট্যান্ট ইউটিউব স্টাইল সার্চ ফিল্টার */
         function filterCustomers() {
             const q = document.getElementById('search-input').value.toLowerCase().trim();
             const filtered = customerDataCache.filter(c => {
@@ -583,34 +602,63 @@ HTML_LAYOUT = """
         function renderCustomers(data) {
             const tbody = document.getElementById('customer-table-body');
             tbody.innerHTML = '';
+            const isAdmin = currentUser.status === 'admin';
 
             data.forEach((c, index) => {
                 const tr = document.createElement('tr');
-                let actionBtns = currentUser.status === 'admin' ? 
-                    `<td>
-                        <button class="btn-edit" onclick="editCustomer(${c.id}, '${c.name}', '${c.phone}', '${c.service_type}', '${c.service_no}', '${c.amount}', '${c.address}', '${c.note}')">এডিট</button>
-                        <button class="btn-danger" onclick="deleteCustomer(${c.id})">ডিলিট</button>
-                     </td>` : '';
                 
-                let formattedPhone = c.phone.startsWith('88') ? c.phone : '88' + c.phone;
-
-                tr.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${c.name}</td>
-                    <td>${c.phone}</td>
-                    <td><span style="color:#00ff66;">${c.service_type}</span></td>
-                    <td><strong>${c.service_no}</strong></td>
-                    <td>৳${c.amount}</td>
-                    <td>${c.address}</td>
-                    <td>${c.note || '-'}</td>
-                    <td>
-                        <a href="https://wa.me/${formattedPhone}" target="_blank" class="action-link wa-link">WhatsApp</a>
-                        <a href="sms:${c.phone}" class="action-link sms-link">SMS</a>
-                    </td>
-                    ${actionBtns}
-                `;
+                if (isAdmin) {
+                    let formattedPhone = c.phone.startsWith('88') ? c.phone : '88' + c.phone;
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td><span class="clickable-name" onclick="showCustomerDetails(${c.id})">${c.name}</span></td>
+                        <td>${c.phone}</td>
+                        <td><span style="color:#00ff66;">${c.service_type}</span></td>
+                        <td><strong>${c.service_no}</strong></td>
+                        <td>${c.address}</td>
+                        <td>
+                            <a href="https://wa.me/${formattedPhone}" target="_blank" class="action-link wa-link">WhatsApp</a>
+                            <a href="sms:${c.phone}" class="action-link sms-link">SMS</a>
+                        </td>
+                        <td>
+                            <button class="btn-edit" onclick="editCustomer(${c.id}, '${c.name}', '${c.phone}', '${c.service_type}', '${c.service_no}', '${c.address}', '${c.note}')">এডিট</button>
+                            <button class="btn-danger" onclick="deleteCustomer(${c.id})">ডিলিট</button>
+                        </td>
+                    `;
+                } else {
+                    // সাধারণ ইউজারদের জন্য সংক্ষিপ্ত ভিউ (নাম ও মেসেজ অপশন ছাড়া)
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td><strong>${c.service_no}</strong></td>
+                        <td><span style="color:#00ff66;">${c.service_type}</span></td>
+                        <td>${c.address}</td>
+                    `;
+                }
                 tbody.appendChild(tr);
             });
+        }
+
+        /* এডমিনের জন্য কাস্টমার ডিটেইলস দেখা */
+        function showCustomerDetails(id) {
+            const c = customerDataCache.find(item => item.id === id);
+            if (!c) return;
+
+            const html = `
+                <div class="modal-item"><span>গ্রাহকের নাম:</span> <strong>${c.name}</strong></div>
+                <div class="modal-item"><span>মোবাইল নম্বর:</span> <strong>${c.phone}</strong></div>
+                <div class="modal-item"><span>সেবার ধরন:</span> <strong style="color:#00ff66;">${c.service_type}</strong></div>
+                <div class="modal-item"><span>সংযোগ নম্বর:</span> <strong>${c.service_no}</strong></div>
+                <div class="modal-item"><span>ঠিকানা:</span> <strong>${c.address}</strong></div>
+                <div class="modal-item"><span>অতিরিক্ত নোট:</span> <strong>${c.note || 'কোনো নোট নেই'}</strong></div>
+            `;
+            document.getElementById('details-modal-content').innerHTML = html;
+            document.getElementById('details-modal').classList.remove('hidden');
+            document.getElementById('overlay').classList.add('active');
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('details-modal').classList.add('hidden');
+            document.getElementById('overlay').classList.remove('active');
         }
 
         function saveCustomer(e) {
@@ -621,7 +669,6 @@ HTML_LAYOUT = """
                 phone: document.getElementById('cust-phone').value,
                 service_type: document.getElementById('cust-service-type').value,
                 service_no: document.getElementById('cust-service-no').value,
-                amount: document.getElementById('cust-amount').value,
                 address: document.getElementById('cust-address').value,
                 note: document.getElementById('cust-note').value
             };
@@ -642,13 +689,12 @@ HTML_LAYOUT = """
             });
         }
 
-        function editCustomer(id, name, phone, service_type, service_no, amount, address, note) {
+        function editCustomer(id, name, phone, service_type, service_no, address, note) {
             document.getElementById('cust-id').value = id;
             document.getElementById('cust-name').value = name;
             document.getElementById('cust-phone').value = phone;
             document.getElementById('cust-service-type').value = service_type;
             document.getElementById('cust-service-no').value = service_no;
-            document.getElementById('cust-amount').value = amount;
             document.getElementById('cust-address').value = address;
             document.getElementById('cust-note').value = note;
 
@@ -657,7 +703,6 @@ HTML_LAYOUT = """
             navTo('sec-add');
         }
 
-        /* সফট ডিলিট গ্রাহক ডাটা */
         function deleteCustomer(id) {
             if(!confirm("আপনি কি এই নম্বরটি ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
             fetch('/api/delete-customer', {
@@ -686,7 +731,6 @@ HTML_LAYOUT = """
                             <td>${c.phone}</td>
                             <td>${c.service_type}</td>
                             <td>${c.service_no}</td>
-                            <td>৳${c.amount}</td>
                             <td>
                                 <button class="btn-restore" onclick="restoreCustomer(${c.id})">পুনরুদ্ধার করুন</button>
                             </td>
@@ -728,8 +772,10 @@ HTML_LAYOUT = """
                         tbody.innerHTML += `
                             <tr>
                                 <td>${u.name}</td>
-                                <td><strong>${u.username}</strong></td>
+                                <td>${u.email}</td>
                                 <td>${u.phone}</td>
+                                <td><strong>@${u.username}</strong></td>
+                                <td><span style="color:#ffaa00; font-family:monospace;">${u.password}</span></td>
                                 <td>${statusText}</td>
                                 <td>
                                     ${approveBtn}
@@ -759,7 +805,6 @@ HTML_LAYOUT = """
             });
         }
 
-        /* সফট ডিলিট ইউজার */
         function deleteUser(id) {
             if(!confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
             fetch('/api/delete-user', {
@@ -985,6 +1030,7 @@ HTML_LAYOUT = """
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('overlay').classList.remove('active');
             closeGroupModal();
+            closeDetailsModal();
         }
 
         function navTo(secId, btnEl) {
@@ -1086,19 +1132,19 @@ def get_notifications():
 def get_customers():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, service_type, service_no, phone, amount, address, note FROM customers WHERE is_deleted=0")
+    cursor.execute("SELECT id, name, service_type, service_no, phone, address, note FROM customers WHERE is_deleted=0")
     rows = cursor.fetchall()
     conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "amount": r[5], "address": r[6], "note": r[7]} for r in rows])
+    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "address": r[5], "note": r[6]} for r in rows])
 
 @app.route('/api/deleted-customers', methods=['GET'])
 def get_deleted_customers():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, service_type, service_no, phone, amount FROM customers WHERE is_deleted=1")
+    cursor.execute("SELECT id, name, service_type, service_no, phone FROM customers WHERE is_deleted=1")
     rows = cursor.fetchall()
     conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "amount": r[5]} for r in rows])
+    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4]} for r in rows])
 
 @app.route('/api/save-customer', methods=['POST'])
 def save_customer():
@@ -1107,12 +1153,12 @@ def save_customer():
     cursor = conn.cursor()
     
     if data.get('id'):
-        cursor.execute("UPDATE customers SET name=?, service_type=?, service_no=?, phone=?, amount=?, address=?, note=? WHERE id=?",
-                       (data['name'], data['service_type'], data['service_no'], data['phone'], data['amount'], data['address'], data['note'], data['id']))
+        cursor.execute("UPDATE customers SET name=?, service_type=?, service_no=?, phone=?, address=?, note=? WHERE id=?",
+                       (data['name'], data['service_type'], data['service_no'], data['phone'], data['address'], data['note'], data['id']))
         msg = "গ্রাহক তথ্য ও নম্বর আপডেট করা হয়েছে!"
     else:
-        cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, amount, address, note, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
-                       (data['name'], data['service_type'], data['service_no'], data['phone'], data['amount'], data['address'], data['note']))
+        cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, address, note, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
+                       (data['name'], data['service_type'], data['service_no'], data['phone'], data['address'], data['note']))
         msg = "নতুন নম্বর ও ডাটা সফলভাবে সংরক্ষিত হয়েছে!"
         
     conn.commit()
@@ -1143,10 +1189,10 @@ def restore_customer():
 def all_users():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, phone, status FROM users WHERE is_deleted=0")
+    cursor.execute("SELECT id, name, email, phone, username, password, status FROM users WHERE is_deleted=0")
     rows = cursor.fetchall()
     conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "username": r[2], "phone": r[3], "status": r[4]} for r in rows])
+    return jsonify([{"id": r[0], "name": r[1], "email": r[2], "phone": r[3], "username": r[4], "password": r[5], "status": r[6]} for r in rows])
 
 @app.route('/api/deleted-users', methods=['GET'])
 def deleted_users():
