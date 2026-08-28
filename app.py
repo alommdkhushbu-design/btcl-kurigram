@@ -12,10 +12,11 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
+    # status default 'pending' করা হয়েছে অনুমোদনের জন্য
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, status TEXT DEFAULT 'approved'
+            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, status TEXT DEFAULT 'pending'
         )
     ''')
     
@@ -61,10 +62,21 @@ HTML_LAYOUT = """
         body { background-color: #121212; color: #ffffff; padding: 12px; }
 
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        .menu-btn, .group-btn { font-size: 15px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+        .header-left { display: flex; align-items: center; gap: 8px; }
+        .header-right { display: flex; align-items: center; gap: 8px; }
+        .menu-btn, .group-btn { font-size: 15px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
         .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #2a2a2a; }
         
+        /* নোটিফিকেশন বেল আইকন */
+        .notif-bell-btn { position: relative; font-size: 18px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; cursor: pointer; color: #fff; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 50%; display: none; }
+        .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 280px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
+        .notif-dropdown.active { display: block; }
+        .notif-header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: #00ff66; font-size: 13px; }
+        .notif-item { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .notif-item:hover { background: #2a2a2a; }
+        .notif-empty { padding: 15px; text-align: center; color: #888; font-size: 12px; }
+
         .search-container { position: relative; margin-bottom: 15px; }
         .search-box { width: 100%; padding: 12px 15px 12px 35px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px; color: #fff; font-size: 14px; }
         .search-icon { position: absolute; left: 12px; top: 12px; color: #888; }
@@ -82,7 +94,6 @@ HTML_LAYOUT = """
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
         .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
-        /* ৪টি ফিল্টার অপশন কার্ড */
         .grid-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: center; }
         .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 12px 8px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .stat-box:hover { background: #005c26; }
@@ -93,7 +104,8 @@ HTML_LAYOUT = """
 
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
-        .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-approve { background: #00e65c; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 4px; }
+        .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
         .btn-edit { background: #ffaa00; color: #000; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
 
         .table-responsive { overflow-x: auto; }
@@ -105,7 +117,7 @@ HTML_LAYOUT = """
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         
-        .chat-box { height: 220px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #121212; display: flex; flex-direction: column; gap: 8px; }
+        .chat-box { height: 250px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #121212; display: flex; flex-direction: column; gap: 8px; }
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
         .chat-msg.sent { background: #005c26; color: #fff; align-self: flex-end; }
         .chat-msg.received { background: #2a2a2a; color: #fff; align-self: flex-start; }
@@ -123,6 +135,7 @@ HTML_LAYOUT = """
 
     <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
 
+    <!-- সাইডবার মেনু -->
     <div id="sidebar" class="sidebar">
         <button class="close-btn" onclick="closeSidebar()">✖ বন্ধ করুন</button>
         <div style="clear:both;"></div>
@@ -137,6 +150,7 @@ HTML_LAYOUT = """
         <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
+    <!-- লগইন / রেজিস্ট্রেশন -->
     <div id="auth-view" class="auth-container">
         <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
         <div class="tab-buttons">
@@ -160,16 +174,30 @@ HTML_LAYOUT = """
         </form>
     </div>
 
+    <!-- মূল ড্যাশবোর্ড -->
     <div id="dashboard-view" class="hidden">
         <div class="header">
             <div class="header-left">
                 <button class="menu-btn" onclick="openSidebar()">☰</button>
-                <button class="group-btn" onclick="openGroupModal()">📢 গ্রুপ মেসেজ</button>
+                <button class="group-btn" onclick="openGroupModal()">📢 গ্রুপ</button>
             </div>
             <div class="header-title">BTCL, কুড়িগ্রাম</div>
-            <div style="font-size: 12px;" id="user-badge">👤 ইউজার</div>
+            <div class="header-right">
+                <!-- নোটিফিকেশন বেল -->
+                <div style="position:relative;">
+                    <button class="notif-bell-btn" onclick="toggleNotifDropdown()">
+                        🔔 <span id="notif-badge" class="notif-badge">0</span>
+                    </button>
+                    <div id="notif-dropdown" class="notif-dropdown">
+                        <div class="notif-header">নোটিফিকেশনসমূহ</div>
+                        <div id="notif-list-body"></div>
+                    </div>
+                </div>
+                <div style="font-size: 11px;" id="user-badge">👤 ইউজার</div>
+            </div>
         </div>
 
+        <!-- সার্চ বার -->
         <div class="search-container">
             <span class="search-icon">🔍</span>
             <input type="text" id="search-input" class="search-box" onkeyup="filterCustomers()" placeholder="নাম, নম্বর, সার্ভিস বা ঠিকানা দিয়ে খুঁজুন...">
@@ -221,6 +249,7 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- এডমিন দিয়ে ডাটা যুক্ত করার ফর্ম -->
         <div id="sec-add" class="card hidden admin-only">
             <div class="card-title" id="form-add-title">নতুন নম্বর এড করুন</div>
             <form onsubmit="saveCustomer(event)">
@@ -269,7 +298,7 @@ HTML_LAYOUT = """
         </div>
 
         <div id="sec-users" class="card hidden admin-only">
-            <div class="card-title">সকল নিবন্ধিত ইউজার তালিকা</div>
+            <div class="card-title">সকল নিবন্ধিত ইউজার ও পেন্ডিং আবেদন তালিকা</div>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -286,19 +315,20 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- মেসেঞ্জার -->
         <div id="sec-messenger" class="card hidden">
-            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
-            <div style="margin-bottom:10px;">
-                <input type="text" id="chat-user-search" class="input-box" onkeyup="filterChatUsers()" placeholder="🔍 ইউজার আইডি সার্চ করুন...">
-                <select id="chat-receiver-select" class="input-box">
-                    <option value="admin">এডমিন (Khushbu23)</option>
-                </select>
+            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার (শুধু এডমিন ও ইউজারের মধ্যে কথা হবে)</div>
+            
+            <!-- এডমিন হলে ইউজার সিলেক্ট করবে, সাধারণ ইউজার হলে এডমিন ফিক্সড থাকবে -->
+            <div id="admin-chat-select-container" style="margin-bottom:10px;" class="admin-only">
+                <input type="text" id="chat-user-search" class="input-box" onkeyup="filterChatUsers()" placeholder="🔍 ইউজার আইডি বা নাম দিয়ে সার্চ করুন...">
+                <select id="chat-receiver-select" class="input-box" onchange="loadMessages()"></select>
             </div>
 
             <div id="chat-messages" class="chat-box"></div>
             
             <div style="display:flex; flex-direction:column; gap:5px;">
-                <input type="file" id="chat-file-input" class="input-box" style="padding:5px;" accept="image/*,video/*,.pdf,.doc">
+                <input type="file" id="chat-file-input" class="input-box" style="padding:5px;" accept="image/*,.pdf,.doc">
                 <div style="display:flex; gap:5px;">
                     <input type="text" id="chat-msg-input" class="input-box" style="margin-bottom:0;" placeholder="মেসেজ লিখুন...">
                     <button class="submit-btn" style="width:80px;" onclick="sendChatMessage()">পাঠান</button>
@@ -307,6 +337,7 @@ HTML_LAYOUT = """
         </div>
     </div>
 
+    <!-- গ্রুপ মেসেজ ও ব্রডকাস্ট মোডাল -->
     <div id="group-modal" class="auth-container hidden" style="position:fixed; top:5%; left:5%; right:5%; z-index:1001; max-width:500px;">
         <div class="card-title" style="color:#00ff66;">📢 গ্রুপ মেসেজ (WhatsApp & SMS)</div>
         <div id="group-broadcast-list" class="chat-box" style="height:150px;"></div>
@@ -361,7 +392,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("রেজিস্ট্রেশন সফল! এখন লগইন করুন।");
+                    alert("রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে পাঠানো হয়েছে! এডমিনের অনুমোদনের পর লগইন করতে পারবেন।");
                     toggleAuthTab('login');
                 } else {
                     alert(res.message);
@@ -418,6 +449,9 @@ HTML_LAYOUT = """
                     setupRoleUI();
                     document.getElementById('dashboard-view').classList.remove('hidden');
                     loadDashboardData();
+                    
+                    // অটো রিফ্রেশ নোটিফিকেশন ৩ সেকেন্ড পর পর
+                    setInterval(checkNotifications, 3000);
                 } else {
                     alert(res.message);
                 }
@@ -444,6 +478,7 @@ HTML_LAYOUT = """
 
             loadAllUsers();
             loadMessages();
+            checkNotifications();
         }
 
         function updateStats(data) {
@@ -586,37 +621,56 @@ HTML_LAYOUT = """
                 const select = document.getElementById('chat-receiver-select');
                 
                 if(tbody) tbody.innerHTML = '';
-                if(select) select.innerHTML = '<option value="admin">এডমিন (Khushbu23)</option>';
+                if(select) select.innerHTML = '';
 
                 users.forEach(u => {
                     if(tbody && u.username !== 'Khushbu23') {
+                        let statusText = u.status === 'pending' ? '<span style="color:#ffaa00;">পেন্ডিং</span>' : '<span style="color:#00ff66;">অনুমোদিত</span>';
+                        let approveBtn = u.status === 'pending' ? `<button class="btn-approve" onclick="approveUser(${u.id})">অনুমোদন</button>` : '';
+
                         tbody.innerHTML += `
                             <tr>
                                 <td>${u.name}</td>
                                 <td><strong>${u.username}</strong></td>
                                 <td>${u.phone}</td>
-                                <td>${u.status}</td>
-                                <td><button class="btn-danger" onclick="deleteUser(${u.id})">ডিলিট</button></td>
+                                <td>${statusText}</td>
+                                <td>
+                                    ${approveBtn}
+                                    <button class="btn-danger" onclick="deleteUser(${u.id})">ডিলিট</button>
+                                </td>
                             </tr>
                         `;
                     }
-                    if(select && u.username !== currentUser.username) {
+                    if(select && u.username !== 'Khushbu23') {
                         select.innerHTML += `<option value="${u.username}">${u.name} (@${u.username})</option>`;
                     }
                 });
             });
         }
 
+        function approveUser(id) {
+            fetch('/api/approve-user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: id})
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                loadAllUsers();
+                checkNotifications();
+            });
+        }
+
         function filterChatUsers() {
             const q = document.getElementById('chat-user-search').value.toLowerCase();
             const select = document.getElementById('chat-receiver-select');
-            select.innerHTML = '<option value="admin">এডমিন (Khushbu23)</option>';
+            select.innerHTML = '';
 
-            allUsersCache.filter(u => u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)).forEach(u => {
-                if(u.username !== currentUser.username) {
-                    select.innerHTML += `<option value="${u.username}">${u.name} (@${u.username})</option>`;
-                }
+            allUsersCache.filter(u => u.username !== 'Khushbu23' && (u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))).forEach(u => {
+                select.innerHTML += `<option value="${u.username}">${u.name} (@${u.username})</option>`;
             });
+            loadMessages();
         }
 
         function deleteUser(id) {
@@ -636,7 +690,13 @@ HTML_LAYOUT = """
         function sendChatMessage() {
             const msgInput = document.getElementById('chat-msg-input');
             const fileInput = document.getElementById('chat-file-input');
-            const receiver = document.getElementById('chat-receiver-select').value;
+            
+            let receiver = 'Khushbu23'; // সাধারণ ইউজারদের জন্য এডমিন ফিক্সড
+            if (currentUser.status === 'admin') {
+                receiver = document.getElementById('chat-receiver-select').value;
+            }
+
+            if(!msgInput.value && !fileInput.files[0]) return;
             
             const formData = new FormData();
             formData.append('sender', currentUser.username);
@@ -662,6 +722,9 @@ HTML_LAYOUT = """
                 let html = '';
                 let groupHtml = '';
 
+                let activeTarget = (currentUser.status === 'admin') ? 
+                    (document.getElementById('chat-receiver-select').value || '') : 'Khushbu23';
+
                 msgs.forEach(m => {
                     let media = '';
                     if(m.file_url) {
@@ -686,14 +749,74 @@ HTML_LAYOUT = """
                                 <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS পাঠাতেন</a>
                             </div>
                         </div>`;
-                    } else if (m.sender === currentUser.username || m.receiver === currentUser.username || currentUser.status === 'admin') {
-                        html += msgDiv;
+                    } else {
+                        // শুধুমাত্র এডমিন ও নির্দিষ্ট ইউজারের চ্যাট ফিল্টার হবে (ইউজাররা অন্য ইউজারের মেসেজ দেখবে না)
+                        if((m.sender === currentUser.username && m.receiver === activeTarget) || 
+                           (m.sender === activeTarget && m.receiver === currentUser.username)) {
+                            html += msgDiv;
+                        }
                     }
                 });
 
                 if(container) container.innerHTML = html;
                 if(groupContainer) groupContainer.innerHTML = groupHtml;
             });
+        }
+
+        /* ---------------------------------------------------------
+           নোটিফিকেশন চেক ও ড্রপডাউন ম্যানেজমেন্ট
+        --------------------------------------------------------- */
+        function toggleNotifDropdown() {
+            document.getElementById('notif-dropdown').classList.toggle('active');
+        }
+
+        function checkNotifications() {
+            if(!currentUser) return;
+
+            fetch('/api/notifications?username=' + currentUser.username + '&status=' + currentUser.status)
+            .then(res => res.json())
+            .then(data => {
+                const badge = document.getElementById('notif-badge');
+                const listBody = document.getElementById('notif-list-body');
+                listBody.innerHTML = '';
+
+                let count = data.length;
+                if(count > 0) {
+                    badge.innerText = count;
+                    badge.style.display = 'inline-block';
+
+                    data.forEach(item => {
+                        let notifHtml = '';
+                        if(item.type === 'registration') {
+                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('registration')">
+                                👤 <strong>নতুন রেজিস্ট্রেশন:</strong> ${item.title} একাউন্ট খোলার আবেদন করেছেন।
+                            </div>`;
+                        } else if(item.type === 'message') {
+                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('message', '${item.sender}')">
+                                💬 <strong>নতুন মেসেজ:</strong> @${item.sender}: "${item.title}"
+                            </div>`;
+                        }
+                        listBody.innerHTML += notifHtml;
+                    });
+                } else {
+                    badge.style.display = 'none';
+                    listBody.innerHTML = '<div class="notif-empty">কোনো নতুন নোটিফিকেশন নেই।</div>';
+                }
+            });
+        }
+
+        function handleNotifClick(type, sender) {
+            document.getElementById('notif-dropdown').classList.remove('active');
+            
+            if(type === 'registration') {
+                navTo('sec-users');
+            } else if(type === 'message') {
+                navTo('sec-messenger');
+                if(currentUser.status === 'admin' && sender) {
+                    document.getElementById('chat-receiver-select').value = sender;
+                    loadMessages();
+                }
+            }
         }
 
         function openGroupModal() {
@@ -766,7 +889,8 @@ def register():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'approved')",
+        # রেজিস্ট্রেশন করলে সরাসরি approved হবে না, স্ট্যাটাস থাকবে pending
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'pending')",
                        (data['name'], data['email'], data['phone'], data['username'], data['password']))
         conn.commit()
         return jsonify({"success": True})
@@ -786,11 +910,49 @@ def login():
     conn.close()
     
     if user:
+        if user[5] == 'pending':
+            return jsonify({"success": False, "message": "আপনার একাউন্টটি এখনও এডমিন অনুমোদন করেননি। দয়া করে অপেক্ষা করুন!"})
+            
         return jsonify({
             "success": True,
             "user": {"id": user[0], "name": user[1], "email": user[2], "phone": user[3], "username": user[4], "status": user[5]}
         })
     return jsonify({"success": False, "message": "ভুল ইউজারনেম বা পাসওয়ার্ড!"})
+
+@app.route('/api/approve-user', methods=['POST'])
+def approve_user():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET status='approved' WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ইউজার একাউন্ট অনুমোদন করা হয়েছে!"})
+
+@app.route('/api/notifications', methods=['GET'])
+def get_notifications():
+    username = request.args.get('username')
+    status = request.args.get('status')
+    
+    notifications = []
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    # ১. এডমিনের জন্য পেন্ডিং রেজিস্ট্রেশন নোটিফিকেশন
+    if status == 'admin':
+        cursor.execute("SELECT name, username FROM users WHERE status='pending'")
+        pending_users = cursor.fetchall()
+        for u in pending_users:
+            notifications.append({"type": "registration", "title": f"{u[0]} (@{u[1]})"})
+
+    # ২. মেসেজ নোটিফিকেশন (এডমিন ও সাধারণ ইউজার উভয়ের জন্য)
+    cursor.execute("SELECT sender, message FROM messages WHERE receiver=? ORDER BY id DESC LIMIT 5", (username,))
+    msgs = cursor.fetchall()
+    for m in msgs:
+        notifications.append({"type": "message", "sender": m[0], "title": m[1]})
+
+    conn.close()
+    return jsonify(notifications)
 
 @app.route('/api/customers', methods=['GET'])
 def get_customers():
@@ -852,7 +1014,7 @@ def delete_user():
 @app.route('/api/send-message', methods=['POST'])
 def send_message():
     sender = request.form.get('sender')
-    receiver = request.form.get('receiver', 'admin')
+    receiver = request.form.get('receiver', 'Khushbu23')
     message = request.form.get('message', '')
     file = request.files.get('file')
     
