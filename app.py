@@ -12,18 +12,20 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # status default 'pending' করা হয়েছে অনুমোদনের জন্য
+    # is_deleted কলাম যুক্ত করা হয়েছে ট্র্যাশ বিনের জন্য
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, status TEXT DEFAULT 'pending'
+            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, 
+            status TEXT DEFAULT 'pending', is_deleted INTEGER DEFAULT 0
         )
     ''')
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, service_type TEXT, service_no TEXT, phone TEXT, amount REAL, address TEXT, note TEXT
+            name TEXT, service_type TEXT, service_no TEXT, phone TEXT, amount REAL, 
+            address TEXT, note TEXT, is_deleted INTEGER DEFAULT 0
         )
     ''')
     
@@ -37,10 +39,10 @@ def init_db():
     # এডমিন একাউন্ট সেটআপ (Khushbu23)
     cursor.execute("SELECT * FROM users WHERE username='Khushbu23'")
     if not cursor.fetchone():
-        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, ?)",
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, status, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
                        ("Admin Khushbu", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523", "admin"))
     else:
-        cursor.execute("UPDATE users SET password='01751947523', status='admin' WHERE username='Khushbu23'")
+        cursor.execute("UPDATE users SET password='01751947523', status='admin', is_deleted=0 WHERE username='Khushbu23'")
     
     conn.commit()
     conn.close()
@@ -62,24 +64,34 @@ HTML_LAYOUT = """
         body { background-color: #121212; color: #ffffff; padding: 12px; }
 
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .header-left { display: flex; align-items: center; gap: 8px; }
-        .header-right { display: flex; align-items: center; gap: 8px; }
-        .menu-btn, .group-btn { font-size: 15px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-        .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #2a2a2a; }
+        .header-left { display: flex; align-items: center; gap: 6px; }
+        .header-right { display: flex; align-items: center; gap: 6px; }
         
-        /* নোটিফিকেশন বেল আইকন */
-        .notif-bell-btn { position: relative; font-size: 18px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 4px 10px; cursor: pointer; color: #fff; }
-        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 50%; display: none; }
+        .nav-btn { font-size: 14px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .nav-btn:hover { background: #2a2a2a; }
+        
+        .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #2a2a2a; }
+        
+        /* ইউজার / এডমিন ট্যাগ স্টাইল */
+        .role-badge { font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 6px; }
+        .admin-badge-style { background: #ff4d4d; color: #ffffff; border: 1px solid #ff1a1a; }
+        .user-badge-style { background: #1e1e1e; color: #00ff66; border: 1px solid #333; }
+
+        /* নোটিফিকেশন বেল */
+        .notif-bell-btn { position: relative; font-size: 16px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: #fff; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 50%; display: none; }
         .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 280px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
         .notif-dropdown.active { display: block; }
         .notif-header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: #00ff66; font-size: 13px; }
-        .notif-item { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 12px; cursor: pointer; transition: 0.2s; }
+        .notif-item { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 12px; cursor: pointer; }
         .notif-item:hover { background: #2a2a2a; }
         .notif-empty { padding: 15px; text-align: center; color: #888; font-size: 12px; }
 
+        /* ইনস্ট্যান্ট সার্চ বার */
         .search-container { position: relative; margin-bottom: 15px; }
-        .search-box { width: 100%; padding: 12px 15px 12px 35px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px; color: #fff; font-size: 14px; }
-        .search-icon { position: absolute; left: 12px; top: 12px; color: #888; }
+        .search-box { width: 100%; padding: 12px 15px 12px 38px; background: #1e1e1e; border: 1px solid #00ff66; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
+        .search-box:focus { box-shadow: 0 0 10px rgba(0,255,102,0.3); }
+        .search-icon { position: absolute; left: 14px; top: 12px; color: #00ff66; }
 
         .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         .sidebar.active { left: 0; }
@@ -87,7 +99,7 @@ HTML_LAYOUT = """
         
         .menu-title { color: #888; font-size: 13px; margin: 20px 0 10px 0; }
         .menu-list { display: flex; flex-direction: column; gap: 8px; }
-        .menu-item { background: #2a2a2a; color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; border: none; text-align: left; width: 100%; cursor: pointer; }
+        .menu-item { background: #2a2a2a; color: #fff; padding: 12px; border-radius: 6px; font-size: 13px; border: none; text-align: left; width: 100%; cursor: pointer; }
         .menu-item.active { background: #00e65c; color: #000; font-weight: bold; }
         .logout-btn { background: #ff4d4d; color: #fff; width: 100%; padding: 12px; border-radius: 6px; border: none; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
@@ -105,6 +117,7 @@ HTML_LAYOUT = """
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
         .btn-approve { background: #00e65c; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 4px; }
+        .btn-restore { background: #007bff; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
         .btn-edit { background: #ffaa00; color: #000; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
 
@@ -135,22 +148,22 @@ HTML_LAYOUT = """
 
     <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
 
-    <!-- সাইডবার মেনু -->
     <div id="sidebar" class="sidebar">
         <button class="close-btn" onclick="closeSidebar()">✖ বন্ধ করুন</button>
         <div style="clear:both;"></div>
-        <div class="menu-title">মেনু বার</div>
+        <div class="menu-title">প্রধান মেনু</div>
         <div class="menu-list">
             <button class="menu-item active" onclick="navTo('sec-overview', this)">📊 ওভারভিউ ও ডাটা</button>
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
             <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. ইউজার তৈরি করুন</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. সকল ইউজার তথ্য</button>
+            <button id="menu-deleted-cust" class="menu-item admin-only" onclick="navTo('sec-deleted-customers', this)">🗑️ ৪. ডিলিট হওয়া নম্বর তালিকা</button>
+            <button id="menu-deleted-users" class="menu-item admin-only" onclick="navTo('sec-deleted-users', this)">🗑️ ৫. ডিলিট হওয়া ইউজার তালিকা</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
         </div>
         <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
-    <!-- লগইন / রেজিস্ট্রেশন -->
     <div id="auth-view" class="auth-container">
         <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
         <div class="tab-buttons">
@@ -174,16 +187,15 @@ HTML_LAYOUT = """
         </form>
     </div>
 
-    <!-- মূল ড্যাশবোর্ড -->
     <div id="dashboard-view" class="hidden">
         <div class="header">
             <div class="header-left">
-                <button class="menu-btn" onclick="openSidebar()">☰</button>
-                <button class="group-btn" onclick="openGroupModal()">📢 গ্রুপ</button>
+                <button class="nav-btn" onclick="openSidebar()">☰ মেনু</button>
+                <button class="nav-btn" onclick="goHome()">🏠 হোম</button>
+                <button class="nav-btn" onclick="openGroupModal()">📢 গ্রুপ</button>
             </div>
-            <div class="header-title">BTCL, কুড়িগ্রাম</div>
+            <div class="header-title">BTCL</div>
             <div class="header-right">
-                <!-- নোটিফিকেশন বেল -->
                 <div style="position:relative;">
                     <button class="notif-bell-btn" onclick="toggleNotifDropdown()">
                         🔔 <span id="notif-badge" class="notif-badge">0</span>
@@ -193,14 +205,13 @@ HTML_LAYOUT = """
                         <div id="notif-list-body"></div>
                     </div>
                 </div>
-                <div style="font-size: 11px;" id="user-badge">👤 ইউজার</div>
+                <div id="user-badge" class="role-badge"></div>
             </div>
         </div>
 
-        <!-- সার্চ বার -->
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" class="search-box" onkeyup="filterCustomers()" placeholder="নাম, নম্বর, সার্ভিস বা ঠিকানা দিয়ে খুঁজুন...">
+            <input type="text" id="search-input" class="search-box" oninput="filterCustomers()" placeholder="যেকোনো অক্ষর বা নম্বর দিয়ে ইনস্ট্যান্ট সার্চ করুন...">
         </div>
 
         <div id="sec-overview">
@@ -249,7 +260,6 @@ HTML_LAYOUT = """
             </div>
         </div>
 
-        <!-- এডমিন দিয়ে ডাটা যুক্ত করার ফর্ম -->
         <div id="sec-add" class="card hidden admin-only">
             <div class="card-title" id="form-add-title">নতুন নম্বর এড করুন</div>
             <form onsubmit="saveCustomer(event)">
@@ -315,11 +325,45 @@ HTML_LAYOUT = """
             </div>
         </div>
 
-        <!-- মেসেঞ্জার -->
+        <div id="sec-deleted-customers" class="card hidden admin-only">
+            <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া নম্বর ও ডাটা তালিকা</div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>নাম</th>
+                            <th>মোবাইল</th>
+                            <th>সেবার ধরন</th>
+                            <th>সংযোগ নম্বর</th>
+                            <th>বিল</th>
+                            <th>অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deleted-customers-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="sec-deleted-users" class="card hidden admin-only">
+            <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া ইউজার তালিকা</div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>নাম</th>
+                            <th>ইউজারনেম</th>
+                            <th>ফোন</th>
+                            <th>অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deleted-users-body"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div id="sec-messenger" class="card hidden">
-            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার (শুধু এডমিন ও ইউজারের মধ্যে কথা হবে)</div>
+            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
             
-            <!-- এডমিন হলে ইউজার সিলেক্ট করবে, সাধারণ ইউজার হলে এডমিন ফিক্সড থাকবে -->
             <div id="admin-chat-select-container" style="margin-bottom:10px;" class="admin-only">
                 <input type="text" id="chat-user-search" class="input-box" onkeyup="filterChatUsers()" placeholder="🔍 ইউজার আইডি বা নাম দিয়ে সার্চ করুন...">
                 <select id="chat-receiver-select" class="input-box" onchange="loadMessages()"></select>
@@ -337,7 +381,6 @@ HTML_LAYOUT = """
         </div>
     </div>
 
-    <!-- গ্রুপ মেসেজ ও ব্রডকাস্ট মোডাল -->
     <div id="group-modal" class="auth-container hidden" style="position:fixed; top:5%; left:5%; right:5%; z-index:1001; max-width:500px;">
         <div class="card-title" style="color:#00ff66;">📢 গ্রুপ মেসেজ (WhatsApp & SMS)</div>
         <div id="group-broadcast-list" class="chat-box" style="height:150px;"></div>
@@ -449,8 +492,6 @@ HTML_LAYOUT = """
                     setupRoleUI();
                     document.getElementById('dashboard-view').classList.remove('hidden');
                     loadDashboardData();
-                    
-                    // অটো রিফ্রেশ নোটিফিকেশন ৩ সেকেন্ড পর পর
                     setInterval(checkNotifications, 3000);
                 } else {
                     alert(res.message);
@@ -458,13 +499,28 @@ HTML_LAYOUT = """
             });
         }
 
+        /* এডমিন ও ইউজার ট্যাগ সেটআপ */
         function setupRoleUI() {
             const isAdmin = currentUser.status === 'admin';
             document.querySelectorAll('.admin-only').forEach(el => {
                 if(isAdmin) el.classList.remove('hidden');
                 else el.classList.add('hidden');
             });
-            document.getElementById('user-badge').innerText = isAdmin ? "👑 এডমিন" : "👤 " + currentUser.username;
+            
+            const badgeEl = document.getElementById('user-badge');
+            if (isAdmin) {
+                badgeEl.innerText = "👑 ADMIN";
+                badgeEl.className = "role-badge admin-badge-style";
+            } else {
+                badgeEl.innerText = "👤 USER (@" + currentUser.username + ")";
+                badgeEl.className = "role-badge user-badge-style";
+            }
+        }
+
+        function goHome() {
+            navTo('sec-overview', document.querySelector('.menu-item'));
+            document.getElementById('search-input').value = '';
+            filterCustomers();
         }
 
         function loadDashboardData() {
@@ -478,6 +534,8 @@ HTML_LAYOUT = """
 
             loadAllUsers();
             loadMessages();
+            loadDeletedCustomers();
+            loadDeletedUsers();
             checkNotifications();
         }
 
@@ -507,15 +565,16 @@ HTML_LAYOUT = """
             filterCustomers();
         }
 
+        /* ইনস্ট্যান্ট ইউটিউব স্টাইল সার্চ ফিল্টার */
         function filterCustomers() {
-            const q = document.getElementById('search-input').value.toLowerCase();
+            const q = document.getElementById('search-input').value.toLowerCase().trim();
             const filtered = customerDataCache.filter(c => {
                 const matchCategory = (activeCategoryFilter === 'all') || (c.service_type === activeCategoryFilter);
-                const matchQuery = c.name.toLowerCase().includes(q) ||
-                                   c.phone.includes(q) ||
-                                   c.service_type.toLowerCase().includes(q) ||
-                                   c.service_no.toLowerCase().includes(q) ||
-                                   c.address.toLowerCase().includes(q);
+                const matchQuery = (c.name || '').toLowerCase().includes(q) ||
+                                   (c.phone || '').includes(q) ||
+                                   (c.service_type || '').toLowerCase().includes(q) ||
+                                   (c.service_no || '').toLowerCase().includes(q) ||
+                                   (c.address || '').toLowerCase().includes(q);
                 return matchCategory && matchQuery;
             });
             renderCustomers(filtered);
@@ -598,9 +657,47 @@ HTML_LAYOUT = """
             navTo('sec-add');
         }
 
+        /* সফট ডিলিট গ্রাহক ডাটা */
         function deleteCustomer(id) {
-            if(!confirm("আপনি কি নিশ্চিত এই গ্রাহকের ডাটা ডিলিট করতে চান?")) return;
+            if(!confirm("আপনি কি এই নম্বরটি ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
             fetch('/api/delete-customer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: id})
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                loadDashboardData();
+            });
+        }
+
+        function loadDeletedCustomers() {
+            fetch('/api/deleted-customers')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('deleted-customers-body');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+                data.forEach(c => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${c.name}</td>
+                            <td>${c.phone}</td>
+                            <td>${c.service_type}</td>
+                            <td>${c.service_no}</td>
+                            <td>৳${c.amount}</td>
+                            <td>
+                                <button class="btn-restore" onclick="restoreCustomer(${c.id})">পুনরুদ্ধার করুন</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        function restoreCustomer(id) {
+            fetch('/api/restore-customer', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id: id})
@@ -662,6 +759,58 @@ HTML_LAYOUT = """
             });
         }
 
+        /* সফট ডিলিট ইউজার */
+        function deleteUser(id) {
+            if(!confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
+            fetch('/api/delete-user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: id})
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                loadAllUsers();
+                loadDeletedUsers();
+            });
+        }
+
+        function loadDeletedUsers() {
+            fetch('/api/deleted-users')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('deleted-users-body');
+                if(!tbody) return;
+                tbody.innerHTML = '';
+                data.forEach(u => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${u.name}</td>
+                            <td>@${u.username}</td>
+                            <td>${u.phone}</td>
+                            <td>
+                                <button class="btn-restore" onclick="restoreUser(${u.id})">পুনরুদ্ধার করুন</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        function restoreUser(id) {
+            fetch('/api/restore-user', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({id: id})
+            })
+            .then(res => res.json())
+            .then(res => {
+                alert(res.message);
+                loadAllUsers();
+                loadDeletedUsers();
+            });
+        }
+
         function filterChatUsers() {
             const q = document.getElementById('chat-user-search').value.toLowerCase();
             const select = document.getElementById('chat-receiver-select');
@@ -673,25 +822,11 @@ HTML_LAYOUT = """
             loadMessages();
         }
 
-        function deleteUser(id) {
-            if(!confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট করতে চান?")) return;
-            fetch('/api/delete-user', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id: id})
-            })
-            .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                loadAllUsers();
-            });
-        }
-
         function sendChatMessage() {
             const msgInput = document.getElementById('chat-msg-input');
             const fileInput = document.getElementById('chat-file-input');
             
-            let receiver = 'Khushbu23'; // সাধারণ ইউজারদের জন্য এডমিন ফিক্সড
+            let receiver = 'Khushbu23'; 
             if (currentUser.status === 'admin') {
                 receiver = document.getElementById('chat-receiver-select').value;
             }
@@ -746,11 +881,10 @@ HTML_LAYOUT = """
                             <strong>📢 @${m.sender}:</strong> ${m.message}${media}
                             <div style="margin-top:5px;">
                                 <a href="https://wa.me/?text=${encodedMsg}" target="_blank" class="action-link wa-link">WhatsApp-এ শেয়ার</a>
-                                <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS পাঠাতেন</a>
+                                <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS পাঠান</a>
                             </div>
                         </div>`;
                     } else {
-                        // শুধুমাত্র এডমিন ও নির্দিষ্ট ইউজারের চ্যাট ফিল্টার হবে (ইউজাররা অন্য ইউজারের মেসেজ দেখবে না)
                         if((m.sender === currentUser.username && m.receiver === activeTarget) || 
                            (m.sender === activeTarget && m.receiver === currentUser.username)) {
                             html += msgDiv;
@@ -763,9 +897,6 @@ HTML_LAYOUT = """
             });
         }
 
-        /* ---------------------------------------------------------
-           নোটিফিকেশন চেক ও ড্রপডাউন ম্যানেজমেন্ট
-        --------------------------------------------------------- */
         function toggleNotifDropdown() {
             document.getElementById('notif-dropdown').classList.toggle('active');
         }
@@ -889,8 +1020,7 @@ def register():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        # রেজিস্ট্রেশন করলে সরাসরি approved হবে না, স্ট্যাটাস থাকবে pending
-        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, status, is_deleted) VALUES (?, ?, ?, ?, ?, 'pending', 0)",
                        (data['name'], data['email'], data['phone'], data['username'], data['password']))
         conn.commit()
         return jsonify({"success": True})
@@ -904,7 +1034,7 @@ def login():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, email, phone, username, status FROM users WHERE (username=? OR email=? OR phone=?) AND password=?",
+    cursor.execute("SELECT id, name, email, phone, username, status FROM users WHERE (username=? OR email=? OR phone=?) AND password=? AND is_deleted=0",
                    (data['username'], data['username'], data['username'], data['password']))
     user = cursor.fetchone()
     conn.close()
@@ -917,7 +1047,7 @@ def login():
             "success": True,
             "user": {"id": user[0], "name": user[1], "email": user[2], "phone": user[3], "username": user[4], "status": user[5]}
         })
-    return jsonify({"success": False, "message": "ভুল ইউজারনেম বা পাসওয়ার্ড!"})
+    return jsonify({"success": False, "message": "ভুল ইউজারনেম বা পাসওয়ার্ড অথবা একাউন্টটি ডিলিট করা হয়েছে!"})
 
 @app.route('/api/approve-user', methods=['POST'])
 def approve_user():
@@ -938,14 +1068,12 @@ def get_notifications():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    # ১. এডমিনের জন্য পেন্ডিং রেজিস্ট্রেশন নোটিফিকেশন
     if status == 'admin':
-        cursor.execute("SELECT name, username FROM users WHERE status='pending'")
+        cursor.execute("SELECT name, username FROM users WHERE status='pending' AND is_deleted=0")
         pending_users = cursor.fetchall()
         for u in pending_users:
             notifications.append({"type": "registration", "title": f"{u[0]} (@{u[1]})"})
 
-    # ২. মেসেজ নোটিফিকেশন (এডমিন ও সাধারণ ইউজার উভয়ের জন্য)
     cursor.execute("SELECT sender, message FROM messages WHERE receiver=? ORDER BY id DESC LIMIT 5", (username,))
     msgs = cursor.fetchall()
     for m in msgs:
@@ -958,10 +1086,19 @@ def get_notifications():
 def get_customers():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, service_type, service_no, phone, amount, address, note FROM customers")
+    cursor.execute("SELECT id, name, service_type, service_no, phone, amount, address, note FROM customers WHERE is_deleted=0")
     rows = cursor.fetchall()
     conn.close()
     return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "amount": r[5], "address": r[6], "note": r[7]} for r in rows])
+
+@app.route('/api/deleted-customers', methods=['GET'])
+def get_deleted_customers():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, service_type, service_no, phone, amount FROM customers WHERE is_deleted=1")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "amount": r[5]} for r in rows])
 
 @app.route('/api/save-customer', methods=['POST'])
 def save_customer():
@@ -974,7 +1111,7 @@ def save_customer():
                        (data['name'], data['service_type'], data['service_no'], data['phone'], data['amount'], data['address'], data['note'], data['id']))
         msg = "গ্রাহক তথ্য ও নম্বর আপডেট করা হয়েছে!"
     else:
-        cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, amount, address, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, amount, address, note, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, 0)",
                        (data['name'], data['service_type'], data['service_no'], data['phone'], data['amount'], data['address'], data['note']))
         msg = "নতুন নম্বর ও ডাটা সফলভাবে সংরক্ষিত হয়েছে!"
         
@@ -987,29 +1124,58 @@ def delete_customer():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM customers WHERE id=?", (data['id'],))
+    cursor.execute("UPDATE customers SET is_deleted=1 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ডাটা মুছে ফেলা হয়েছে!"})
+    return jsonify({"success": True, "message": "ডাটা ডিলিট বিনে পাঠানো হয়েছে!"})
+
+@app.route('/api/restore-customer', methods=['POST'])
+def restore_customer():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE customers SET is_deleted=0 WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ডাটা সফলভাবে পুনরুদ্ধার করা হয়েছে!"})
 
 @app.route('/api/all-users', methods=['GET'])
 def all_users():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, phone, status FROM users")
+    cursor.execute("SELECT id, name, username, phone, status FROM users WHERE is_deleted=0")
     rows = cursor.fetchall()
     conn.close()
     return jsonify([{"id": r[0], "name": r[1], "username": r[2], "phone": r[3], "status": r[4]} for r in rows])
+
+@app.route('/api/deleted-users', methods=['GET'])
+def deleted_users():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, username, phone FROM users WHERE is_deleted=1")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "username": r[2], "phone": r[3]} for r in rows])
 
 @app.route('/api/delete-user', methods=['POST'])
 def delete_user():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id=?", (data['id'],))
+    cursor.execute("UPDATE users SET is_deleted=1 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ইউজার একাউন্ট ডিলিট করা হয়েছে!"})
+    return jsonify({"success": True, "message": "ইউজার একাউন্ট ডিলিট বিনে পাঠানো হয়েছে!"})
+
+@app.route('/api/restore-user', methods=['POST'])
+def restore_user():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET is_deleted=0 WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ইউজার একাউন্ট পুনরুদ্ধার করা হয়েছে!"})
 
 @app.route('/api/send-message', methods=['POST'])
 def send_message():
