@@ -16,7 +16,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, status TEXT DEFAULT 'pending'
+            name TEXT, email TEXT, phone TEXT UNIQUE, username TEXT UNIQUE, password TEXT, status TEXT DEFAULT 'approved'
         )
     ''')
     
@@ -34,10 +34,13 @@ def init_db():
         )
     ''')
     
-    cursor.execute("SELECT * FROM users WHERE username='admin'")
+    # নতুন এডমিন একাউন্ট সেটআপ (Khushbu23 / 01751947523)
+    cursor.execute("SELECT * FROM users WHERE username='Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, ?)",
-                       ("Admin", "admin@btcl.gov.bd", "01700000000", "admin", "admin123", "admin"))
+                       ("Admin Khushbu", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523", "admin"))
+    else:
+        cursor.execute("UPDATE users SET password='01751947523', status='admin' WHERE username='Khushbu23'")
     
     conn.commit()
     conn.close()
@@ -119,7 +122,7 @@ HTML_LAYOUT = """
         <div class="menu-list">
             <button class="menu-item active" onclick="navTo('sec-overview', this)">📊 ওভারভিউ ও ডাটা</button>
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
-            <button id="menu-pending" class="menu-item admin-only" onclick="navTo('sec-pending', this)">⏳ ২. পেন্ডিং ইউজার</button>
+            <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. সরাসরি নতুন ইউজার একাউন্ট তৈরি</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. সকল ইউজার তথ্য</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
         </div>
@@ -140,35 +143,14 @@ HTML_LAYOUT = """
             <button type="submit" class="submit-btn">লগইন করুন</button>
         </form>
 
-        <form id="form-reg" class="hidden" onsubmit="sendOTP(event)">
+        <form id="form-reg" class="hidden" onsubmit="registerUserDirect(event)">
             <input type="text" id="reg-name" class="input-box" placeholder="আপনার নাম" required>
             <input type="email" id="reg-email" class="input-box" placeholder="সঠিক জিমেইল আইডি" required>
             <input type="tel" id="reg-phone" class="input-box" placeholder="১১ ডিজিট মোবাইল নম্বর" required>
             <input type="text" id="reg-username" class="input-box" placeholder="ইউজারনেম" required>
             <input type="password" id="reg-pass" class="input-box" placeholder="পাসওয়ার্ড" required>
-            <input type="password" id="reg-cpass" class="input-box" placeholder="কনফার্ম পাসওয়ার্ড" required>
-            <button type="submit" class="submit-btn">মোবাইল ভেরিফাই করুন (OTP)</button>
+            <button type="submit" class="submit-btn">রেজিস্ট্রেশন করুন</button>
         </form>
-
-        <form id="form-otp" class="hidden" onsubmit="verifyOTP(event)">
-            <div style="text-align:center; color:#888; font-size:13px; margin-bottom:10px;">মোবাইলে পাঠানো OTP লিখুন (টেস্ট OTP: 1234)</div>
-            <input type="text" id="otp-input" class="input-box" placeholder="OTP কোড" required>
-            <button type="submit" class="submit-btn">ভেরিফাই করে একাউন্ট করুন</button>
-        </form>
-    </div>
-
-    <!-- পেন্ডিং ইউজার স্ক্রিন -->
-    <div id="pending-user-view" class="auth-container hidden">
-        <div style="color:#ffaa00; text-align:center; font-weight:bold; font-size:15px; margin-bottom:10px;">⏳ একাউন্ট পেন্ডিং অবস্থায় রয়েছে</div>
-        <p style="font-size:12px; color:#ccc; text-align:center; margin-bottom:15px;">এডমিন পারমিশন দেওয়ার পর ডাটা দেখা যাবে। এডমিনের সাথে কথা বলুন:</p>
-        <div class="card">
-            <div id="pending-chat-box" class="chat-box"></div>
-            <div style="display:flex; gap:5px;">
-                <input type="text" id="pending-msg-input" class="input-box" style="margin-bottom:0;" placeholder="মেসেজ লিখুন...">
-                <button class="submit-btn" style="width:80px;" onclick="sendPendingMsg()">পাঠান</button>
-            </div>
-        </div>
-        <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
     <!-- মূল ড্যাশবোর্ড -->
@@ -236,21 +218,17 @@ HTML_LAYOUT = """
             </form>
         </div>
 
-        <div id="sec-pending" class="card hidden admin-only">
-            <div class="card-title">পেন্ডিং ইউজার পারমিশন</div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>নাম</th>
-                            <th>জিমেইল</th>
-                            <th>ফোন</th>
-                            <th>অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody id="pending-users-body"></tbody>
-                </table>
-            </div>
+        <!-- এডমিন দিয়ে সরাসরি ইউজার একাউন্ট খোলার সেকশন -->
+        <div id="sec-create-user" class="card hidden admin-only">
+            <div class="card-title">সরাসরি অ্যাক্টিভ ইউজার তৈরি করুন (ভেরিফাই লাগবে না)</div>
+            <form onsubmit="adminCreateUser(event)">
+                <input type="text" id="adm-user-name" class="input-box" placeholder="ইউজারের নাম" required>
+                <input type="email" id="adm-user-email" class="input-box" placeholder="ইমেইল আইডি" required>
+                <input type="tel" id="adm-user-phone" class="input-box" placeholder="ফোন নম্বর" required>
+                <input type="text" id="adm-user-uname" class="input-box" placeholder="ইউজারনেম" required>
+                <input type="password" id="adm-user-pass" class="input-box" placeholder="পাসওয়ার্ড" required>
+                <button type="submit" class="submit-btn">একাউন্ট তৈরি করুন</button>
+            </form>
         </div>
 
         <div id="sec-users" class="card hidden admin-only">
@@ -307,7 +285,6 @@ HTML_LAYOUT = """
                 document.getElementById('btn-tab-reg').style.color = '#fff';
                 document.getElementById('form-login').classList.remove('hidden');
                 document.getElementById('form-reg').classList.add('hidden');
-                document.getElementById('form-otp').classList.add('hidden');
             } else {
                 document.getElementById('btn-tab-reg').style.background = '#00e65c';
                 document.getElementById('btn-tab-reg').style.color = '#000';
@@ -318,38 +295,8 @@ HTML_LAYOUT = """
             }
         }
 
-        function sendOTP(e) {
+        function registerUserDirect(e) {
             e.preventDefault();
-            const phone = document.getElementById('reg-phone').value;
-            const email = document.getElementById('reg-email').value;
-            const pass = document.getElementById('reg-pass').value;
-            const cpass = document.getElementById('reg-cpass').value;
-
-            if (phone.length !== 11 || !phone.startsWith("01")) {
-                alert("ভুল নম্বর! মোবাইল নম্বরটি অবশ্যই ১১ ডিজিটের হতে হবে।");
-                return;
-            }
-            if (!email.includes("@") || !email.includes(".")) {
-                alert("একটি সঠিক জিমেইল আইডি প্রদান করুন।");
-                return;
-            }
-            if (pass !== cpass) {
-                alert("পাসওয়ার্ড দুটি মিলছে না!");
-                return;
-            }
-
-            alert("OTP পাঠানো হয়েছে (পরীক্ষার জন্য OTP: 1234)");
-            document.getElementById('form-reg').classList.add('hidden');
-            document.getElementById('form-otp').classList.remove('hidden');
-        }
-
-        function verifyOTP(e) {
-            e.preventDefault();
-            if (document.getElementById('otp-input').value !== "1234") {
-                alert("ভুল OTP কোড!");
-                return;
-            }
-
             const data = {
                 name: document.getElementById('reg-name').value,
                 email: document.getElementById('reg-email').value,
@@ -366,8 +313,39 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("রেজিস্ট্রেশন সফল! এডমিন পারমিশন দিলে লগইন করে ডাটা দেখতে পারবেন।");
+                    alert("রেজিস্ট্রেশন সফল! কোনো ভেরিফাই ছাড়াই একাউন্ট সরাসরি চালুর জন্য তৈরি। এখন লগইন করুন।");
                     toggleAuthTab('login');
+                } else {
+                    alert(res.message);
+                }
+            });
+        }
+
+        function adminCreateUser(e) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('adm-user-name').value,
+                email: document.getElementById('adm-user-email').value,
+                phone: document.getElementById('adm-user-phone').value,
+                username: document.getElementById('adm-user-uname').value,
+                password: document.getElementById('adm-user-pass').value
+            };
+
+            fetch('/api/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    alert("ইউজার একাউন্ট তৈরি করা হয়েছে! এটি সরাসরী অ্যাক্টিভ আছে।");
+                    document.getElementById('adm-user-name').value = '';
+                    document.getElementById('adm-user-email').value = '';
+                    document.getElementById('adm-user-phone').value = '';
+                    document.getElementById('adm-user-uname').value = '';
+                    document.getElementById('adm-user-pass').value = '';
+                    loadAllUsers();
                 } else {
                     alert(res.message);
                 }
@@ -389,15 +367,9 @@ HTML_LAYOUT = """
                 if(res.success) {
                     currentUser = res.user;
                     document.getElementById('auth-view').classList.add('hidden');
-
-                    if (currentUser.status === 'pending') {
-                        document.getElementById('pending-user-view').classList.remove('hidden');
-                        loadMessages();
-                    } else {
-                        setupRoleUI();
-                        document.getElementById('dashboard-view').classList.remove('hidden');
-                        loadDashboardData();
-                    }
+                    setupRoleUI();
+                    document.getElementById('dashboard-view').classList.remove('hidden');
+                    loadDashboardData();
                 } else {
                     alert(res.message);
                 }
@@ -410,7 +382,7 @@ HTML_LAYOUT = """
                 if(isAdmin) el.classList.remove('hidden');
                 else el.classList.add('hidden');
             });
-            document.getElementById('user-badge').innerText = isAdmin ? "👑 এডমিন" : "👤 ইউজার";
+            document.getElementById('user-badge').innerText = isAdmin ? "👑 এডমিন (Khushbu23)" : "👤 ইউজার";
         }
 
         function loadDashboardData() {
@@ -422,7 +394,6 @@ HTML_LAYOUT = """
             });
 
             if (currentUser.status === 'admin') {
-                loadPendingUsers();
                 loadAllUsers();
             }
             loadMessages();
@@ -507,45 +478,8 @@ HTML_LAYOUT = """
         }
 
         function deleteCustomer(id) {
-            const pin = prompt("ডিলিট করতে সিকিউরিটি পাসওয়ার্ড লিখুন:");
-            if (pin !== "137955") {
-                alert("ভুল পাসওয়ার্ড!");
-                return;
-            }
-
+            if(!confirm("আপনি কি নিশ্চিত এই গ্রাহকের ডাটা ডিলিট করতে চান?")) return;
             fetch('/api/delete-customer', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id: id, pin: pin})
-            })
-            .then(res => res.json())
-            .then(res => {
-                alert(res.message);
-                loadDashboardData();
-            });
-        }
-
-        function loadPendingUsers() {
-            fetch('/api/pending-users')
-            .then(res => res.json())
-            .then(users => {
-                const tbody = document.getElementById('pending-users-body');
-                tbody.innerHTML = '';
-                users.forEach(u => {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>${u.name}</td>
-                            <td>${u.email}</td>
-                            <td>${u.phone}</td>
-                            <td><button class="submit-btn" style="padding:4px 8px; font-size:12px;" onclick="approveUser(${u.id})">পারমিশন দিন</button></td>
-                        </tr>
-                    `;
-                });
-            });
-        }
-
-        function approveUser(id) {
-            fetch('/api/approve-user', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id: id})
@@ -564,7 +498,7 @@ HTML_LAYOUT = """
                 const tbody = document.getElementById('all-users-body');
                 tbody.innerHTML = '';
                 users.forEach(u => {
-                    if(u.username !== 'admin') {
+                    if(u.username !== 'Khushbu23') {
                         tbody.innerHTML += `
                             <tr>
                                 <td>${u.name}</td>
@@ -580,15 +514,11 @@ HTML_LAYOUT = """
         }
 
         function deleteUser(id) {
-            const pin = prompt("ইউজার ডিলিট করতে পাসওয়ার্ড দিন:");
-            if (pin !== "137955") {
-                alert("ভুল সিকিউরিটি পাসওয়ার্ড!");
-                return;
-            }
+            if(!confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট করতে চান?")) return;
             fetch('/api/delete-user', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({id: id, pin: pin})
+                body: JSON.stringify({id: id})
             })
             .then(res => res.json())
             .then(res => {
@@ -616,25 +546,11 @@ HTML_LAYOUT = """
             });
         }
 
-        function sendPendingMsg() {
-            const msgInput = document.getElementById('pending-msg-input');
-            const formData = new FormData();
-            formData.append('sender', currentUser.username);
-            formData.append('message', msgInput.value);
-
-            fetch('/api/send-message', { method: 'POST', body: formData })
-            .then(() => {
-                msgInput.value = '';
-                loadMessages();
-            });
-        }
-
         function loadMessages() {
             fetch('/api/messages')
             .then(res => res.json())
             .then(msgs => {
                 const container = document.getElementById('chat-messages');
-                const pendingContainer = document.getElementById('pending-chat-box');
                 const groupContainer = document.getElementById('group-broadcast-list');
                 
                 let html = '';
@@ -660,7 +576,6 @@ HTML_LAYOUT = """
                 });
 
                 if(container) container.innerHTML = html;
-                if(pendingContainer) pendingContainer.innerHTML = html;
                 if(groupContainer) groupContainer.innerHTML = groupHtml;
             });
         }
@@ -735,7 +650,7 @@ def register():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'approved')",
                        (data['name'], data['email'], data['phone'], data['username'], data['password']))
         conn.commit()
         return jsonify({"success": True})
@@ -792,34 +707,12 @@ def save_customer():
 @app.route('/api/delete-customer', methods=['POST'])
 def delete_customer():
     data = request.json
-    if data.get('pin') != SECURITY_PIN:
-        return jsonify({"success": False, "message": "ভুল সিকিউরিটি পাসওয়ার্ড!"})
-        
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM customers WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
     return jsonify({"success": True, "message": "ডাটা মুছে ফেলা হয়েছে!"})
-
-@app.route('/api/pending-users', methods=['GET'])
-def pending_users():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, email, phone FROM users WHERE status='pending'")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "email": r[2], "phone": r[3]} for r in rows])
-
-@app.route('/api/approve-user', methods=['POST'])
-def approve_user():
-    data = request.json
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET status='user' WHERE id=?", (data['id'],))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True, "message": "ইউজারকে পারমিশন দেওয়া হয়েছে!"})
 
 @app.route('/api/all-users', methods=['GET'])
 def all_users():
@@ -833,8 +726,6 @@ def all_users():
 @app.route('/api/delete-user', methods=['POST'])
 def delete_user():
     data = request.json
-    if data.get('pin') != SECURITY_PIN:
-        return jsonify({"success": False, "message": "ভুল পাসওয়ার্ড!"})
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM users WHERE id=?", (data['id'],))
