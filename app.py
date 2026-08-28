@@ -5,11 +5,14 @@ from flask import Flask, request, jsonify, render_template_string
 app = Flask(__name__)
 DB_NAME = "btcl_system.db"
 
+# ---------------------------------------------------------
+# ১. ডাটাবেস সেটআপ (আপনার স্ক্রিনশট ও রিকোয়ারমেন্ট অনুযায়ী)
+# ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Users Table
+    # Users Table (আপনার স্ক্রিনশটের হুবহু টেবিল)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,862 +26,384 @@ def init_db():
         )
     ''')
     
-    # Customers Table
+    # Customers / Bills Table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            service_type TEXT NOT NULL,
-            phone_number TEXT NOT NULL,
+            bill_no TEXT UNIQUE NOT NULL,
+            customer_name TEXT NOT NULL,
             address TEXT NOT NULL,
-            bill_amount REAL DEFAULT 0,
-            details TEXT,
-            is_deleted INTEGER DEFAULT 0
-        )
-    ''')
-
-    # Messages Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            sender_name TEXT,
-            message TEXT,
-            file_url TEXT,
-            file_type TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_read INTEGER DEFAULT 0
+            amount TEXT NOT NULL
         )
     ''')
     
-    # Default Admin User
-    cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
+    # ডিফল্ট অ্যাডমিন তৈরি (Admin Md.Khushbu Alom)
+    cursor.execute("SELECT * FROM users WHERE username='admin'")
     if not cursor.fetchone():
         cursor.execute('''
             INSERT INTO users (name, email, phone, username, password, is_admin, is_approved)
-            VALUES (?, ?, ?, ?, ?, 1, 1)
-        ''', ("Md. Khushbu Alom", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523"))
-        
+            VALUES ('Admin Md.Khushbu Alom', 'admin@btcl.com', '01700000000', 'admin', 'admin123', 1, 1)
+        ''')
+    
     conn.commit()
     conn.close()
 
 init_db()
 
+# ---------------------------------------------------------
+# ২. ফ্রন্টএন্ড এইচটিএমএল + সিএসএস + জাভাস্ক্রিপ্ট (HTML Template)
+# ---------------------------------------------------------
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL Kurigram System</title>
+    <title>BTCL System - Admin Md.Khushbu Alom</title>
     <style>
-        :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --sidebar: #181818; --chat-bg: #252525; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { display: flex; height: 100vh; background: #f4f6f9; }
         
-        /* Sticky Top Navbar & Global Search Bar */
-        .top-navbar-container { position: sticky; top: 0; z-index: 1000; background: #000; border-bottom: 2px solid var(--primary); }
-        .top-navbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 15px; }
-        .menu-btn { font-size: 22px; cursor: pointer; color: var(--primary); background: none; border: none; }
-        .header-title { font-size: 15px; font-weight: bold; color: var(--primary); text-align: center; }
-        .notif-box { position: relative; cursor: pointer; font-size: 20px; }
-        .notif-badge { position: absolute; top: -5px; right: -8px; background: #ff5252; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; }
-
-        /* Global Persistent Search Bar (YouTube Style) */
-        .global-search-box { padding: 5px 15px 10px 15px; background: #000; position: relative; }
-        .search-input-wrapper { position: relative; max-width: 800px; margin: 0 auto; }
-        .search-input-wrapper input { width: 100%; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; }
-        .search-input-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,230,118,0.3); }
+        /* Sidebar Styling */
+        .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px 0; }
+        .sidebar h2 { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
+        .sidebar ul { list-style: none; margin-top: 20px; }
+        .sidebar ul li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; font-size: 15px; }
+        .sidebar ul li:hover, .sidebar ul li.active { background: #1abc9c; }
         
-        .search-results-dropdown { position: absolute; top: 45px; left: 0; right: 0; background: var(--card); border: 1px solid #333; border-radius: 8px; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.8); z-index: 2000; display: none; }
-        .search-item { padding: 10px 15px; border-bottom: 1px solid #2e2e2e; cursor: pointer; transition: 0.2s; }
-        .search-item:hover { background: #2a2a2a; }
-        .search-item-title { font-weight: bold; color: var(--primary); font-size: 14px; }
-        .search-item-sub { font-size: 12px; color: #aaa; margin-top: 3px; }
-
-        .auth-container { max-width: 400px; margin: 40px auto; background: var(--card); padding: 25px; border-radius: 10px; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-danger { background: #ff5252; color: #fff; }
-        .btn-warning { background: #ffb74d; color: #000; }
-
-        .sidebar-overlay { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--sidebar); z-index: 3000; transition: 0.3s; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; }
-        .sidebar-overlay.active { left: 0; }
-        .close-sidebar { align-self: flex-end; font-size: 18px; cursor: pointer; color: #888; margin-bottom: 10px; }
-        .nav-item { padding: 12px; margin: 5px 0; background: #222; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .nav-item:hover, .nav-item.active { background: var(--primary); color: #000; font-weight: bold; }
-
-        .main-content { padding: 15px; max-width: 900px; margin: 0 auto; }
-        .card { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        /* Main Area */
+        .main-content { flex: 1; padding: 20px; overflow-y: auto; }
+        .header { background: #fff; padding: 15px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .admin-banner { font-size: 20px; font-weight: bold; color: #2c3e50; }
         
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; }
-        .stat-card h4 { margin: 0; color: #aaa; font-size: 11px; }
-        .stat-card .number { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+        .card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        table, th, td { border: 1px solid #ddd; }
+        th, td { padding: 10px; text-align: left; }
+        th { background: #f2f2f2; }
+        
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; color: white; margin-right: 5px; font-weight: bold; }
+        .btn-accept { background: #2ecc71; }
+        .btn-block { background: #e67e22; }
+        .btn-delete { background: #e74c3c; }
+        .btn-unblock { background: #3498db; }
+        .badge { padding: 4px 8px; border-radius: 4px; color: white; font-size: 12px; }
+        .bg-active { background: #2ecc71; }
+        .bg-blocked { background: #e74c3c; }
+        .bg-pending { background: #f1c40f; color: #333; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; font-size: 13px; }
-        th { background: #2a2a2a; color: var(--primary); }
-
-        /* Messenger Premium UI */
-        .chat-container { display: flex; flex-direction: column; height: 500px; background: var(--chat-bg); border-radius: 10px; overflow: hidden; border: 1px solid #333; }
-        .chat-header { padding: 12px 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
-        .chat-body { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 13px; line-height: 1.4; word-wrap: break-word; }
-        .chat-bubble.me { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .chat-bubble.other { background: #333; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .chat-bubble img, .chat-bubble video { max-width: 100%; border-radius: 8px; margin-top: 5px; }
-        .typing-indicator { font-size: 11px; color: var(--primary); padding: 0 15px 5px 15px; font-style: italic; }
-        .chat-footer { padding: 10px; background: #1a1a1a; display: flex; align-items: center; gap: 8px; }
-        .chat-footer input[type="text"] { margin: 0; border-radius: 20px; }
-        .file-btn { cursor: pointer; font-size: 20px; padding: 0 8px; }
-
-        .backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2500; display: none; }
-        .backdrop.active { display: block; }
-        .hidden { display: none !important; }
+        .input-field { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="top-navbar-container">
-        <div class="top-navbar">
-            <button id="hamburger-btn" class="menu-btn hidden" onclick="toggleSidebar()">☰</button>
-            <div class="header-title">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
-            <div id="notif-icon" class="notif-box hidden" onclick="openMessages()">
-                🔔 <span id="notif-count" class="notif-badge hidden">0</span>
-            </div>
-        </div>
-
-        <!-- YouTube Style Persistent Global Search Bar -->
-        <div id="global-search-container" class="global-search-box hidden">
-            <div class="search-input-wrapper">
-                <input type="text" id="global-search-input" placeholder="🔍 নাম, মোবাইল, টেলিফোন, সেবা বা ঠিকানা দিয়ে খুঁজুন..." oninput="liveSearch()" autocomplete="off">
-                <div id="search-results-dropdown" class="search-results-dropdown"></div>
-            </div>
-        </div>
+    <!-- Left Sidebar Menu -->
+    <div class="sidebar">
+        <h2>মেনু বার (≡)</h2>
+        <ul>
+            <li id="menu-1" onclick="showTab('notif-tab', 1)" class="active">১. নোটিফিকেশন রিকোয়েস্ট & মেসেঞ্জার</li>
+            <li id="menu-2" onclick="showTab('users-tab', 2)">২. মোট ইউজার</li>
+            <li id="menu-3" onclick="showTab('bills-tab', 3)">৩. বিল ও ডকুমেন্ট সার্চ (ইউজার ভিউ)</li>
+            <li id="menu-4" onclick="showTab('add-doc-tab', 4)">৪. বিল ও ডকুমেন্ট অ্যাড করুন (অ্যাডমিন)</li>
+        </ul>
     </div>
 
-    <div id="backdrop" class="backdrop" onclick="toggleSidebar()"></div>
-
-    <div id="sidebar" class="sidebar-overlay">
-        <div class="close-sidebar" onclick="toggleSidebar()">✖ বন্ধ করুন</div>
-        <h3 style="font-size:14px; color:#888; border-bottom:1px solid #333; padding-bottom:5px;">মেনু বার</h3>
-        <div class="nav-menu-list">
-            <div class="nav-item active" onclick="showTab('overview')">📊 ওভারভিউ ও ডাটা</div>
-            <div class="nav-item" onclick="showTab('add-entry')">➕ ১. নম্বর এড করুন</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('user-requests')">⏳ ২. পেন্ডিং ইউজার</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('all-users')">👥 ৩. সকল ইউজার তথ্য</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('manage-users')">❌ ৪. ইউজার ডিলিট</div>
-            <div class="nav-item" onclick="showTab('customer-list')">📋 ৫. সকল গ্রাহক তালিকা</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('recycle-bin')">🗑️ রিসাইকেল বিন</div>
-            <div class="nav-item" onclick="showTab('messages')">💬 মেসেঞ্জার</div>
-        </div>
-        <button onclick="logout()" class="btn-danger" style="margin-top:auto;">লগআউট</button>
-    </div>
-
-    <!-- Login / Registration -->
-    <div id="auth-section" class="auth-container">
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <button onclick="toggleAuth('login')" id="tab-login" style="background: var(--primary)">লগইন</button>
-            <button onclick="toggleAuth('register')" id="tab-reg" style="background: #333; color: #fff">রেজিস্ট্রেশন</button>
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Top Admin Header -->
+        <div class="header">
+            <div class="admin-banner">Admin Md.Khushbu Alom</div>
+            <div style="color: green; font-weight: bold;">● অনলাইন</div>
         </div>
 
-        <form id="login-form" autocomplete="off">
-            <input type="text" id="login-username" placeholder="ইউজারনেম / জিমেইল / ফোন" required autocomplete="off">
-            <input type="password" id="login-pass" placeholder="পাসওয়ার্ড" required autocomplete="new-password">
-            <button type="submit">লগইন করুন</button>
-        </form>
-
-        <form id="reg-form" class="hidden" autocomplete="off">
-            <input type="text" id="reg-name" placeholder="আপনার নাম" required>
-            <input type="email" id="reg-email" placeholder="জিমেইল আইডি" required>
-            <input type="text" id="reg-phone" placeholder="মোবাইল নম্বর" required>
-            <input type="text" id="reg-username" placeholder="ইউজারনেম" required>
-            <input type="password" id="reg-pass" placeholder="পাসওয়ার্ড" required>
-            <input type="password" id="reg-confirm-pass" placeholder="কনফার্ম পাসওয়ার্ড" required>
-            <button type="submit">একাউন্ট তৈরি করুন</button>
-        </form>
-    </div>
-
-    <div id="app-view" class="main-content hidden">
-        <div id="tab-content-overview">
-            <div class="card">
-                <h3>টোটাল সংযোগ ও বিলের হিসাব (ফিল্টার করতে ক্লিক করুন)</h3>
-                <div class="summary-grid">
-                    <div class="stat-card" onclick="filterCustomers('ALL')">
-                        <h4>মোট সংযোগ / টোটাল বিল</h4>
-                        <div class="number" id="stat-total">0</div>
-                    </div>
-                    <div class="stat-card" onclick="filterCustomers('টেলিফোন নম্বর')">
-                        <h4>টেলিফোন নম্বর</h4>
-                        <div class="number" id="stat-phone">0</div>
-                    </div>
-                    <div class="stat-card" onclick="filterCustomers('টেলিফোন+ওয়াইফাই নম্বর')">
-                        <h4>টেলিফোন + ওয়াইফাই</h4>
-                        <div class="number" id="stat-combo">0</div>
-                    </div>
-                    <div class="stat-card" onclick="filterCustomers('ওয়াইফাই নম্বর')">
-                        <h4>ওয়াইফাই নম্বর</h4>
-                        <div class="number" id="stat-wifi">0</div>
-                    </div>
-                </div>
+        <!-- 1. Notification Section -->
+        <div id="notif-tab" class="card">
+            <h3>১. নোটিফিকেশন সেন্টার</h3>
+            <br>
+            <div style="margin-bottom: 15px;">
+                <button class="btn btn-accept" onclick="alert('রেজিস্ট্রেশন রিকোয়েস্ট তালিকা দেখান হচ্ছে')">রেজিস্ট্রেশন রিকোয়েস্ট</button>
+                <button class="btn btn-unblock" onclick="alert('মেসেঞ্জার নোটিফিকেশন অপশন')">মেসেঞ্জার নোটিফিকেশন</button>
             </div>
 
-            <div class="card" id="filtered-section">
-                <h3 id="filter-title">সকল গ্রাহক নম্বর এর তালিকা</h3>
-                <div style="overflow-x:auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>নাম</th>
-                                <th>সেবা</th>
-                                <th>ফোন নম্বর</th>
-                                <th>বিল পরিমাণ</th>
-                                <th>ঠিকানা</th>
-                            </tr>
-                        </thead>
-                        <tbody id="overview-table-body"></tbody>
-                    </table>
-                </div>
-            </div>
+            <h4>নতুন রেজিস্ট্রেশন রিকোয়েস্ট:</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>নাম</th>
+                        <th>ইউজারনেম</th>
+                        <th>পাসওয়ার্ড</th>
+                        <th>যোগাযোগ</th>
+                        <th>অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody id="pending-users-list"></tbody>
+            </table>
         </div>
 
-        <div id="tab-content-add-entry" class="hidden">
-            <div class="card">
-                <h3>নতুন তথ্য যুক্ত করুন</h3>
-                <form id="add-data-form">
-                    <input type="text" id="cust-name" placeholder="গ্রাহকের নাম" required>
-                    <select id="cust-service" required>
-                        <option value="">সেবা নির্বাচন করুন</option>
-                        <option value="টেলিফোন নম্বর">টেলিফোন নম্বর</option>
-                        <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
-                        <option value="ওয়াইফাই নম্বর">ওয়াইফাই নম্বর</option>
-                    </select>
-                    <input type="text" id="cust-phone" placeholder="ফোন নম্বর" required>
-                    <input type="number" id="cust-bill" placeholder="বিল পরিমাণ (টাকা)" required>
-                    <textarea id="cust-address" placeholder="ঠিকানা" required></textarea>
-                    <textarea id="cust-details" placeholder="অতিরিক্ত তথ্য"></textarea>
-                    <button type="submit">ডাটা সংরক্ষণ করুন</button>
-                </form>
-            </div>
+        <!-- 2. Total Users Section (Sidebar Item #2) -->
+        <div id="users-tab" class="card hidden">
+            <h3>২. মোট ইউজার তালিকা (এক্সেপ্ট করা ইউজার)</h3>
+            <p style="margin-top: 5px;">মোট সক্রিয়/ব্লকড ইউজার সংখ্যা: <b id="total-user-count">0</b> জন</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ক্রমিক নং</th>
+                        <th>নাম</th>
+                        <th>ইউজারনেম</th>
+                        <th>পাসওয়ার্ড</th>
+                        <th>অবস্থা</th>
+                        <th>অ্যাকশন</th>
+                    </tr>
+                </thead>
+                <tbody id="accepted-users-list"></tbody>
+            </table>
         </div>
 
-        <div id="tab-content-user-requests" class="hidden">
-            <div class="card">
-                <h3>পেন্ডিং ইউজার পারমিশন রিকুয়েস্ট</h3>
-                <div id="pending-users-list"></div>
-            </div>
+        <!-- 3. Bills & Documents View/Search -->
+        <div id="bills-tab" class="card hidden">
+            <h3>৩. কাস্টমার বিল ও ডকুমেন্ট তালিকা (সার্চ করুন)</h3>
+            <br>
+            <input type="text" id="searchInput" class="input-field" onkeyup="searchBills()" placeholder="বিল নম্বর, নাম বা ঠিকানা দিয়ে সার্চ করুন...">
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>সিরিয়াল</th>
+                        <th>বিল নম্বর</th>
+                        <th>কাস্টমার নাম</th>
+                        <th>ঠিকানা</th>
+                        <th>টাকার পরিমাণ</th>
+                    </tr>
+                </thead>
+                <tbody id="billsTable"></tbody>
+            </table>
         </div>
 
-        <div id="tab-content-all-users" class="hidden">
-            <div class="card">
-                <h3>রেজিস্টার্ড সকল ইউজারের তথ্য</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>আইডি</th>
-                            <th>নাম</th>
-                            <th>ইউজারনেম</th>
-                            <th>ইমেইল</th>
-                            <th>মোবাইল</th>
-                            <th>পাসওয়ার্ড</th>
-                        </tr>
-                    </thead>
-                    <tbody id="all-users-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="tab-content-manage-users" class="hidden">
-            <div class="card">
-                <h3>ইউজার ডিলিট করুন</h3>
-                <div id="delete-users-list"></div>
-            </div>
-        </div>
-
-        <div id="tab-content-customer-list" class="hidden">
-            <div class="card">
-                <h3>সিরিয়াল করা গ্রাহক তালিকা</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>সিরিয়াল</th>
-                            <th>নাম</th>
-                            <th>সেবার ধরণ</th>
-                            <th>ফোন নম্বর</th>
-                            <th>বিল (টাকা)</th>
-                            <th>ঠিকানা</th>
-                        </tr>
-                    </thead>
-                    <tbody id="customer-list-tbody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="tab-content-recycle-bin" class="hidden">
-            <div class="card">
-                <h3>ডিলিট করা ফাইল (রিসাইকেল বিন)</h3>
-                <div id="recycle-bin-list"></div>
-            </div>
-        </div>
-
-        <!-- Premium Messenger UI -->
-        <div id="tab-content-messages" class="hidden">
-            <div class="card" style="padding:10px;">
-                <div class="chat-container">
-                    <div class="chat-header">
-                        <div style="font-weight:bold; color:var(--primary);">💬 বিটিসিএল লাইভ মেসেঞ্জার</div>
-                        <span style="font-size:11px; color:#888;">অনলাইন হেল্পডেস্ক</span>
-                    </div>
-                    <div id="chat-body" class="chat-body"></div>
-                    <div id="typing-indicator" class="typing-indicator hidden">মেসেজ সেন্ড হচ্ছে...</div>
-                    <div class="chat-footer">
-                        <label class="file-btn" title="ছবি/ভিডিও/ডকুমেন্ট দিন">
-                            📎 <input type="file" id="chat-file-input" style="display:none;" onchange="handleFileSelect(this)">
-                        </label>
-                        <input type="text" id="chat-msg-input" placeholder="এখানে মেসেজ লিখুন..." oninput="handleTyping()">
-                        <button onclick="sendChatMessage()" style="width:auto; margin:0; padding:10px 18px;">পাঠান</button>
-                    </div>
-                </div>
-            </div>
+        <!-- 4. Add Bill / Document (Admin Only) -->
+        <div id="add-doc-tab" class="card hidden">
+            <h3>৪. নতুন বিল বা ডকুমেন্ট অ্যাড করুন</h3>
+            <br>
+            <form onsubmit="submitBill(event)">
+                <label><b>বিল নম্বর:</b></label>
+                <input type="text" id="bill_no" class="input-field" required placeholder="যেমন: BILL-1001">
+                
+                <label><b>কাস্টমারের নাম:</b></label>
+                <input type="text" id="customer_name" class="input-field" required placeholder="কাস্টমারের পূর্ণ নাম">
+                
+                <label><b>ঠিকানা:</b></label>
+                <input type="text" id="address" class="input-field" required placeholder="ঠিকানা">
+                
+                <label><b>টাকার পরিমাণ:</b></label>
+                <input type="text" id="amount" class="input-field" required placeholder="যেমন: ১৫০০ টাকা">
+                
+                <button type="submit" class="btn btn-accept" style="padding: 10px 20px;">ডাটা সেভ করুন</button>
+            </form>
         </div>
     </div>
 
     <script>
-        let currentUser = JSON.parse(localStorage.getItem('btcl_user')) || null;
-        let allCustomersData = [];
-        let selectedFile = null;
-
-        window.onload = () => {
-            if(currentUser) initDashboard();
-        };
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-            document.getElementById('backdrop').classList.toggle('active');
-        }
-
-        function toggleAuth(type) {
-            if(type === 'login') {
-                document.getElementById('login-form').classList.remove('hidden');
-                document.getElementById('reg-form').classList.add('hidden');
-                document.getElementById('tab-login').style.background = 'var(--primary)';
-                document.getElementById('tab-reg').style.background = '#333';
-            } else {
-                document.getElementById('login-form').classList.add('hidden');
-                document.getElementById('reg-form').classList.remove('hidden');
-                document.getElementById('tab-reg').style.background = 'var(--primary)';
-                document.getElementById('tab-login').style.background = '#333';
-            }
-        }
-
-        document.getElementById('login-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    auth_id: document.getElementById('login-username').value,
-                    password: document.getElementById('login-pass').value
-                })
-            });
-            const data = await res.json();
-            if(data.success) {
-                currentUser = data.user;
-                localStorage.setItem('btcl_user', JSON.stringify(currentUser));
-                initDashboard();
-            } else {
-                alert(data.message);
-            }
-        };
-
-        document.getElementById('reg-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const pass = document.getElementById('reg-pass').value;
-            if(pass !== document.getElementById('reg-confirm-pass').value) {
-                alert("পাসওয়ার্ড মিলছে না!");
-                return;
-            }
-
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    name: document.getElementById('reg-name').value,
-                    email: document.getElementById('reg-email').value,
-                    phone: document.getElementById('reg-phone').value,
-                    username: document.getElementById('reg-username').value,
-                    password: pass
-                })
-            });
-            const data = await res.json();
-            alert(data.message);
-            if(data.success) toggleAuth('login');
-        };
-
-        function initDashboard() {
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('app-view').classList.remove('hidden');
-            document.getElementById('hamburger-btn').classList.remove('hidden');
-            document.getElementById('notif-icon').classList.remove('hidden');
-            document.getElementById('global-search-container').classList.remove('hidden');
-
-            if(currentUser.is_admin) {
-                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-            }
-
-            loadStats();
-            loadOverviewData();
-            checkNotifications();
-            setInterval(checkNotifications, 5000);
-            setInterval(loadMessages, 3000);
-        }
-
-        function showTab(tabName) {
-            if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
-
-            const tabs = ['overview', 'add-entry', 'user-requests', 'all-users', 'manage-users', 'customer-list', 'recycle-bin', 'messages'];
-            tabs.forEach(t => {
-                const el = document.getElementById('tab-content-' + t);
-                if(el) el.classList.add('hidden');
-            });
-
-            document.getElementById('tab-content-' + tabName).classList.remove('hidden');
-
-            if(tabName === 'overview') { loadStats(); loadOverviewData(); }
-            if(tabName === 'user-requests') loadPendingUsers();
-            if(tabName === 'all-users') loadAllUsers();
-            if(tabName === 'manage-users') loadManageUsers();
-            if(tabName === 'customer-list') loadCustomerList();
-            if(tabName === 'recycle-bin') loadRecycleBin();
-            if(tabName === 'messages') loadMessages();
-        }
-
-        function openMessages() { showTab('messages'); }
-
-        async function loadStats() {
-            const res = await fetch('/api/stats');
-            const data = await res.json();
-            document.getElementById('stat-total').innerText = `${data.total} (৳${data.total_bill})`;
-            document.getElementById('stat-phone').innerText = data.phone;
-            document.getElementById('stat-combo').innerText = data.combo;
-            document.getElementById('stat-wifi').innerText = data.wifi;
-        }
-
-        async function loadOverviewData() {
-            const res = await fetch('/api/customers');
-            allCustomersData = await res.json();
-            renderTable(allCustomersData);
-        }
-
-        function renderTable(data) {
-            let html = '';
-            data.forEach((item, index) => {
-                html += `<tr>
-                    <td>${index + 1}</td>
-                    <td>${item.name}</td>
-                    <td>${item.service_type}</td>
-                    <td>${item.phone_number}</td>
-                    <td>৳${item.bill_amount}</td>
-                    <td>${item.address}</td>
-                </tr>`;
-            });
-            document.getElementById('overview-table-body').innerHTML = html || '<tr><td colspan="6" style="text-align:center;">কোনো রেকর্ড পাওয়া যায়নি</td></tr>';
-        }
-
-        function filterCustomers(type) {
-            let filtered = [];
-            if(type === 'ALL') {
-                document.getElementById('filter-title').innerText = "সকল গ্রাহক ও টোটাল বিলের হিসাব";
-                filtered = allCustomersData;
-            } else {
-                document.getElementById('filter-title').innerText = type + " - এর তালিকা";
-                filtered = allCustomersData.filter(i => i.service_type === type);
-            }
-            renderTable(filtered);
-            document.getElementById('filtered-section').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        /* YouTube Style Global Real-Time Search Function */
-        function liveSearch() {
-            const query = document.getElementById('global-search-input').value.toLowerCase().trim();
-            const dropdown = document.getElementById('search-results-dropdown');
-
-            if(!query) {
-                dropdown.style.display = 'none';
-                renderTable(allCustomersData);
-                return;
-            }
-
-            const results = allCustomersData.filter(item => 
-                item.name.toLowerCase().includes(query) ||
-                item.phone_number.includes(query) ||
-                item.service_type.toLowerCase().includes(query) ||
-                item.address.toLowerCase().includes(query)
-            );
-
-            if(results.length > 0) {
-                let html = '';
-                results.forEach(r => {
-                    html += `<div class="search-item" onclick="selectSearchResult('${r.phone_number}')">
-                        <div class="search-item-title">${r.name} (${r.service_type})</div>
-                        <div class="search-item-sub">📞 ${r.phone_number} | 🏠 ${r.address} | ৳${r.bill_amount}</div>
-                    </div>`;
-                });
-                dropdown.innerHTML = html;
-                dropdown.style.display = 'block';
-            } else {
-                dropdown.innerHTML = '<div class="search-item" style="color:#888;">কোনো মিল পাওয়া যায়নি</div>';
-                dropdown.style.display = 'block';
-            }
-
-            renderTable(results);
-        }
-
-        function selectSearchResult(phone) {
-            document.getElementById('search-results-dropdown').style.display = 'none';
-            showTab('overview');
-            const matched = allCustomersData.filter(i => i.phone_number === phone);
-            renderTable(matched);
-            document.getElementById('filtered-section').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        document.getElementById('add-data-form').onsubmit = async (e) => {
-            e.preventDefault();
-
-            if(!currentUser.is_admin) {
-                const pin = prompt("সিকিউরিটি পাসওয়ার্ড লিখুন:");
-                if(pin !== "137955") return alert("ভুল পাসওয়ার্ড!");
-            }
-
-            const res = await fetch('/api/add-customer', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    name: document.getElementById('cust-name').value,
-                    service_type: document.getElementById('cust-service').value,
-                    phone_number: document.getElementById('cust-phone').value,
-                    bill_amount: document.getElementById('cust-bill').value,
-                    address: document.getElementById('cust-address').value,
-                    details: document.getElementById('cust-details').value
-                })
-            });
-            const data = await res.json();
-            alert(data.message);
-            if(data.success) {
-                document.getElementById('add-data-form').reset();
-                loadStats();
-            }
-        };
-
-        async function loadPendingUsers() {
-            const res = await fetch('/api/admin/pending-users');
+        // ইউজারের ডাটা লোড করা
+        async function fetchUsers() {
+            const res = await fetch('/api/users');
             const users = await res.json();
-            let html = '';
-            users.forEach(u => {
-                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
-                    <div><strong>${u.name}</strong> (@${u.username})<br><small>${u.email} | ${u.phone}</small></div>
-                    <button onclick="approveUser(${u.id})" style="width:auto;" class="btn-warning">Approve</button>
-                </div>`;
-            });
-            document.getElementById('pending-users-list').innerHTML = html || '<p style="color:#888;">কোনো পেন্ডিং রিকুয়েস্ট নেই</p>';
-        }
-
-        async function approveUser(id) {
-            await fetch(`/api/admin/approve-user/${id}`, {method: 'POST'});
-            loadPendingUsers();
-        }
-
-        async function loadAllUsers() {
-            const res = await fetch('/api/admin/all-users');
-            const users = await res.json();
-            let html = '';
-            users.forEach(u => {
-                html += `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.username}</td><td>${u.email}</td><td>${u.phone}</td><td><code>${u.password}</code></td></tr>`;
-            });
-            document.getElementById('all-users-tbody').innerHTML = html;
-        }
-
-        async function loadManageUsers() {
-            const res = await fetch('/api/admin/all-users');
-            const users = await res.json();
-            let html = '';
-            users.forEach(u => {
-                if(!u.is_admin) {
-                    html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
-                        <div><strong>${u.name}</strong> (@${u.username})</div>
-                        <button onclick="deleteUserAccount(${u.id})" style="width:auto;" class="btn-danger">ডিলিট</button>
-                    </div>`;
-                }
-            });
-            document.getElementById('delete-users-list').innerHTML = html;
-        }
-
-        async function deleteUserAccount(id) {
-            const pin = prompt("সিকিউরিটি পাসওয়ার্ড লিখুন:");
-            if(pin !== "137955") return alert("ভুল পাসওয়ার্ড!");
-
-            await fetch(`/api/admin/delete-user/${id}`, {method: 'POST'});
-            loadManageUsers();
-        }
-
-        async function loadCustomerList() {
-            const res = await fetch('/api/customers');
-            const data = await res.json();
-            let html = '';
-            data.forEach((item, index) => {
-                html += `<tr><td>${index + 1}</td><td>${item.name}</td><td>${item.service_type}</td><td>${item.phone_number}</td><td>৳${item.bill_amount}</td><td>${item.address}</td></tr>`;
-            });
-            document.getElementById('customer-list-tbody').innerHTML = html;
-        }
-
-        async function loadRecycleBin() {
-            const res = await fetch('/api/admin/recycle-bin');
-            const items = await res.json();
-            let html = '';
-            items.forEach(i => {
-                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
-                    <div>${i.name} - ${i.phone_number}</div>
-                    <button onclick="restoreCustomer(${i.id})" style="width:auto; background:var(--primary);">Restore</button>
-                </div>`;
-            });
-            document.getElementById('recycle-bin-list').innerHTML = html || '<p style="color:#888;">রিসাইকেল বিন ফাঁকা</p>';
-        }
-
-        async function restoreCustomer(id) {
-            const pin = prompt("সিকিউরিটি পাসওয়ার্ড দিন:");
-            if(pin !== "137955") return alert("ভুল পাসওয়ার্ড!");
-            await fetch('/api/admin/restore-customer', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: id })
-            });
-            loadRecycleBin();
-        }
-
-        /* Messenger Functionality with Attachment & Typing Support */
-        function handleFileSelect(input) {
-            if(input.files && input.files[0]) {
-                selectedFile = input.files[0];
-                alert(`ফাইল সিলেক্ট করা হয়েছে: ${selectedFile.name}`);
-            }
-        }
-
-        function handleTyping() {
-            // Simulated typing feedback
-        }
-
-        async function sendChatMessage() {
-            const textInput = document.getElementById('chat-msg-input');
-            const message = textInput.value;
-
-            if(!message && !selectedFile) return;
-
-            document.getElementById('typing-indicator').classList.remove('hidden');
-
-            let file_url = "";
-            let file_type = "";
-
-            if(selectedFile) {
-                const reader = new FileReader();
-                reader.readAsDataURL(selectedFile);
-                reader.onload = async function () {
-                    file_url = reader.result;
-                    file_type = selectedFile.type.startsWith('image') ? 'image' : (selectedFile.type.startsWith('video') ? 'video' : 'file');
-                    await executeSendMessage(message, file_url, file_type);
-                };
-            } else {
-                await executeSendMessage(message, "", "");
-            }
-        }
-
-        async function executeSendMessage(message, file_url, file_type) {
-            await fetch('/api/messages/send', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    user_id: currentUser.id, 
-                    sender_name: currentUser.name, 
-                    message: message,
-                    file_url: file_url,
-                    file_type: file_type
-                })
-            });
-
-            document.getElementById('chat-msg-input').value = '';
-            document.getElementById('chat-file-input').value = '';
-            selectedFile = null;
-            document.getElementById('typing-indicator').classList.add('hidden');
-            loadMessages();
-        }
-
-        async function loadMessages() {
-            if(!currentUser) return;
-            const res = await fetch(`/api/messages?user_id=${currentUser.id}&is_admin=${currentUser.is_admin}`);
-            const msgs = await res.json();
             
-            let html = '';
-            msgs.forEach(m => {
-                const isMe = m.sender_name === currentUser.name;
-                let attachmentHtml = '';
-                
-                if(m.file_url) {
-                    if(m.file_type === 'image') {
-                        attachmentHtml = `<br><img src="${m.file_url}" alt="Attachment">`;
-                    } else if(m.file_type === 'video') {
-                        attachmentHtml = `<br><video controls src="${m.file_url}"></video>`;
-                    } else {
-                        attachmentHtml = `<br><a href="${m.file_url}" download style="color:#00e676;">📎 ডকুমেন্ট ডাউনলোড করুন</a>`;
-                    }
+            const pendingBody = document.getElementById('pending-users-list');
+            const acceptedBody = document.getElementById('accepted-users-list');
+            
+            pendingBody.innerHTML = '';
+            acceptedBody.innerHTML = '';
+            let count = 0;
+
+            users.forEach((u) => {
+                if (u.is_approved === 0) {
+                    pendingBody.innerHTML += `
+                        <tr>
+                            <td>${u.name}</td>
+                            <td><b>${u.username}</b></td>
+                            <td><code>${u.password}</code></td>
+                            <td>${u.phone}<br>${u.email}</td>
+                            <td>
+                                <button class="btn btn-accept" onclick="updateStatus(${u.id}, 1, '${u.username}', '${u.password}')">Accept (এক্সেপ্ট)</button>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    count++;
+                    acceptedBody.innerHTML += `
+                        <tr>
+                            <td>${count}</td>
+                            <td>${u.name}</td>
+                            <td>${u.username}</td>
+                            <td><code>${u.password}</code></td>
+                            <td>
+                                <span class="badge ${u.is_approved === 1 ? 'bg-active' : 'bg-blocked'}">
+                                    ${u.is_approved === 1 ? 'এক্টিভ' : 'ব্লকড'}
+                                </span>
+                            </td>
+                            <td>
+                                ${u.is_approved === 1 
+                                    ? `<button class="btn btn-block" onclick="updateStatus(${u.id}, -1)">Block (ব্লক)</button>` 
+                                    : `<button class="btn btn-unblock" onclick="updateStatus(${u.id}, 1)">Unblock</button>`
+                                }
+                                <button class="btn btn-delete" onclick="deleteUser(${u.id})">Delete (ডিলিট)</button>
+                            </td>
+                        </tr>
+                    `;
                 }
-
-                html += `<div class="chat-bubble ${isMe ? 'me' : 'other'}">
-                    <strong style="font-size:11px; opacity:0.8;">${m.sender_name}</strong><br>
-                    ${m.message || ''}
-                    ${attachmentHtml}
-                    <div style="font-size:9px; text-align:right; margin-top:3px; opacity:0.6;">${m.created_at}</div>
-                </div>`;
             });
-
-            const chatBody = document.getElementById('chat-body');
-            chatBody.innerHTML = html || '<p style="color:#888; text-align:center;">কোনো কথোপকথন নেই</p>';
-            chatBody.scrollTop = chatBody.scrollHeight;
+            document.getElementById('total-user-count').innerText = count;
         }
 
-        async function checkNotifications() {
-            if(!currentUser || !currentUser.is_admin) return;
-            const res = await fetch('/api/admin/unread-count');
+        // বিল ডাটা লোড করা
+        async function fetchCustomers() {
+            const res = await fetch('/api/customers');
             const data = await res.json();
-            const badge = document.getElementById('notif-count');
-            if(data.count > 0) {
-                badge.innerText = data.count;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
+            const billsTable = document.getElementById('billsTable');
+            billsTable.innerHTML = '';
+
+            data.forEach((b, i) => {
+                billsTable.innerHTML += `
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${b.bill_no}</td>
+                        <td>${b.customer_name}</td>
+                        <td>${b.address}</td>
+                        <td>${b.amount}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        // নতুন বিল জমা দেওয়া
+        async function submitBill(e) {
+            e.preventDefault();
+            const payload = {
+                bill_no: document.getElementById('bill_no').value,
+                customer_name: document.getElementById('customer_name').value,
+                address: document.getElementById('address').value,
+                amount: document.getElementById('amount').value
+            };
+
+            const res = await fetch('/api/customer/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const result = await res.json();
+            alert(result.message);
+            if(result.success) {
+                document.getElementById('bill_no').value = '';
+                document.getElementById('customer_name').value = '';
+                document.getElementById('address').value = '';
+                document.getElementById('amount').value = '';
+                fetchCustomers();
             }
         }
 
-        function logout() {
-            localStorage.removeItem('btcl_user');
-            location.reload();
+        // ইউজার স্ট্যাটাস (এক্সেপ্ট/ব্লক) আপডেট
+        async function updateStatus(id, status, username = '', password = '') {
+            if (status === 1 && username) {
+                alert(`ইউজার এক্সেপ্ট করা হয়েছে!\nইউজারনেম: ${username}\nপাসওয়ার্ড: ${password}`);
+            }
+            await fetch('/api/user/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, status })
+            });
+            fetchUsers();
         }
+
+        // ইউজার ডিলিট করা
+        async function deleteUser(id) {
+            if (confirm("আপনি কি নিশ্চিত এই ইউজারটি ডিলিট করতে চান?")) {
+                await fetch(`/api/user/delete/${id}`, { method: 'DELETE' });
+                fetchUsers();
+            }
+        }
+
+        // ট্যাব পরিবর্তন করা
+        function showTab(tabId, menuNo) {
+            document.querySelectorAll('.main-content > div:not(.header)').forEach(d => d.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('.sidebar ul li').forEach(l => l.classList.remove('active'));
+            document.getElementById('menu-' + menuNo).classList.add('active');
+        }
+
+        // বিল সার্চিং লজিক
+        function searchBills() {
+            let filter = document.getElementById('searchInput').value.toLowerCase();
+            let rows = document.querySelectorAll('#billsTable tr');
+            rows.forEach(row => {
+                row.style.display = row.innerText.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        }
+
+        // ইনিশিয়াল রান
+        fetchUsers();
+        fetchCustomers();
     </script>
 </body>
 </html>
 """
 
-@app.route("/")
-def index():
+# ---------------------------------------------------------
+# ৩. ব্যাকএন্ড এপিআই ও রাউট (Backend APIs)
+# ---------------------------------------------------------
+
+@app.route('/')
+def home():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route("/api/register", methods=["POST"])
+# ইউজার নিবন্ধনের এপিআই
+@app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
     try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO users (name, email, phone, username, password)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO users (name, email, phone, username, password, is_admin, is_approved)
+            VALUES (?, ?, ?, ?, ?, 0, 0)
         ''', (data['name'], data['email'], data['phone'], data['username'], data['password']))
-        user_id = cursor.lastrowid
-        cursor.execute('''
-            INSERT INTO messages (user_id, sender_name, message)
-            VALUES (?, ?, ?)
-        ''', (user_id, data['name'], f"নতুন রেজিস্ট্রেশন রিকুয়েস্ট: {data['name']} (@{data['username']})"))
         conn.commit()
-        return jsonify({"success": True, "message": "রেজিস্ট্রেশন রিকুয়েস্ট পাঠানো হয়েছে! এডমিনের অনুমোদনের অপেক্ষা করুন।"})
-    except sqlite3.IntegrityError:
-        return jsonify({"success": False, "message": "ইউজারনেম, ইমেইল বা ফোন নম্বরটি নিবন্ধিত রয়েছে।"})
-    finally:
         conn.close()
+        return jsonify({"success": True, "message": "রেজিস্ট্রেশন সফল হয়েছে!"})
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "ইউজারনেম বা ইমেইল ইতিমধ্যেই বিদ্যমান।"}), 400
 
-@app.route("/api/login", methods=["POST"])
-def login():
-    data = request.json
+# ইউজার লিস্ট পাওয়ার এপিআই
+@app.route('/api/users', methods=['GET'])
+def get_users():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE (username = ? OR email = ? OR phone = ?) AND password = ?", 
-                   (data['auth_id'], data['auth_id'], data['auth_id'], data['password']))
-    user = cursor.fetchone()
+    cursor.execute("SELECT id, name, email, phone, username, password, is_approved FROM users WHERE is_admin = 0")
+    rows = cursor.fetchall()
     conn.close()
-
-    if user:
-        if user[7] == 0:
-            return jsonify({"success": False, "message": "এডমিন অনুমোদনের অপেক্ষায় আছে!"})
-        return jsonify({
-            "success": True,
-            "user": { "id": user[0], "name": user[1], "email": user[2], "phone": user[3], "username": user[4], "is_admin": user[6] }
-        })
-    return jsonify({"success": False, "message": "ভুল ইউজারনেম/ফোন বা পাসওয়ার্ড!"})
-
-@app.route("/api/stats", methods=["GET"])
-def get_stats():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*), COALESCE(SUM(bill_amount), 0) FROM customers WHERE is_deleted = 0")
-    row = cursor.fetchone()
-    total, total_bill = row[0], row[1]
     
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'টেলিফোন নম্বর'")
-    phone = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'টেলিফোন+ওয়াইফাই নম্বর'")
-    combo = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'ওয়াইফাই নম্বর'")
-    wifi = cursor.fetchone()[0]
-    conn.close()
-    return jsonify({"total": total, "total_bill": total_bill, "phone": phone, "combo": combo, "wifi": wifi})
+    users_list = []
+    for r in rows:
+        users_list.append({
+            "id": r[0], "name": r[1], "email": r[2], "phone": r[3], 
+            "username": r[4], "password": r[5], "is_approved": r[6]
+        })
+    return jsonify(users_list)
 
-@app.route("/api/customers", methods=["GET"])
-def get_customers():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, service_type, phone_number, bill_amount, address FROM customers WHERE is_deleted = 0 ORDER BY id ASC")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "phone_number": r[3], "bill_amount": r[4], "address": r[5]} for r in rows])
-
-@app.route("/api/add-customer", methods=["POST"])
-def add_customer():
+# ইউজার এক্সেপ্ট/ব্লক এপিআই
+@app.route('/api/user/status', methods=['POST'])
+def update_user_status():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('''
-        INSERT INTO customers (name, service_type, phone_number, bill_amount, address, details)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (data['name'], data['service_type'], data['phone_number'], data['bill_amount'], data['address'], data['details']))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True, "message": "সফলভাবে তথ্য সংরক্ষণ করা হয়েছে!"})
-
-@app.route("/api/admin/pending-users", methods=["GET"])
-def pending_users():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, email, phone, username FROM users WHERE is_approved = 0")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "email": r[2], "phone": r[3], "username": r[4]} for r in rows])
-
-@app.route("/api/admin/approve-user/<int:user_id>", methods=["POST"])
-def approve_user(user_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_approved = 1 WHERE id = ?", (user_id,))
+    cursor.execute("UPDATE users SET is_approved = ? WHERE id = ?", (data['status'], data['id']))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
 
-@app.route("/api/admin/all-users", methods=["GET"])
-def all_users():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, email, phone, username, password, is_admin, is_approved FROM users")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "email": r[2], "phone": r[3], "username": r[4], "password": r[5], "is_admin": r[6], "is_approved": r[7]} for r in rows])
-
-@app.route("/api/admin/delete-user/<int:user_id>", methods=["POST"])
+# ইউজার ডিলিট করার এপিআই
+@app.route('/api/user/delete/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -887,61 +412,38 @@ def delete_user(user_id):
     conn.close()
     return jsonify({"success": True})
 
-@app.route("/api/admin/recycle-bin", methods=["GET"])
-def recycle_bin():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, phone_number FROM customers WHERE is_deleted = 1")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "phone_number": r[2]} for r in rows])
-
-@app.route("/api/admin/restore-customer", methods=["POST"])
-def restore_customer():
+# কাস্টমার/বিল ডাটা যোগ করার এপিআই
+@app.route('/api/customer/add', methods=['POST'])
+def add_customer():
     data = request.json
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE customers SET is_deleted = 0 WHERE id = ?", (data['id'],))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
-@app.route("/api/messages/send", methods=["POST"])
-def send_message():
-    data = request.json
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (user_id, sender_name, message, file_url, file_type) VALUES (?, ?, ?, ?, ?)",
-                   (data['user_id'], data['sender_name'], data['message'], data.get('file_url', ''), data.get('file_type', '')))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
-@app.route("/api/messages", methods=["GET"])
-def get_messages():
-    user_id = request.args.get('user_id')
-    is_admin = request.args.get('is_admin')
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    if is_admin == '1':
-        cursor.execute("SELECT sender_name, message, file_url, file_type, created_at FROM messages ORDER BY id ASC")
-        cursor.execute("UPDATE messages SET is_read = 1")
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO customers (bill_no, customer_name, address, amount)
+            VALUES (?, ?, ?, ?)
+        ''', (data['bill_no'], data['customer_name'], data['address'], data['amount']))
         conn.commit()
-    else:
-        cursor.execute("SELECT sender_name, message, file_url, file_type, created_at FROM messages WHERE user_id = ? ORDER BY id ASC", (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"sender_name": r[0], "message": r[1], "file_url": r[2], "file_type": r[3], "created_at": r[4]} for r in rows])
+        conn.close()
+        return jsonify({"success": True, "message": "বিল তথ্য সফলভাবে যুক্ত হয়েছে!"})
+    except Exception as e:
+        return jsonify({"success": False, "message": "বিল নম্বর ইতিমধ্যে যুক্ত আছে অথবা ভুল তথ্য প্রদান করা হয়েছে।"}), 400
 
-@app.route("/api/admin/unread-count", methods=["GET"])
-def unread_count():
+# বিল লিস্ট পাওয়ার এপিআই
+@app.route('/api/customers', methods=['GET'])
+def get_customers():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM messages WHERE is_read = 0")
-    count = cursor.fetchone()[0]
+    cursor.execute("SELECT id, bill_no, customer_name, address, amount FROM customers")
+    rows = cursor.fetchall()
     conn.close()
-    return jsonify({"count": count})
+    
+    customer_list = []
+    for r in rows:
+        customer_list.append({
+            "id": r[0], "bill_no": r[1], "customer_name": r[2], "address": r[3], "amount": r[4]
+        })
+    return jsonify(customer_list)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+if __name__ == '__main__':
+    app.run(debug=True)
