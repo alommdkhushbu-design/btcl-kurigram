@@ -21,7 +21,7 @@ def init_db():
         )
     ''')
     
-    # গ্রাহক/সংযোগ টেবিল (টাকার ফিল্ড সম্পূর্ণ বাদ দেওয়া হয়েছে)
+    # গ্রাহক/সংযোগ টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -218,7 +218,7 @@ HTML_LAYOUT = """
             </div>
         </div>
 
-        <!-- ইনস্ট্যান্ট সার্চ বার -->
+        <!-- সার্চ বার -->
         <div class="search-container">
             <span class="search-icon">🔍</span>
             <input type="text" id="search-input" class="search-box" oninput="filterCustomers()" placeholder="যেকোনো অক্ষর বা নম্বর দিয়ে সার্চ করুন...">
@@ -302,7 +302,7 @@ HTML_LAYOUT = """
             </form>
         </div>
 
-        <!-- নিবন্ধিত ইউজার ও সিক্রেট পাসওয়ার্ড লিস্ট (এডমিন) -->
+        <!-- ইউজার লিস্ট (এডমিন) -->
         <div id="sec-users" class="card hidden admin-only">
             <div class="card-title">সকল নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</div>
             <div class="table-responsive">
@@ -323,7 +323,7 @@ HTML_LAYOUT = """
             </div>
         </div>
 
-        <!-- ডিলিট করা ডাটা সেকশন -->
+        <!-- ডিলিট হওয়া ডাটা -->
         <div id="sec-deleted-customers" class="card hidden admin-only">
             <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া নম্বর ও ডাটা তালিকা</div>
             <div class="table-responsive">
@@ -380,7 +380,7 @@ HTML_LAYOUT = """
         </div>
     </div>
 
-    <!-- ডিটেইলস পপআপ মোডাল (এডমিন) -->
+    <!-- ডিটেইলস পপআপ মোডাল -->
     <div id="details-modal" class="modal hidden">
         <div class="modal-title">📄 গ্রাহকের সম্পূর্ণ তথ্য</div>
         <div id="details-modal-content"></div>
@@ -1272,4 +1272,4 @@ def get_messages():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port))
+    app.run(host='0.0.0.0', port=port)
