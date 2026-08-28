@@ -5,14 +5,11 @@ from flask import Flask, request, jsonify, render_template_string
 app = Flask(__name__)
 DB_NAME = "btcl_system.db"
 
-# ---------------------------------------------------------
-# ১. ডাটাবেস সেটআপ (আপনার স্ক্রিনশট ও রিকোয়ারমেন্ট অনুযায়ী)
-# ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # Users Table (আপনার স্ক্রিনশটের হুবহু টেবিল)
+    # Users Table (আপনার ফাইলের আগের টেবিল অনুযায়ী)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +23,7 @@ def init_db():
         )
     ''')
     
-    # Customers / Bills Table
+    # Customers Table (বিল ও ডকুমেন্ট ডাটা রাখার জন্য)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +34,7 @@ def init_db():
         )
     ''')
     
-    # ডিফল্ট অ্যাডমিন তৈরি (Admin Md.Khushbu Alom)
+    # ডিফল্ট অ্যাডমিন একাউন্ট
     cursor.execute("SELECT * FROM users WHERE username='admin'")
     if not cursor.fetchone():
         cursor.execute('''
@@ -51,7 +48,7 @@ def init_db():
 init_db()
 
 # ---------------------------------------------------------
-# ২. ফ্রন্টএন্ড এইচটিএমএল + সিএসএস + জাভাস্ক্রিপ্ট (HTML Template)
+# HTML, CSS & JavaScript (আপনার পছন্দ অনুযায়ী লেআউট)
 # ---------------------------------------------------------
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -59,19 +56,17 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL System - Admin Md.Khushbu Alom</title>
+    <title>BTCL System Dashboard</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
         body { display: flex; height: 100vh; background: #f4f6f9; }
         
-        /* Sidebar Styling */
         .sidebar { width: 260px; background: #2c3e50; color: white; padding: 20px 0; }
         .sidebar h2 { text-align: center; padding-bottom: 20px; border-bottom: 1px solid #34495e; }
         .sidebar ul { list-style: none; margin-top: 20px; }
         .sidebar ul li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; font-size: 15px; }
         .sidebar ul li:hover, .sidebar ul li.active { background: #1abc9c; }
         
-        /* Main Area */
         .main-content { flex: 1; padding: 20px; overflow-y: auto; }
         .header { background: #fff; padding: 15px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
         .admin-banner { font-size: 20px; font-weight: bold; color: #2c3e50; }
@@ -98,7 +93,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
 
-    <!-- Left Sidebar Menu -->
+    <!-- বাম পাশের থ্রি-ডট মেনু বার -->
     <div class="sidebar">
         <h2>মেনু বার (≡)</h2>
         <ul>
@@ -109,21 +104,20 @@ HTML_TEMPLATE = """
         </ul>
     </div>
 
-    <!-- Main Content Area -->
     <div class="main-content">
-        <!-- Top Admin Header -->
+        <!-- অ্যাডমিন ব্যানার -->
         <div class="header">
             <div class="admin-banner">Admin Md.Khushbu Alom</div>
             <div style="color: green; font-weight: bold;">● অনলাইন</div>
         </div>
 
-        <!-- 1. Notification Section -->
+        <!-- ১. নোটিফিকেশন রিকোয়েস্ট -->
         <div id="notif-tab" class="card">
             <h3>১. নোটিফিকেশন সেন্টার</h3>
             <br>
             <div style="margin-bottom: 15px;">
-                <button class="btn btn-accept" onclick="alert('রেজিস্ট্রেশন রিকোয়েস্ট তালিকা দেখান হচ্ছে')">রেজিস্ট্রেশন রিকোয়েস্ট</button>
-                <button class="btn btn-unblock" onclick="alert('মেসেঞ্জার নোটিফিকেশন অপশন')">মেসেঞ্জার নোটিফিকেশন</button>
+                <button class="btn btn-accept" onclick="alert('রেজিস্ট্রেশন রিকোয়েস্ট দেখাচ্ছে')">রেজিস্ট্রেশন রিকোয়েস্ট</button>
+                <button class="btn btn-unblock" onclick="alert('মেসেঞ্জার নোটিফিকেশন')">মেসেঞ্জার নোটিফিকেশন</button>
             </div>
 
             <h4>নতুন রেজিস্ট্রেশন রিকোয়েস্ট:</h4>
@@ -133,7 +127,7 @@ HTML_TEMPLATE = """
                         <th>নাম</th>
                         <th>ইউজারনেম</th>
                         <th>পাসওয়ার্ড</th>
-                        <th>যোগাযোগ</th>
+                        <th>ফোন & ইমেইল</th>
                         <th>অ্যাকশন</th>
                     </tr>
                 </thead>
@@ -141,10 +135,10 @@ HTML_TEMPLATE = """
             </table>
         </div>
 
-        <!-- 2. Total Users Section (Sidebar Item #2) -->
+        <!-- ২. মোট ইউজার (মেনু বারের দ্বিতীয় অপশন) -->
         <div id="users-tab" class="card hidden">
             <h3>২. মোট ইউজার তালিকা (এক্সেপ্ট করা ইউজার)</h3>
-            <p style="margin-top: 5px;">মোট সক্রিয়/ব্লকড ইউজার সংখ্যা: <b id="total-user-count">0</b> জন</p>
+            <p style="margin-top: 5px;">মোট এক্টিভ/ব্লকড ইউজার সংখ্যা: <b id="total-user-count">0</b> জন</p>
             <table>
                 <thead>
                     <tr>
@@ -152,7 +146,7 @@ HTML_TEMPLATE = """
                         <th>নাম</th>
                         <th>ইউজারনেম</th>
                         <th>পাসওয়ার্ড</th>
-                        <th>অবস্থা</th>
+                        <th>অবস্থা (Status)</th>
                         <th>অ্যাকশন</th>
                     </tr>
                 </thead>
@@ -160,7 +154,7 @@ HTML_TEMPLATE = """
             </table>
         </div>
 
-        <!-- 3. Bills & Documents View/Search -->
+        <!-- ৩. বিল সার্চ ও লিস্ট (ইউজারদের দেখার জন্য) -->
         <div id="bills-tab" class="card hidden">
             <h3>৩. কাস্টমার বিল ও ডকুমেন্ট তালিকা (সার্চ করুন)</h3>
             <br>
@@ -180,7 +174,7 @@ HTML_TEMPLATE = """
             </table>
         </div>
 
-        <!-- 4. Add Bill / Document (Admin Only) -->
+        <!-- ৪. নতুন বিল/ডকুমেন্ট এন্ট্রি -->
         <div id="add-doc-tab" class="card hidden">
             <h3>৪. নতুন বিল বা ডকুমেন্ট অ্যাড করুন</h3>
             <br>
@@ -203,7 +197,6 @@ HTML_TEMPLATE = """
     </div>
 
     <script>
-        // ইউজারের ডাটা লোড করা
         async function fetchUsers() {
             const res = await fetch('/api/users');
             const users = await res.json();
@@ -255,7 +248,6 @@ HTML_TEMPLATE = """
             document.getElementById('total-user-count').innerText = count;
         }
 
-        // বিল ডাটা লোড করা
         async function fetchCustomers() {
             const res = await fetch('/api/customers');
             const data = await res.json();
@@ -275,7 +267,6 @@ HTML_TEMPLATE = """
             });
         }
 
-        // নতুন বিল জমা দেওয়া
         async function submitBill(e) {
             e.preventDefault();
             const payload = {
@@ -302,10 +293,9 @@ HTML_TEMPLATE = """
             }
         }
 
-        // ইউজার স্ট্যাটাস (এক্সেপ্ট/ব্লক) আপডেট
         async function updateStatus(id, status, username = '', password = '') {
             if (status === 1 && username) {
-                alert(`ইউজার এক্সেপ্ট করা হয়েছে!\nইউজারনেম: ${username}\nপাসওয়ার্ড: ${password}`);
+                alert(`ইউজার এক্সেপ্ট করা হয়েছে!\n\nইউজারনেম: ${username}\nপাসওয়ার্ড: ${password}`);
             }
             await fetch('/api/user/status', {
                 method: 'POST',
@@ -315,15 +305,13 @@ HTML_TEMPLATE = """
             fetchUsers();
         }
 
-        // ইউজার ডিলিট করা
         async function deleteUser(id) {
-            if (confirm("আপনি কি নিশ্চিত এই ইউজারটি ডিলিট করতে চান?")) {
+            if (confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট করবেন? ডিলিট করলে সে আর ঢুকতে পারবে না।")) {
                 await fetch(`/api/user/delete/${id}`, { method: 'DELETE' });
                 fetchUsers();
             }
         }
 
-        // ট্যাব পরিবর্তন করা
         function showTab(tabId, menuNo) {
             document.querySelectorAll('.main-content > div:not(.header)').forEach(d => d.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
@@ -332,7 +320,6 @@ HTML_TEMPLATE = """
             document.getElementById('menu-' + menuNo).classList.add('active');
         }
 
-        // বিল সার্চিং লজিক
         function searchBills() {
             let filter = document.getElementById('searchInput').value.toLowerCase();
             let rows = document.querySelectorAll('#billsTable tr');
@@ -341,7 +328,6 @@ HTML_TEMPLATE = """
             });
         }
 
-        // ইনিশিয়াল রান
         fetchUsers();
         fetchCustomers();
     </script>
@@ -350,31 +336,13 @@ HTML_TEMPLATE = """
 """
 
 # ---------------------------------------------------------
-# ৩. ব্যাকএন্ড এপিআই ও রাউট (Backend APIs)
+# Flask Backend Routes
 # ---------------------------------------------------------
 
 @app.route('/')
 def home():
     return render_template_string(HTML_TEMPLATE)
 
-# ইউজার নিবন্ধনের এপিআই
-@app.route('/api/register', methods=['POST'])
-def register():
-    data = request.json
-    try:
-        conn = sqlite3.connect(DB_NAME)
-        cursor = conn.cursor()
-        cursor.execute('''
-            INSERT INTO users (name, email, phone, username, password, is_admin, is_approved)
-            VALUES (?, ?, ?, ?, ?, 0, 0)
-        ''', (data['name'], data['email'], data['phone'], data['username'], data['password']))
-        conn.commit()
-        conn.close()
-        return jsonify({"success": True, "message": "রেজিস্ট্রেশন সফল হয়েছে!"})
-    except sqlite3.IntegrityError:
-        return jsonify({"success": False, "message": "ইউজারনেম বা ইমেইল ইতিমধ্যেই বিদ্যমান।"}), 400
-
-# ইউজার লিস্ট পাওয়ার এপিআই
 @app.route('/api/users', methods=['GET'])
 def get_users():
     conn = sqlite3.connect(DB_NAME)
@@ -391,7 +359,6 @@ def get_users():
         })
     return jsonify(users_list)
 
-# ইউজার এক্সেপ্ট/ব্লক এপিআই
 @app.route('/api/user/status', methods=['POST'])
 def update_user_status():
     data = request.json
@@ -402,7 +369,6 @@ def update_user_status():
     conn.close()
     return jsonify({"success": True})
 
-# ইউজার ডিলিট করার এপিআই
 @app.route('/api/user/delete/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):
     conn = sqlite3.connect(DB_NAME)
@@ -412,7 +378,6 @@ def delete_user(user_id):
     conn.close()
     return jsonify({"success": True})
 
-# কাস্টমার/বিল ডাটা যোগ করার এপিআই
 @app.route('/api/customer/add', methods=['POST'])
 def add_customer():
     data = request.json
@@ -425,11 +390,10 @@ def add_customer():
         ''', (data['bill_no'], data['customer_name'], data['address'], data['amount']))
         conn.commit()
         conn.close()
-        return jsonify({"success": True, "message": "বিল তথ্য সফলভাবে যুক্ত হয়েছে!"})
+        return jsonify({"success": True, "message": "বিল ও কাস্টমার ডাটা সফলভাবে যুক্ত হয়েছে!"})
     except Exception as e:
-        return jsonify({"success": False, "message": "বিল নম্বর ইতিমধ্যে যুক্ত আছে অথবা ভুল তথ্য প্রদান করা হয়েছে।"}), 400
+        return jsonify({"success": False, "message": "বিল নম্বর পূর্বে যুক্ত করা হয়েছে।"}), 400
 
-# বিল লিস্ট পাওয়ার এপিআই
 @app.route('/api/customers', methods=['GET'])
 def get_customers():
     conn = sqlite3.connect(DB_NAME)
