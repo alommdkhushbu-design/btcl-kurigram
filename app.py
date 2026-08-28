@@ -52,10 +52,9 @@ def init_db():
 
 init_db()
 
-# Security PIN
 SECURITY_PIN = "137955"
 
-# Frontend HTML Template
+# Frontend HTML Template (Fixed Modal Issue)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="bn">
@@ -80,10 +79,10 @@ HTML_TEMPLATE = """
         .clear-btn { position: absolute; right: 12px; top: 18px; cursor: pointer; color: #888; font-weight: bold; display: none; }
         .result-item { background: #2a2a2a; padding: 12px; border-radius: 6px; margin-top: 8px; cursor: pointer; border-left: 4px solid var(--primary); }
         .result-item:hover { background: #333; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         .badge { background: #333; padding: 3px 8px; border-radius: 4px; font-size: 12px; color: var(--primary); }
         .flex { display: flex; gap: 10px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 999; }
         .modal-content { background: var(--card); padding: 25px; border-radius: 10px; max-width: 500px; width: 90%; }
     </style>
 </head>
@@ -103,8 +102,8 @@ HTML_TEMPLATE = """
             </div>
 
             <form id="login-form">
-                <input type="text" id="login-user" placeholder="ইউজার নেম" required>
-                <input type="password" id="login-pass" placeholder="পাসওয়ার্ড" required>
+                <input type="text" id="login-user" placeholder="ইউজার নেম" value="Khushbu23" required>
+                <input type="password" id="login-pass" placeholder="পাসওয়ার্ড" value="01751947523" required>
                 <button type="submit">লগইন করুন</button>
             </form>
 
@@ -164,7 +163,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Modal for Details View -->
+    <!-- Modal for Details View (Hidden by default) -->
     <div id="details-modal" class="modal hidden">
         <div class="modal-content">
             <h3 id="modal-title" style="color: var(--primary);"></h3>
@@ -548,4 +547,4 @@ def restore_customer():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port))
