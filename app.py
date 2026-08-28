@@ -3,8 +3,11 @@ import sqlite3
 from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
-DB_NAME = "btcl_system.db"
+DB_NAME = "database.db"
 
+# ---------------------------------------------------------
+# ডাটাবেস ইনিশিয়ালাইজেশন
+# ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
@@ -27,127 +30,168 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            service_type TEXT NOT NULL,
-            phone_number TEXT NOT NULL,
+            bill_no TEXT UNIQUE NOT NULL,
+            customer_name TEXT NOT NULL,
+            phone TEXT,
             address TEXT NOT NULL,
-            bill_amount REAL DEFAULT 0,
-            details TEXT,
+            amount TEXT NOT NULL,
             is_deleted INTEGER DEFAULT 0
         )
     ''')
-
-    # Messages Table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            sender_name TEXT,
-            message TEXT,
-            file_url TEXT,
-            file_type TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_read INTEGER DEFAULT 0
-        )
-    ''')
     
-    # Default Admin User
-    cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
+    # ডিফল্ট অ্যাডমিন
+    cursor.execute("SELECT * FROM users WHERE username='admin'")
     if not cursor.fetchone():
         cursor.execute('''
             INSERT INTO users (name, email, phone, username, password, is_admin, is_approved)
-            VALUES (?, ?, ?, ?, ?, 1, 1)
-        ''', ("Md. Khushbu Alom", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523"))
-        
+            VALUES ('Md.Khushbu Alom', 'admin@btcl.com', '01751947523', 'admin', 'admin123', 1, 1)
+        ''')
+    
     conn.commit()
     conn.close()
 
 init_db()
 
-HTML_TEMPLATE = """
+# ---------------------------------------------------------
+# ডার্ক থিম ফ্রন্টএন্ড UI (আপনার স্ক্রিনশট অনুযায়ী)
+# ---------------------------------------------------------
+HTML_LAYOUT = """
 <!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL Kurigram System</title>
+    <title>বিটিসিএল (BTCL), কুড়িগ্রাম</title>
     <style>
-        :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --sidebar: #181818; --chat-bg: #252525; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #ffffff; padding: 15px; }
         
-        /* Sticky Top Navbar & Global Search Bar */
-        .top-navbar-container { position: sticky; top: 0; z-index: 1000; background: #000; border-bottom: 2px solid var(--primary); }
-        .top-navbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 15px; }
-        .menu-btn { font-size: 22px; cursor: pointer; color: var(--primary); background: none; border: none; }
-        .header-title { font-size: 15px; font-weight: bold; color: var(--primary); text-align: center; }
-        .notif-box { position: relative; cursor: pointer; font-size: 20px; }
-        .notif-badge { position: absolute; top: -5px; right: -8px; background: #ff5252; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; }
-
-        /* Global Persistent Search Bar (YouTube Style) */
-        .global-search-box { padding: 5px 15px 10px 15px; background: #000; position: relative; }
-        .search-input-wrapper { position: relative; max-width: 800px; margin: 0 auto; }
-        .search-input-wrapper input { width: 100%; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; }
-        .search-input-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,230,118,0.3); }
+        .header-title { color: #00ff66; text-align: center; font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+        .welcome-subtitle { color: #cccccc; text-align: center; font-size: 15px; margin-bottom: 15px; }
+        .green-line { height: 2px; background-color: #00ff66; margin-bottom: 20px; width: 100%; }
         
-        .search-results-dropdown { position: absolute; top: 45px; left: 0; right: 0; background: var(--card); border: 1px solid #333; border-radius: 8px; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.8); z-index: 2000; display: none; }
-        .search-item { padding: 10px 15px; border-bottom: 1px solid #2e2e2e; cursor: pointer; transition: 0.2s; }
-        .search-item:hover { background: #2a2a2a; }
-        .search-item-title { font-weight: bold; color: var(--primary); font-size: 14px; }
-        .search-item-sub { font-size: 12px; color: #aaa; margin-top: 3px; }
-
-        .auth-container { max-width: 400px; margin: 40px auto; background: var(--card); padding: 25px; border-radius: 10px; }
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .btn-danger { background: #ff5252; color: #fff; }
-        .btn-warning { background: #ffb74d; color: #000; }
-
-        .sidebar-overlay { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--sidebar); z-index: 3000; transition: 0.3s; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; }
-        .sidebar-overlay.active { left: 0; }
-        .close-sidebar { align-self: flex-end; font-size: 18px; cursor: pointer; color: #888; margin-bottom: 10px; }
-        .nav-item { padding: 12px; margin: 5px 0; background: #222; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .nav-item:hover, .nav-item.active { background: var(--primary); color: #000; font-weight: bold; }
-
-        .main-content { padding: 15px; max-width: 900px; margin: 0 auto; }
-        .card { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .auth-container { background: #1e1e1e; padding: 20px; border-radius: 12px; max-width: 450px; margin: 0 auto; border: 1px solid #2a2a2a; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .btn-active { background-color: #00e65c; color: #000; }
+        .btn-inactive { background-color: #2a2a2a; color: #ffffff; }
         
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; }
-        .stat-card h4 { margin: 0; color: #aaa; font-size: 11px; }
-        .stat-card .number { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 5px; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; font-size: 13px; }
-        th { background: #2a2a2a; color: var(--primary); }
-
-        /* Messenger Premium UI */
-        .chat-container { display: flex; flex-direction: column; height: 500px; background: var(--chat-bg); border-radius: 10px; overflow: hidden; border: 1px solid #333; }
-        .chat-header { padding: 12px 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
-        .chat-body { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 13px; line-height: 1.4; word-wrap: break-word; }
-        .chat-bubble.me { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
-        .chat-bubble.other { background: #333; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
-        .chat-bubble img, .chat-bubble video { max-width: 100%; border-radius: 8px; margin-top: 5px; }
-        .typing-indicator { font-size: 11px; color: var(--primary); padding: 0 15px 5px 15px; font-style: italic; }
-        .chat-footer { padding: 10px; background: #1a1a1a; display: flex; align-items: center; gap: 8px; }
-        .chat-footer input[type="text"] { margin: 0; border-radius: 20px; }
-        .file-btn { cursor: pointer; font-size: 20px; padding: 0 8px; }
-
-        .backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2500; display: none; }
-        .backdrop.active { display: block; }
-        .hidden { display: none !important; }
+        .input-box { width: 100%; padding: 14px; margin-bottom: 12px; background-color: #2a2a2a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 15px; }
+        .input-box::placeholder { color: #888; }
+        .submit-btn { width: 100%; padding: 14px; background-color: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        
+        .menu-title { color: #888; font-size: 14px; margin-bottom: 10px; }
+        .menu-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
+        .menu-item { background: #1e1e1e; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .menu-item.active { background: #00e65c; color: #000; font-weight: bold; }
+        
+        .logout-btn { width: 100%; padding: 15px; background-color: #ff4d4d; color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; margin-bottom: 30px; }
+        
+        .section-header { font-size: 20px; font-weight: bold; margin-bottom: 15px; }
+        .stat-card { background: #1e1e1e; padding: 20px; border-radius: 12px; text-align: center; border-left: 4px solid #00e65c; }
+        .stat-card p { color: #aaa; font-size: 14px; margin-bottom: 10px; }
+        .stat-card h1 { font-size: 36px; color: #00e65c; }
+        
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #1e1e1e; border-radius: 8px; overflow: hidden; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2a2a2a; font-size: 14px; }
+        th { background-color: #2a2a2a; color: #00e65c; }
     </style>
 </head>
 <body>
 
-    <div class="top-navbar-container">
-        <div class="top-navbar">
-            <button id="hamburger-btn" class="menu-btn hidden" onclick="toggleSidebar()">☰</button>
-            <div class="header-title">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
-            <div id="notif-icon" class="notif-box hidden" onclick="openMessages()">
-                🔔 <span id="notif-count" class="notif-badge hidden">0</span>
-            </div>
+    <div class="header-title">বাংলাদেশ টেলিকমিউনিকেশনস কোম্পানী লিমিটেড (বিটিসিএল), কুড়িগ্রাম</div>
+    <div class="welcome-subtitle" id="top-sub">Welcome Md. Khushbu Alom (Admin)</div>
+    <div class="green-line"></div>
+
+    <!-- লগইন ও রেজিস্ট্রেশন ভিউ -->
+    <div id="auth-view" class="auth-container hidden">
+        <div class="tab-buttons">
+            <button id="tab-login" class="tab-btn btn-active" onclick="toggleAuth('login')">লগইন</button>
+            <button id="tab-reg" class="tab-btn btn-inactive" onclick="toggleAuth('reg')">রেজিস্ট্রেশন</button>
         </div>
 
-        <div id="global-search-container" class="global-search-box hidden">
-            <div class="search-input-wrapper">
-                <input type="text" id="global-search-input" placeholder="🔍 নাম, মোবাইল,
+        <form id="login-form" onsubmit="handleLogin(event)">
+            <input type="text" id="l_user" class="input-box" placeholder="মোবাইল নম্বর বা ইউজার নেম" required>
+            <input type="password" id="l_pass" class="input-box" placeholder="পাসওয়ার্ড" required>
+            <button type="submit" class="submit-btn">লগইন করুন</button>
+        </form>
+
+        <form id="reg-form" class="hidden" onsubmit="handleReg(event)">
+            <input type="text" id="r_name" class="input-box" placeholder="আপনার নাম" required>
+            <input type="email" id="r_email" class="input-box" placeholder="জিচেইল আইডি" required>
+            <input type="text" id="r_phone" class="input-box" placeholder="মোবাইল নম্বর" required>
+            <input type="text" id="r_uname" class="input-box" placeholder="নতুন ইউজার নেম" required>
+            <input type="password" id="r_pass" class="input-box" placeholder="পাসওয়ার্ড" required>
+            <button type="submit" class="submit-btn">একাউন্ট তৈরি করুন</button>
+        </form>
+    </div>
+
+    <!-- অ্যাডমিন ড্যাশবোর্ড ভিউ -->
+    <div id="dashboard-view">
+        <div class="menu-title">মেনু বার</div>
+        <div class="menu-list">
+            <div class="menu-item active">📊 ওভারভিউ ও সার্চ</div>
+            <div class="menu-item">➕ ১. নম্বর এড করুন</div>
+            <div class="menu-item">⏳ ২. পেন্ডিং ইউজার</div>
+            <div class="menu-item">👥 ৩. সকল ইউজার তথ্য</div>
+            <div class="menu-item">❌ ৪. ইউজার ডিলিট</div>
+            <div class="menu-item">📋 ৫. সকল গ্রাহক তালিকা</div>
+            <div class="menu-item">🗑️ রিসাইকেল বিন</div>
+        </div>
+
+        <button class="logout-btn" onclick="logout()">লগআউট</button>
+
+        <div class="section-header">টোটাল সংযোগ ও বিলের হিসাব</div>
+        <div class="stat-card">
+            <p>মোট গ্রাহক সংযোগ</p>
+            <h1 id="total-count">0</h1>
+        </div>
+    </div>
+
+    <script>
+        function toggleAuth(type) {
+            if(type === 'login') {
+                document.getElementById('tab-login').className = 'tab-btn btn-active';
+                document.getElementById('tab-reg').className = 'tab-btn btn-inactive';
+                document.getElementById('login-form').classList.remove('hidden');
+                document.getElementById('reg-form').classList.add('hidden');
+            } else {
+                document.getElementById('tab-login').className = 'tab-btn btn-inactive';
+                document.getElementById('tab-reg').className = 'tab-btn btn-active';
+                document.getElementById('login-form').classList.add('hidden');
+                document.getElementById('reg-form').classList.remove('hidden');
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+        }
+
+        function handleReg(e) {
+            e.preventDefault();
+            alert('রেজিস্ট্রেশন জমা হয়েছে! অ্যাডমিন এপ্রুভালের অপেক্ষা করুন।');
+            toggleAuth('login');
+        }
+
+        function logout() {
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
+"""
+
+# ---------------------------------------------------------
+# মূল রাউট
+# ---------------------------------------------------------
+@app.route('/')
+def index():
+    return render_template_string(HTML_LAYOUT)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
