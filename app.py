@@ -1,17 +1,13 @@
 import os
 import sqlite3
 from flask import Flask, request, jsonify, render_template_string
-from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 DB_NAME = "btcl_system.db"
 
-# Database Initialization
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,8 +20,6 @@ def init_db():
             is_approved INTEGER DEFAULT 0
         )
     ''')
-    
-    # Customer Data table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,24 +31,18 @@ def init_db():
             is_deleted INTEGER DEFAULT 0
         )
     ''')
-    
-    # Default Admin Setup
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
-        hashed_pw = generate_password_hash("01751947523")
         cursor.execute('''
             INSERT INTO users (name, email, phone, username, password, is_admin, is_approved)
             VALUES (?, ?, ?, ?, ?, 1, 1)
-        ''', ("Md. Khushbu Alom", "admin@btcl.gov.bd", "01751947523", "Khushbu23", hashed_pw))
-        
+        ''', ("Md. Khushbu Alom", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523"))
     conn.commit()
     conn.close()
 
 init_db()
-
 SECURITY_PIN = "137955"
 
-# Frontend HTML Template (Fixed Modal Issue)
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="bn">
@@ -64,23 +52,21 @@ HTML_TEMPLATE = """
     <title>BTCL Kurigram Dashboard</title>
     <style>
         :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         .container { max-width: 800px; margin: 0 auto; }
         .header { text-align: center; border-bottom: 2px solid var(--primary); padding-bottom: 15px; margin-bottom: 20px; }
         .header h1 { color: var(--primary); font-size: 20px; margin: 0 0 8px 0; }
         .header h2 { color: #bbb; font-size: 15px; margin: 0; font-weight: normal; }
-        .card { background: var(--card); padding: 20px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); margin-bottom: 20px; }
+        .card { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        button:hover { opacity: 0.9; }
         .btn-danger { background: #ff5252; color: #fff; }
         .btn-warning { background: #ffb74d; color: #000; }
         .search-box { position: relative; }
         .clear-btn { position: absolute; right: 12px; top: 18px; cursor: pointer; color: #888; font-weight: bold; display: none; }
         .result-item { background: #2a2a2a; padding: 12px; border-radius: 6px; margin-top: 8px; cursor: pointer; border-left: 4px solid var(--primary); }
-        .result-item:hover { background: #333; }
         .hidden { display: none !important; }
-        .badge { background: #333; padding: 3px 8px; border-radius: 4px; font-size: 12px; color: var(--primary); }
+        .badge { background: #333; padding: 5px 10px; border-radius: 4px; color: var(--primary); }
         .flex { display: flex; gap: 10px; }
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 999; }
         .modal-content { background: var(--card); padding: 25px; border-radius: 10px; max-width: 500px; width: 90%; }
@@ -88,13 +74,11 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="header">
             <h1>বাংলাদেশ টেলিকমিউনিকেশন্স কোম্পানী লিমিটেড (বিটিসিএল), কুড়িগ্রাম</h1>
             <h2>Welcome to admin Md.Khushbu Alom</h2>
         </div>
 
-        <!-- Auth Section -->
         <div id="auth-section" class="card">
             <div class="flex" style="margin-bottom: 15px;">
                 <button onclick="toggleAuth('login')" id="tab-login" style="background: var(--primary)">লগইন</button>
@@ -117,14 +101,12 @@ HTML_TEMPLATE = """
             </form>
         </div>
 
-        <!-- Dashboard Section -->
         <div id="dashboard" class="hidden">
             <div style="text-align: right; margin-bottom: 10px;">
                 <span id="user-display" class="badge"></span>
                 <button onclick="logout()" style="width: auto; padding: 5px 15px; margin: 0; background: #555; color: #fff;">লগআউট</button>
             </div>
 
-            <!-- Search Section -->
             <div class="card">
                 <h3>লাইভ সার্চ (নাম বা ফোন নম্বর)</h3>
                 <div class="search-box">
@@ -134,7 +116,6 @@ HTML_TEMPLATE = """
                 <div id="search-results"></div>
             </div>
 
-            <!-- Admin Add Entry Section -->
             <div id="admin-add-section" class="card hidden">
                 <h3>নতুন তথ্য যুক্ত করুন (শুধুমাত্র এডমিন)</h3>
                 <form id="add-data-form">
@@ -152,18 +133,15 @@ HTML_TEMPLATE = """
                 </form>
             </div>
 
-            <!-- Admin Management Section -->
             <div id="admin-manage-section" class="card hidden">
                 <h3>ইউজার রিকুয়েস্ট ও পারমিশন</h3>
                 <div id="user-requests-list"></div>
-                
                 <h3 style="margin-top: 25px;">রিসাইকেল বিন (ডিলিট করা ফাইল)</h3>
                 <div id="recycle-bin-list"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal for Details View (Hidden by default) -->
     <div id="details-modal" class="modal hidden">
         <div class="modal-content">
             <h3 id="modal-title" style="color: var(--primary);"></h3>
@@ -243,9 +221,7 @@ HTML_TEMPLATE = """
             }
         }
 
-        function logout() {
-            location.reload();
-        }
+        function logout() { location.reload(); }
 
         async function handleSearch() {
             const query = document.getElementById('search-input').value;
@@ -259,7 +235,6 @@ HTML_TEMPLATE = """
 
             const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
             const results = await res.json();
-            
             let html = '';
             results.forEach(item => {
                 html += `<div class="result-item" onclick="viewDetails(${item.id})">
@@ -293,9 +268,7 @@ HTML_TEMPLATE = """
             document.getElementById('details-modal').classList.remove('hidden');
         }
 
-        function closeModal() {
-            document.getElementById('details-modal').classList.add('hidden');
-        }
+        function closeModal() { document.getElementById('details-modal').classList.add('hidden'); }
 
         document.getElementById('add-data-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -312,9 +285,7 @@ HTML_TEMPLATE = """
             });
             const data = await res.json();
             alert(data.message);
-            if(data.success) {
-                document.getElementById('add-data-form').reset();
-            }
+            if(data.success) { document.getElementById('add-data-form').reset(); }
         };
 
         async function deleteEntry() {
@@ -340,8 +311,8 @@ HTML_TEMPLATE = """
             const users = await res.json();
             let html = '';
             users.forEach(u => {
-                html += `<div style="display:flex; justify-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
-                    <div>${u.name} (${u.username}) - ${u.phone}</div>
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
+                    <div>${u.name} (${u.username})</div>
                     <div>
                         <button onclick="approveUser(${u.id})" style="width:auto; padding:5px 10px; margin:0;" class="btn-warning">Approve</button>
                         <button onclick="deleteUser(${u.id})" style="width:auto; padding:5px 10px; margin:0;" class="btn-danger">Delete</button>
@@ -357,7 +328,7 @@ HTML_TEMPLATE = """
         }
 
         async function deleteUser(id) {
-            if(confirm("ইউজারকে ডিলিট করে দিতে চান?")) {
+            if(confirm("ইউজারকে ডিলিট করতে চান?")) {
                 await fetch(`/api/admin/delete-user/${id}`, {method: 'POST'});
                 loadPendingUsers();
             }
@@ -368,7 +339,7 @@ HTML_TEMPLATE = """
             const items = await res.json();
             let html = '';
             items.forEach(i => {
-                html += `<div style="display:flex; justify-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
+                html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
                     <div>${i.name} - ${i.phone_number}</div>
                     <button onclick="restoreCustomer(${i.id})" style="width:auto; padding:5px 10px; margin:0; background:var(--primary);">Restore</button>
                 </div>`;
@@ -394,7 +365,6 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# API Routes
 @app.route("/")
 def index():
     return render_template_string(HTML_TEMPLATE)
@@ -405,11 +375,10 @@ def register():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     try:
-        hashed_pw = generate_password_hash(data['password'])
         cursor.execute('''
             INSERT INTO users (name, email, phone, username, password)
             VALUES (?, ?, ?, ?, ?)
-        ''', (data['name'], data['email'], data['phone'], data['username'], hashed_pw))
+        ''', (data['name'], data['email'], data['phone'], data['username'], data['password']))
         conn.commit()
         return jsonify({"success": True, "message": "রেজিস্ট্রেশন সফল হয়েছে! এডমিনের অনুমোদনের জন্য অপেক্ষা করুন।"})
     except sqlite3.IntegrityError:
@@ -426,17 +395,12 @@ def login():
     user = cursor.fetchone()
     conn.close()
 
-    if user and check_password_hash(user[5], data['password']):
-        if user[7] == 0:  # is_approved == 0
+    if user and user[5] == data['password']:
+        if user[7] == 0:
             return jsonify({"success": False, "message": "এডমিন এখনও আপনার আইডিটি একটিভ করেনি!"})
         return jsonify({
             "success": True,
-            "user": {
-                "id": user[0],
-                "name": user[1],
-                "username": user[4],
-                "is_admin": user[6]
-            }
+            "user": { "id": user[0], "name": user[1], "username": user[4], "is_admin": user[6] }
         })
     return jsonify({"success": False, "message": "ভুল ইউজার নেম বা পাসওয়ার্ড!"})
 
@@ -452,9 +416,7 @@ def search():
     ''', (f'%{query}%', f'%{query}%'))
     rows = cursor.fetchall()
     conn.close()
-    
-    results = [{"id": r[0], "name": r[1], "service_type": r[2], "phone_number": r[3]} for r in rows]
-    return jsonify(results)
+    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "phone_number": r[3]} for r in rows])
 
 @app.route("/api/details/<int:cust_id>", methods=["GET"])
 def details(cust_id):
@@ -494,7 +456,7 @@ def delete_customer():
     cursor.execute("UPDATE customers SET is_deleted = 1 WHERE id = ?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "তথ্যটি সফলভাবে ডিলিট (রিসাইকেল বিন) করা হয়েছে।"})
+    return jsonify({"success": True, "message": "তথ্যটি সফলভাবে ডিলিট করা হয়েছে।"})
 
 @app.route("/api/admin/users", methods=["GET"])
 def admin_users():
@@ -547,4 +509,4 @@ def restore_customer():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port))
+    app.run(host="0.0.0.0", port=port)
