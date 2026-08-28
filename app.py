@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 DB_NAME = "database.db"
+ADMIN_SECURITY_CODE = "137955"  # সিকিউরিটি কোড সেট করা হলো: 137955
 
 # ---------------------------------------------------------
 # ডাটাবেস ইনিশিয়ালাইজেশন
@@ -39,12 +40,10 @@ def init_db():
     ''')
     
     # ডিফাল্ট এডমিন অ্যাকাউন্ট সেটআপ
-    cursor.execute("SELECT * FROM users WHERE username='Khushbu23'")
+    cursor.execute("SELECT * FROM users WHERE status='admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, status, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
                        ("Admin Khushbu", "admin@btcl.gov.bd", "01751947523", "Khushbu23", "01751947523", "admin"))
-    else:
-        cursor.execute("UPDATE users SET password='01751947523', status='admin', is_deleted=0 WHERE username='Khushbu23'")
     
     conn.commit()
     conn.close()
@@ -108,13 +107,13 @@ HTML_LAYOUT = """
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
         .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
-        .grid-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
-        .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 10px 4px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .grid-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
+        .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 8px 2px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
         .stat-box:hover { background: #005c26; }
         .stat-box.active-card { background: #00e65c; color: #000; }
         .stat-box.active-card p, .stat-box.active-card h3 { color: #000 !important; }
-        .stat-box p { font-size: 10px; color: #aaa; pointer-events: none; }
-        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 15px; pointer-events: none; }
+        .stat-box p { font-size: 9px; color: #aaa; pointer-events: none; }
+        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 14px; pointer-events: none; }
 
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
@@ -168,8 +167,9 @@ HTML_LAYOUT = """
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
             <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. নতুন ইউজার তৈরি করুন</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</button>
-            <button id="menu-deleted-cust" class="menu-item admin-only" onclick="navTo('sec-deleted-customers', this)">🗑️ ৪. ডিলিট হওয়া নম্বর তালিকা</button>
-            <button id="menu-deleted-users" class="menu-item admin-only" onclick="navTo('sec-deleted-users', this)">🗑️ ৫. ডিলিট হওয়া ইউজার তালিকা</button>
+            <button id="menu-admin-settings" class="menu-item admin-only" onclick="navTo('sec-admin-settings', this)">🔐 ৪. এডমিন সিকিউরিটি ও পাসওয়ার্ড</button>
+            <button id="menu-deleted-cust" class="menu-item admin-only" onclick="navTo('sec-deleted-customers', this)">🗑️ ৫. ডিলিট হওয়া নম্বর তালিকা</button>
+            <button id="menu-deleted-users" class="menu-item admin-only" onclick="navTo('sec-deleted-users', this)">🗑️ ৬. ডিলিট হওয়া ইউজার তালিকা</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
         </div>
         <button class="logout-btn" onclick="logout()">লগআউট</button>
@@ -259,6 +259,10 @@ HTML_LAYOUT = """
                         <p>ওয়াইফাই</p>
                         <h3 id="stat-wifi-count">0</h3>
                     </div>
+                    <div class="stat-box" id="card-users" onclick="navTo('sec-users')">
+                        <p>টোটাল ইউজার</p>
+                        <h3 id="stat-users-count" style="color:#007bff;">0</h3>
+                    </div>
                 </div>
             </div>
 
@@ -341,6 +345,23 @@ HTML_LAYOUT = """
                     <tbody id="all-users-body"></tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- এডমিন সিকিউরিটি ও পাসওয়ার্ড চেঞ্জ সেকশন -->
+        <div id="sec-admin-settings" class="card hidden admin-only">
+            <div class="card-title" style="color:#00ff66;">🔐 এডমিন সিকিউরিটি ও প্রোফাইল আপডেট</div>
+            <form onsubmit="updateAdminProfile(event)">
+                <label style="font-size:12px; color:#aaa;">নতুন এডমিন ইউজারনেম:</label>
+                <input type="text" id="new-admin-uname" class="input-box" placeholder="নতুন ইউজারনেম" required>
+
+                <label style="font-size:12px; color:#aaa;">নতুন এডমিন পাসওয়ার্ড:</label>
+                <input type="password" id="new-admin-pass" class="input-box" placeholder="নতুন পাসওয়ার্ড" required>
+
+                <label style="font-size:12px; color:#ff4d4d; font-weight:bold;">সিকিউরিটি কোড (বাধ্যতামূলক):</label>
+                <input type="password" id="admin-sec-code" class="input-box" style="border:1px solid #ff4d4d;" placeholder="সিকিউরিটি কোড প্রদান করুন" required>
+
+                <button type="submit" class="submit-btn" style="background:#ff4d4d; color:#fff;">তথ্য আপডেট করুন</button>
+            </form>
         </div>
 
         <!-- ডিলিট হওয়া ডাটা -->
@@ -537,6 +558,7 @@ HTML_LAYOUT = """
             if (isAdmin) {
                 badgeEl.innerText = "👑 ADMIN";
                 badgeEl.className = "role-badge admin-badge-style";
+                document.getElementById('new-admin-uname').value = currentUser.username;
             } else {
                 badgeEl.innerText = "👤 USER (@" + currentUser.username + ")";
                 badgeEl.className = "role-badge user-badge-style";
@@ -629,7 +651,6 @@ HTML_LAYOUT = """
                 return matchCategory && matchQuery;
             });
 
-            // সর্টিং লজিক
             if (sortOpt === 'num-asc') {
                 filtered.sort((a, b) => (a.service_no || '').localeCompare(b.service_no || '', undefined, {numeric: true, sensitivity: 'base'}));
             } else if (sortOpt === 'num-desc') {
@@ -800,6 +821,11 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(users => {
                 allUsersCache = users;
+                
+                // টোটাল ইউজার আপডেট
+                const nonAdminUsers = users.filter(u => u.status !== 'admin');
+                document.getElementById('stat-users-count').innerText = nonAdminUsers.length;
+
                 const tbody = document.getElementById('all-users-body');
                 const select = document.getElementById('chat-receiver-select');
                 
@@ -807,7 +833,7 @@ HTML_LAYOUT = """
                 if(select) select.innerHTML = '';
 
                 users.forEach(u => {
-                    if(tbody && u.username !== 'Khushbu23') {
+                    if(tbody && u.status !== 'admin') {
                         let statusText = u.status === 'pending' ? '<span style="color:#ffaa00;">পেন্ডিং</span>' : '<span style="color:#00ff66;">অনুমোদিত</span>';
                         let approveBtn = u.status === 'pending' ? `<button class="btn-approve" onclick="approveUser(${u.id})">অনুমোদন</button>` : '';
 
@@ -826,10 +852,35 @@ HTML_LAYOUT = """
                             </tr>
                         `;
                     }
-                    if(select && u.username !== 'Khushbu23') {
+                    if(select && u.status !== 'admin') {
                         select.innerHTML += `<option value="${u.username}">${u.name} (@${u.username})</option>`;
                     }
                 });
+            });
+        }
+
+        function updateAdminProfile(e) {
+            e.preventDefault();
+            const payload = {
+                admin_id: currentUser.id,
+                new_username: document.getElementById('new-admin-uname').value,
+                new_password: document.getElementById('new-admin-pass').value,
+                security_code: document.getElementById('admin-sec-code').value
+            };
+
+            fetch('/api/update-admin-profile', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    alert("এডমিন ইউজারনেম ও পাসওয়ার্ড সফলভাবে আপডেট হয়েছে! দয়া করে নতুন পাসওয়ার্ড দিয়ে পুনরায় লগইন করুন।");
+                    logout();
+                } else {
+                    alert("ত্রুটি: " + res.message);
+                }
             });
         }
 
@@ -903,7 +954,7 @@ HTML_LAYOUT = """
             const select = document.getElementById('chat-receiver-select');
             select.innerHTML = '';
 
-            allUsersCache.filter(u => u.username !== 'Khushbu23' && (u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))).forEach(u => {
+            allUsersCache.filter(u => u.status !== 'admin' && (u.username.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))).forEach(u => {
                 select.innerHTML += `<option value="${u.username}">${u.name} (@${u.username})</option>`;
             });
             loadMessages();
@@ -1135,6 +1186,24 @@ def login():
         })
     return jsonify({"success": False, "message": "ইউজারনেম বা পাসওয়ার্ড ভুল অথবা অ্যাকাউন্ট নেই!"})
 
+@app.route('/api/update-admin-profile', methods=['POST'])
+def update_admin_profile():
+    data = request.json
+    if data.get('security_code') != ADMIN_SECURITY_CODE:
+        return jsonify({"success": False, "message": "ভুল সিকিউরিটি কোড! পাসওয়ার্ড বা ইউজারনেম পরিবর্তন করা সম্ভব নয়।"})
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE users SET username=?, password=? WHERE id=? AND status='admin'",
+                       (data['new_username'], data['new_password'], data['admin_id']))
+        conn.commit()
+        return jsonify({"success": True, "message": "এডমিন প্রোফাইল সফলভাবে আপডেট করা হয়েছে!"})
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "এই ইউজারনেমটি ইতোমধ্যে অন্য কেউ ব্যবহার করছে!"})
+    finally:
+        conn.close()
+
 @app.route('/api/approve-user', methods=['POST'])
 def approve_user():
     data = request.json
@@ -1264,7 +1333,7 @@ def restore_user():
 @app.route('/api/send-message', methods=['POST'])
 def send_message():
     sender = request.form.get('sender')
-    receiver = request.form.get('receiver', 'Khushbu23')
+    receiver = request.form.get('receiver')
     message = request.form.get('message', '')
     file = request.files.get('file')
     
