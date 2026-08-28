@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 DB_NAME = "btcl_system.db"
+SECURITY_PIN = "137955"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -34,6 +35,18 @@ def init_db():
             is_deleted INTEGER DEFAULT 0
         )
     ''')
+
+    # Messages Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            sender_name TEXT,
+            message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_read INTEGER DEFAULT 0
+        )
+    ''')
     
     # Default Admin User
     cursor.execute("SELECT * FROM users WHERE email = 'admin@btcl.gov.bd'")
@@ -47,7 +60,6 @@ def init_db():
     conn.close()
 
 init_db()
-SECURITY_PIN = "137955"
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -55,58 +67,87 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL Kurigram Dashboard</title>
+    <title>BTCL Kurigram System</title>
     <style>
         :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --sidebar: #181818; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
         
-        .header { background: #000; text-align: center; border-bottom: 2px solid var(--primary); padding: 15px; }
-        .header h1 { color: var(--primary); font-size: 20px; margin: 0 0 5px 0; }
-        .header h2 { color: #bbb; font-size: 14px; margin: 0; font-weight: normal; }
-        
-        .auth-container { max-width: 450px; margin: 40px auto; width: 90%; background: var(--card); padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        /* Top Navigation Header */
+        .top-navbar { background: #000; display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; border-bottom: 2px solid var(--primary); position: sticky; top: 0; z-index: 1000; }
+        .menu-btn { font-size: 24px; cursor: pointer; color: var(--primary); background: none; border: none; padding: 0 10px; }
+        .header-title { font-size: 16px; font-weight: bold; color: var(--primary); text-align: center; flex-grow: 1; margin: 0 10px; }
+        .nav-right { display: flex; align-items: center; gap: 15px; }
+        .notif-box { position: relative; cursor: pointer; font-size: 20px; }
+        .notif-badge { position: absolute; top: -5px; right: -8px; background: #ff5252; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; }
+
+        /* Auth Container */
+        .auth-container { max-width: 400px; margin: 50px auto; background: var(--card); padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-danger { background: #ff5252; color: #fff; }
         .btn-warning { background: #ffb74d; color: #000; }
-        
-        /* Dashboard Layout */
-        .dashboard-layout { display: flex; flex: 1; flex-direction: row; }
-        .sidebar { width: 250px; background: var(--sidebar); border-right: 1px solid #282828; padding: 15px; box-sizing: border-box; }
-        .sidebar h3 { font-size: 14px; color: #888; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .nav-item { padding: 12px; margin: 5px 0; background: #222; border-radius: 6px; cursor: pointer; display: block; font-size: 14px; transition: 0.2s; }
+
+        /* Overlay Sidebar Menu */
+        .sidebar-overlay { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--sidebar); z-index: 2000; transition: 0.3s; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; box-shadow: 5px 0 15px rgba(0,0,0,0.7); }
+        .sidebar-overlay.active { left: 0; }
+        .close-sidebar { align-self: flex-end; font-size: 20px; cursor: pointer; color: #888; margin-bottom: 10px; }
+        .nav-menu-list { flex-grow: 1; overflow-y: auto; }
+        .nav-item { padding: 12px; margin: 6px 0; background: #222; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
         .nav-item:hover, .nav-item.active { background: var(--primary); color: #000; font-weight: bold; }
-        
-        .content { flex: 1; padding: 20px; box-sizing: border-box; }
+
+        /* Main Content Layout */
+        .main-content { padding: 15px; max-width: 900px; margin: 0 auto; }
         .card { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         
-        /* Summary Boxes */
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 15px; border-radius: 8px; text-align: center; }
-        .stat-card h4 { margin: 0; color: #aaa; font-size: 13px; }
-        .stat-card .number { font-size: 26px; font-weight: bold; color: var(--primary); margin-top: 8px; }
-        
-        /* Tables */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-card h4 { margin: 0; color: #aaa; font-size: 12px; }
+        .stat-card .number { font-size: 22px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #333; padding: 10px; text-align: left; font-size: 13px; }
         th { background: #2a2a2a; color: var(--primary); }
         tr:nth-child(even) { background: #181818; }
-        
+
+        .backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1500; display: none; }
+        .backdrop.active { display: block; }
         .hidden { display: none !important; }
-        
-        @media (max-width: 768px) {
-            .dashboard-layout { flex-direction: column; }
-            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #333; }
-        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>বাংলাদেশ টেলিকমিউনিকেশন্স কোম্পানী লিমিটেড (বিটিসিএল), কুড়িগ্রাম</h1>
-        <h2 id="header-welcome">Welcome to BTCL Portal</h2>
+
+    <!-- Header Navbar -->
+    <div class="top-navbar">
+        <button id="hamburger-btn" class="menu-btn hidden" onclick="toggleSidebar()">☰</button>
+        <div class="header-title">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
+        <div class="nav-right">
+            <div id="notif-icon" class="notif-box hidden" onclick="openMessages()">
+                🔔 <span id="notif-count" class="notif-badge hidden">0</span>
+            </div>
+        </div>
     </div>
 
-    <!-- Auth Section -->
+    <!-- Backdrop for Sidebar -->
+    <div id="backdrop" class="backdrop" onclick="toggleSidebar()"></div>
+
+    <!-- Sliding Sidebar Bar -->
+    <div id="sidebar" class="sidebar-overlay">
+        <div class="close-sidebar" onclick="toggleSidebar()">✖ বন্ধ করুন</div>
+        <h3 style="font-size:14px; color:#888; border-bottom:1px solid #333; padding-bottom:5px;">মেনু বার</h3>
+        <div class="nav-menu-list">
+            <div class="nav-item active" onclick="showTab('overview')">📊 ওভারভিউ ও সার্চ</div>
+            <div class="nav-item" onclick="showTab('add-entry')">➕ ১. নম্বর এড করুন</div>
+            <div class="nav-item admin-only hidden" onclick="showTab('user-requests')">⏳ ২. পেন্ডিং ইউজার</div>
+            <div class="nav-item admin-only hidden" onclick="showTab('all-users')">👥 ৩. সকল ইউজার তথ্য</div>
+            <div class="nav-item admin-only hidden" onclick="showTab('manage-users')">❌ ৪. ইউজার ডিলিট</div>
+            <div class="nav-item" onclick="showTab('customer-list')">📋 ৫. সকল গ্রাহক তালিকা</div>
+            <div class="nav-item admin-only hidden" onclick="showTab('recycle-bin')">🗑️ রিসাইকেল বিন</div>
+            <div class="nav-item" onclick="showTab('messages')">💬 মেসেজ ও রিকুয়েস্ট</div>
+        </div>
+        <button onclick="logout()" class="btn-danger" style="margin-top:auto;">লগআউট</button>
+    </div>
+
+    <!-- Auth View -->
     <div id="auth-section" class="auth-container">
         <div style="display:flex; gap:10px; margin-bottom:15px;">
             <button onclick="toggleAuth('login')" id="tab-login" style="background: var(--primary)">লগইন</button>
@@ -129,25 +170,12 @@ HTML_TEMPLATE = """
         </form>
     </div>
 
-    <!-- Main Dashboard -->
-    <div id="dashboard" class="dashboard-layout hidden">
-        <!-- Left Sidebar Navigation -->
-        <div class="sidebar">
-            <h3>মেনু বার</h3>
-            <div class="nav-item active" onclick="showTab('overview')">📊 ওভারভিউ ও সার্চ</div>
-            <div class="nav-item" onclick="showTab('add-entry')">➕ ১. নম্বর এড করুন</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('user-requests')">⏳ ২. পেন্ডিং ইউজার</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('all-users')">👥 ৩. সকল ইউজার তথ্য</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('manage-users')">❌ ৪. ইউজার ডিলিট</div>
-            <div class="nav-item" onclick="showTab('customer-list')">📋 ৫. সকল গ্রাহক তালিকা</div>
-            <div class="nav-item admin-only hidden" onclick="showTab('recycle-bin')">🗑️ রিসাইকেল বিন</div>
-            <button onclick="logout()" class="btn-danger" style="margin-top:20px;">লগআউট</button>
-        </div>
-
-        <!-- Main Content Area -->
-        <div class="content">
-            <!-- 0. Overview & Live Search -->
-            <div id="tab-content-overview">
+    <!-- Main Application Views -->
+    <div id="app-view" class="main-content hidden">
+        
+        <!-- Overview Tab -->
+        <div id="tab-content-overview">
+            <div class="card">
                 <h3>টোটাল সংযোগ ও বিলের হিসাব</h3>
                 <div class="summary-grid">
                     <div class="stat-card">
@@ -155,114 +183,134 @@ HTML_TEMPLATE = """
                         <div class="number" id="stat-total">0</div>
                     </div>
                     <div class="stat-card">
-                        <h4>শুধু টেলিফোন</h4>
+                        <h4>টেলিফোন নাম্বার</h4>
                         <div class="number" id="stat-phone">0</div>
                     </div>
                     <div class="stat-card">
-                        <h4>টেলিফোন + ওয়াইফাই</h4>
+                        <h4>টেলিফোন + ওয়াইফাই নাম্বার</h4>
                         <div class="number" id="stat-combo">0</div>
                     </div>
                     <div class="stat-card">
-                        <h4>শুধু ওয়াইফাই</h4>
+                        <h4>ওয়াইফাই নাম্বার</h4>
                         <div class="number" id="stat-wifi">0</div>
                     </div>
                 </div>
-
-                <div class="card">
-                    <h3>লাইভ সার্চ (নাম বা ফোন নম্বর)</h3>
-                    <input type="text" id="search-input" placeholder="খুঁজতে এখানে নাম বা ফোন নম্বর লিখুন..." oninput="handleSearch()">
-                    <div id="search-results"></div>
-                </div>
             </div>
 
-            <!-- 1. Add Entry -->
-            <div id="tab-content-add-entry" class="hidden">
-                <div class="card">
-                    <h3>নতুন তথ্য যুক্ত করুন</h3>
-                    <form id="add-data-form">
-                        <input type="text" id="cust-name" placeholder="গ্রাহকের নাম" required>
-                        <select id="cust-service" required>
-                            <option value="">সেবা নির্বাচন করুন</option>
-                            <option value="টেলিফোন">টেলিফোন</option>
-                            <option value="টেলিফোন+ওয়াইফাই">টেলিফোন+ওয়াইফাই</option>
-                            <option value="ওয়াইফাই">ওয়াইফাই</option>
-                        </select>
-                        <input type="text" id="cust-phone" placeholder="ফোন নম্বর" required>
-                        <textarea id="cust-address" placeholder="ঠিকানা" required></textarea>
-                        <textarea id="cust-details" placeholder="অতিরিক্ত তথ্য"></textarea>
-                        <button type="submit">ডাটা সংরক্ষণ করুন</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- 2. Pending User Requests -->
-            <div id="tab-content-user-requests" class="hidden">
-                <div class="card">
-                    <h3>নতুন রেজিস্ট্রেশন পারমিশন রিকুয়েস্ট</h3>
-                    <div id="pending-users-list"></div>
-                </div>
-            </div>
-
-            <!-- 3. All Users Info -->
-            <div id="tab-content-all-users" class="hidden">
-                <div class="card">
-                    <h3>রেজিস্টার্ড সকল ইউজারের তালিকা ও তথ্য</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>আইডি</th>
-                                <th>নাম</th>
-                                <th>ইমেইল</th>
-                                <th>মোবাইল</th>
-                                <th>পাসওয়ার্ড</th>
-                                <th>স্ট্যাটাস</th>
-                            </tr>
-                        </thead>
-                        <tbody id="all-users-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- 4. Manage Users (Delete User) -->
-            <div id="tab-content-manage-users" class="hidden">
-                <div class="card">
-                    <h3>ইউজার একাউন্ট ম্যানেজমেন্ট / ডিলিট</h3>
-                    <p style="color:#bbb; font-size:12px;">এখান থেকে কোনো ইউজার ডিলিট করলে সে আর সিস্টেমে প্রবেশ করতে পারবে না।</p>
-                    <div id="delete-users-list"></div>
-                </div>
-            </div>
-
-            <!-- 5. All Customer List -->
-            <div id="tab-content-customer-list" class="hidden">
-                <div class="card">
-                    <h3>সিরিয়াল করা গ্রাহক তালিকা</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>সিরিয়াল</th>
-                                <th>নাম</th>
-                                <th>সেবার ধরণ</th>
-                                <th>ফোন নম্বর</th>
-                                <th>ঠিকানা</th>
-                            </tr>
-                        </thead>
-                        <tbody id="customer-list-tbody"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Recycle Bin -->
-            <div id="tab-content-recycle-bin" class="hidden">
-                <div class="card">
-                    <h3>ডিলিট করা ফাইল (রিসাইকেল বিন)</h3>
-                    <div id="recycle-bin-list"></div>
-                </div>
+            <div class="card">
+                <h3>লাইভ সার্চ (নাম বা ফোন নম্বর)</h3>
+                <input type="text" id="search-input" placeholder="খুঁজতে এখানে নাম বা ফোন নম্বর লিখুন..." oninput="handleSearch()">
+                <div id="search-results"></div>
             </div>
         </div>
+
+        <!-- Add Customer Tab -->
+        <div id="tab-content-add-entry" class="hidden">
+            <div class="card">
+                <h3>নতুন তথ্য যুক্ত করুন</h3>
+                <form id="add-data-form">
+                    <input type="text" id="cust-name" placeholder="গ্রাহকের নাম" required>
+                    <select id="cust-service" required>
+                        <option value="">সেবা নির্বাচন করুন</option>
+                        <option value="টেলিফোন নাম্বার">টেলিফোন নাম্বার</option>
+                        <option value="টেলিফোন+ওয়াইফাই নাম্বার">টেলিফোন+ওয়াইফাই নাম্বার</option>
+                        <option value="ওয়াইফাই নাম্বার">ওয়াইফাই নাম্বার</option>
+                    </select>
+                    <input type="text" id="cust-phone" placeholder="ফোন নম্বর" required>
+                    <textarea id="cust-address" placeholder="ঠিকানা" required></textarea>
+                    <textarea id="cust-details" placeholder="অতিরিক্ত তথ্য"></textarea>
+                    <button type="submit">ডাটা সংরক্ষণ করুন</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pending User Requests -->
+        <div id="tab-content-user-requests" class="hidden">
+            <div class="card">
+                <h3>পেন্ডিং ইউজার পারমিশন রিকুয়েস্ট</h3>
+                <div id="pending-users-list"></div>
+            </div>
+        </div>
+
+        <!-- All Users Info (Admin) -->
+        <div id="tab-content-all-users" class="hidden">
+            <div class="card">
+                <h3>রেজিস্টার্ড সকল ইউজারের তথ্য</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>আইডি</th>
+                            <th>নাম</th>
+                            <th>ইমেইল</th>
+                            <th>মোবাইল</th>
+                            <th>পাসওয়ার্ড</th>
+                        </tr>
+                    </thead>
+                    <tbody id="all-users-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Delete Users (Admin) -->
+        <div id="tab-content-manage-users" class="hidden">
+            <div class="card">
+                <h3>ইউজার ডিলিট করুন</h3>
+                <div id="delete-users-list"></div>
+            </div>
+        </div>
+
+        <!-- Customer List -->
+        <div id="tab-content-customer-list" class="hidden">
+            <div class="card">
+                <h3>সিরিয়াল করা গ্রাহক তালিকা</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>সিরিয়াল</th>
+                            <th>নাম</th>
+                            <th>সেবার ধরণ</th>
+                            <th>ফোন নম্বর</th>
+                            <th>ঠিকানা</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customer-list-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recycle Bin -->
+        <div id="tab-content-recycle-bin" class="hidden">
+            <div class="card">
+                <h3>ডিলিট করা ফাইল (রিসাইকেল বিন)</h3>
+                <div id="recycle-bin-list"></div>
+            </div>
+        </div>
+
+        <!-- Messages Section -->
+        <div id="tab-content-messages" class="hidden">
+            <div class="card">
+                <h3>মেসেজ ও পারমিশন রিকুয়েস্ট</h3>
+                <div id="user-msg-box" class="hidden">
+                    <textarea id="msg-text" placeholder="এডমিনকে মেসেজ বা রিকুয়েস্ট পাঠান..."></textarea>
+                    <button onclick="sendMessage()">মেসেজ পাঠান</button>
+                </div>
+                <div id="msg-history-list" style="margin-top:15px;"></div>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        let currentUser = null;
+        let currentUser = JSON.parse(localStorage.getItem('btcl_user')) || null;
+
+        window.onload = () => {
+            if(currentUser) initDashboard();
+        };
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('backdrop').classList.toggle('active');
+        }
 
         function toggleAuth(type) {
             if(type === 'login') {
@@ -291,6 +339,7 @@ HTML_TEMPLATE = """
             const data = await res.json();
             if(data.success) {
                 currentUser = data.user;
+                localStorage.setItem('btcl_user', JSON.stringify(currentUser));
                 initDashboard();
             } else {
                 alert(data.message);
@@ -300,10 +349,8 @@ HTML_TEMPLATE = """
         document.getElementById('reg-form').onsubmit = async (e) => {
             e.preventDefault();
             const pass = document.getElementById('reg-pass').value;
-            const confirmPass = document.getElementById('reg-confirm-pass').value;
-
-            if(pass !== confirmPass) {
-                alert("পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না!");
+            if(pass !== document.getElementById('reg-confirm-pass').value) {
+                alert("পাসওয়ার্ড মিলছে না!");
                 return;
             }
 
@@ -324,22 +371,25 @@ HTML_TEMPLATE = """
 
         function initDashboard() {
             document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            document.getElementById('header-welcome').innerText = "Welcome " + currentUser.name + (currentUser.is_admin ? " (Admin)" : "");
+            document.getElementById('app-view').classList.remove('hidden');
+            document.getElementById('hamburger-btn').classList.remove('hidden');
+            document.getElementById('notif-icon').classList.remove('hidden');
 
             if(currentUser.is_admin) {
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+            } else {
+                document.getElementById('user-msg-box').classList.remove('hidden');
             }
 
             loadStats();
-            loadCustomerList();
+            checkNotifications();
+            setInterval(checkNotifications, 10000);
         }
 
         function showTab(tabName) {
-            document.querySelectorAll('.sidebar .nav-item').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+            if(document.getElementById('sidebar').classList.contains('active')) toggleSidebar();
 
-            const tabs = ['overview', 'add-entry', 'user-requests', 'all-users', 'manage-users', 'customer-list', 'recycle-bin'];
+            const tabs = ['overview', 'add-entry', 'user-requests', 'all-users', 'manage-users', 'customer-list', 'recycle-bin', 'messages'];
             tabs.forEach(t => {
                 const el = document.getElementById('tab-content-' + t);
                 if(el) el.classList.add('hidden');
@@ -353,6 +403,11 @@ HTML_TEMPLATE = """
             if(tabName === 'manage-users') loadManageUsers();
             if(tabName === 'customer-list') loadCustomerList();
             if(tabName === 'recycle-bin') loadRecycleBin();
+            if(tabName === 'messages') loadMessages();
+        }
+
+        function openMessages() {
+            showTab('messages');
         }
 
         async function loadStats() {
@@ -365,25 +420,30 @@ HTML_TEMPLATE = """
         }
 
         async function handleSearch() {
-            const query = document.getElementById('search-input').value;
-            if(!query) {
-                document.getElementById('search-results').innerHTML = '';
-                return;
-            }
-            const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+            const q = document.getElementById('search-input').value;
+            if(!q) return document.getElementById('search-results').innerHTML = '';
+            const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
             const results = await res.json();
             let html = '';
             results.forEach(i => {
                 html += `<div style="background:#2a2a2a; padding:10px; margin-top:8px; border-left:4px solid var(--primary); border-radius:4px;">
-                    <strong>${i.name}</strong> (${i.service_type}) - ${i.phone_number}<br>
-                    <small>${i.address}</small>
+                    <strong>${i.name}</strong> (${i.service_type}) - ${i.phone_number}<br><small>${i.address}</small>
                 </div>`;
             });
-            document.getElementById('search-results').innerHTML = html || '<p style="color:#888;">কোনো তথ্য পাওয়া যায়নি</p>';
+            document.getElementById('search-results').innerHTML = html || '<p style="color:#888;">তথ্য পাওয়া যায়নি</p>';
         }
 
         document.getElementById('add-data-form').onsubmit = async (e) => {
             e.preventDefault();
+
+            if(!currentUser.is_admin) {
+                const pin = prompt("সিকিউরিটি পাসওয়ার্ড লিখুন:");
+                if(pin !== "137955") {
+                    alert("ভুল সিকিউরিটি পাসওয়ার্ড!");
+                    return;
+                }
+            }
+
             const res = await fetch('/api/add-customer', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -410,12 +470,10 @@ HTML_TEMPLATE = """
             users.forEach(u => {
                 html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
                     <div><strong>${u.name}</strong><br><small>${u.email} | ${u.phone}</small></div>
-                    <div>
-                        <button onclick="approveUser(${u.id})" style="width:auto; padding:5px 10px; margin:0;" class="btn-warning">Approve</button>
-                    </div>
+                    <button onclick="approveUser(${u.id})" style="width:auto;" class="btn-warning">Approve</button>
                 </div>`;
             });
-            document.getElementById('pending-users-list').innerHTML = html || '<p style="color:#888;">কোনো রিকুয়েস্ট নেই</p>';
+            document.getElementById('pending-users-list').innerHTML = html || '<p style="color:#888;">কোনো পেন্ডিং রিকুয়েস্ট নেই</p>';
         }
 
         async function approveUser(id) {
@@ -428,14 +486,7 @@ HTML_TEMPLATE = """
             const users = await res.json();
             let html = '';
             users.forEach(u => {
-                html += `<tr>
-                    <td>${u.id}</td>
-                    <td>${u.name}</td>
-                    <td>${u.email}</td>
-                    <td>${u.phone}</td>
-                    <td><code>${u.password}</code></td>
-                    <td>${u.is_approved ? '<span style="color:var(--primary)">Active</span>' : '<span style="color:orange">Pending</span>'}</td>
-                </tr>`;
+                html += `<tr><td>${u.id}</td><td>${u.name}</td><td>${u.email}</td><td>${u.phone}</td><td><code>${u.password}</code></td></tr>`;
             });
             document.getElementById('all-users-tbody').innerHTML = html;
         }
@@ -448,18 +499,19 @@ HTML_TEMPLATE = """
                 if(!u.is_admin) {
                     html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
                         <div><strong>${u.name}</strong> (${u.phone})</div>
-                        <button onclick="deleteUserAccount(${u.id})" style="width:auto; padding:5px 10px; margin:0;" class="btn-danger">ডিলিট করুন</button>
+                        <button onclick="deleteUserAccount(${u.id})" style="width:auto;" class="btn-danger">ডিলিট</button>
                     </div>`;
                 }
             });
-            document.getElementById('delete-users-list').innerHTML = html || '<p style="color:#888;">কোনো ইউজার নেই</p>';
+            document.getElementById('delete-users-list').innerHTML = html;
         }
 
         async function deleteUserAccount(id) {
-            if(confirm("আপনি কি নিশ্চিত এই ইউজারকে স্থায়ীভাবে ডিলিট করতে চান?")) {
-                await fetch(`/api/admin/delete-user/${id}`, {method: 'POST'});
-                loadManageUsers();
-            }
+            const pin = prompt("সিকিউরিটি পাসওয়ার্ড লিখুন:");
+            if(pin !== "137955") return alert("ভুল পাসওয়ার্ড!");
+
+            await fetch(`/api/admin/delete-user/${id}`, {method: 'POST'});
+            loadManageUsers();
         }
 
         async function loadCustomerList() {
@@ -467,13 +519,7 @@ HTML_TEMPLATE = """
             const data = await res.json();
             let html = '';
             data.forEach((item, index) => {
-                html += `<tr>
-                    <td>${index + 1}</td>
-                    <td>${item.name}</td>
-                    <td>${item.service_type}</td>
-                    <td>${item.phone_number}</td>
-                    <td>${item.address}</td>
-                </tr>`;
+                html += `<tr><td>${index + 1}</td><td>${item.name}</td><td>${item.service_type}</td><td>${item.phone_number}</td><td>${item.address}</td></tr>`;
             });
             document.getElementById('customer-list-tbody').innerHTML = html;
         }
@@ -485,26 +531,64 @@ HTML_TEMPLATE = """
             items.forEach(i => {
                 html += `<div style="display:flex; justify-content:space-between; align-items:center; background:#2a2a2a; padding:10px; margin-top:5px; border-radius:5px;">
                     <div>${i.name} - ${i.phone_number}</div>
-                    <button onclick="restoreCustomer(${i.id})" style="width:auto; padding:5px 10px; margin:0; background:var(--primary);">Restore</button>
+                    <button onclick="restoreCustomer(${i.id})" style="width:auto; background:var(--primary);">Restore</button>
                 </div>`;
             });
             document.getElementById('recycle-bin-list').innerHTML = html || '<p style="color:#888;">রিসাইকেল বিন ফাঁকা</p>';
         }
 
         async function restoreCustomer(id) {
-            const pin = prompt("সিকিউরিটি পিন দিন:");
-            if(!pin) return;
-            const res = await fetch('/api/admin/restore-customer', {
+            const pin = prompt("সিকিউরিটি পাসওয়ার্ড দিন:");
+            if(pin !== "137955") return alert("ভুল পাসওয়ার্ড!");
+            await fetch('/api/admin/restore-customer', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: id, pin: pin })
+                body: JSON.stringify({ id: id })
             });
-            const data = await res.json();
-            alert(data.message);
-            if(data.success) loadRecycleBin();
+            loadRecycleBin();
         }
 
-        function logout() { location.reload(); }
+        async function sendMessage() {
+            const text = document.getElementById('msg-text').value;
+            if(!text) return;
+            await fetch('/api/messages/send', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ user_id: currentUser.id, sender_name: currentUser.name, message: text })
+            });
+            document.getElementById('msg-text').value = '';
+            loadMessages();
+        }
+
+        async function loadMessages() {
+            const res = await fetch(`/api/messages?user_id=${currentUser.id}&is_admin=${currentUser.is_admin}`);
+            const msgs = await res.json();
+            let html = '';
+            msgs.forEach(m => {
+                html += `<div style="background:#2a2a2a; padding:10px; margin-top:8px; border-radius:5px;">
+                    <strong>${m.sender_name}</strong> <small style="color:#888;">(${m.created_at})</small><br>${m.message}
+                </div>`;
+            });
+            document.getElementById('msg-history-list').innerHTML = html || '<p style="color:#888;">কোনো মেসেজ নেই</p>';
+        }
+
+        async function checkNotifications() {
+            if(!currentUser || !currentUser.is_admin) return;
+            const res = await fetch('/api/admin/unread-count');
+            const data = await res.json();
+            const badge = document.getElementById('notif-count');
+            if(data.count > 0) {
+                badge.innerText = data.count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('btcl_user');
+            location.reload();
+        }
     </script>
 </body>
 </html>
@@ -524,51 +608,48 @@ def register():
             INSERT INTO users (name, email, phone, password)
             VALUES (?, ?, ?, ?)
         ''', (data['name'], data['email'], data['phone'], data['password']))
+        user_id = cursor.lastrowid
+        cursor.execute('''
+            INSERT INTO messages (user_id, sender_name, message)
+            VALUES (?, ?, ?)
+        ''', (user_id, data['name'], f"নতুন রেজিস্ট্রেশন রিকুয়েস্ট: {data['name']} ({data['phone']})"))
         conn.commit()
-        return jsonify({"success": True, "message": "রেজিস্ট্রেশন সফল হয়েছে! এডমিন পারমিশন দিলে প্রবেশ করতে পারবেন।"})
+        return jsonify({"success": True, "message": "রেজিস্ট্রেশন রিকুয়েস্ট পাঠানো হয়েছে! এডমিনের অনুমোদনের অপেক্ষা করুন।"})
     except sqlite3.IntegrityError:
-        return jsonify({"success": False, "message": "ইমেইল বা ফোন নম্বরটি আগে থেকেই ব্যবহৃত হচ্ছে।"})
+        return jsonify({"success": False, "message": "ইমেইল বা ফোন নম্বরটি নিবন্ধিত রয়েছে।"})
     finally:
         conn.close()
 
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json
-    auth_id = data['auth_id']
-    password = data['password']
-    
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE (email = ? OR phone = ?) AND password = ?", (auth_id, auth_id, password))
+    cursor.execute("SELECT * FROM users WHERE (email = ? OR phone = ?) AND password = ?", (data['auth_id'], data['auth_id'], data['password']))
     user = cursor.fetchone()
     conn.close()
 
     if user:
-        if user[6] == 0: # is_approved check
-            return jsonify({"success": False, "message": "এডমিন এখনও আপনার অ্যাকাউন্টটি একটিভ করেনি!"})
+        if user[6] == 0:
+            return jsonify({"success": False, "message": "এডমিন অনুমোদনের অপেক্ষায় আছে!"})
         return jsonify({
             "success": True,
             "user": { "id": user[0], "name": user[1], "email": user[2], "phone": user[3], "is_admin": user[5] }
         })
-    return jsonify({"success": False, "message": "ভুল নম্বর/ইমেইল অথবা পাসওয়ার্ড!"})
+    return jsonify({"success": False, "message": "ভুল ইউজারনেম/ফোন বা পাসওয়ার্ড!"})
 
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
     cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0")
     total = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'টেলিফোন'")
+    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type LIKE 'টেলিফোন%' AND service_type NOT LIKE '%ওয়াইফাই%'")
     phone = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'টেলিফোন+ওয়াইফাই'")
+    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type LIKE '%ওয়াইফাই%' AND service_type LIKE '%টেলিফোন%'")
     combo = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type = 'ওয়াইফাই'")
+    cursor.execute("SELECT COUNT(*) FROM customers WHERE is_deleted = 0 AND service_type LIKE 'ওয়াইফাই%' AND service_type NOT LIKE '%টেলিফোন%'")
     wifi = cursor.fetchone()[0]
-    
     conn.close()
     return jsonify({"total": total, "phone": phone, "combo": combo, "wifi": wifi})
 
@@ -606,7 +687,7 @@ def add_customer():
     ''', (data['name'], data['service_type'], data['phone_number'], data['address'], data['details']))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "গ্রাহকের তথ্য সফলভাবে সংরক্ষণ করা হয়েছে!"})
+    return jsonify({"success": True, "message": "সফলভাবে তথ্য সংরক্ষণ করা হয়েছে!"})
 
 @app.route("/api/admin/pending-users", methods=["GET"])
 def pending_users():
@@ -656,15 +737,48 @@ def recycle_bin():
 @app.route("/api/admin/restore-customer", methods=["POST"])
 def restore_customer():
     data = request.json
-    if data.get('pin') != SECURITY_PIN:
-        return jsonify({"success": False, "message": "ভুল সিকিউরিটি পাসওয়ার্ড!"})
-    
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE customers SET is_deleted = 0 WHERE id = ?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "তথ্য পুনঃপ্রতিষ্ঠা করা হয়েছে।"})
+    return jsonify({"success": True})
+
+@app.route("/api/messages/send", methods=["POST"])
+def send_message():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO messages (user_id, sender_name, message) VALUES (?, ?, ?)",
+                   (data['user_id'], data['sender_name'], data['message']))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route("/api/messages", methods=["GET"])
+def get_messages():
+    user_id = request.args.get('user_id')
+    is_admin = request.args.get('is_admin')
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    if is_admin == '1':
+        cursor.execute("SELECT sender_name, message, created_at FROM messages ORDER BY id DESC")
+        cursor.execute("UPDATE messages SET is_read = 1")
+        conn.commit()
+    else:
+        cursor.execute("SELECT sender_name, message, created_at FROM messages WHERE user_id = ? ORDER BY id DESC", (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"sender_name": r[0], "message": r[1], "created_at": r[2]} for r in rows])
+
+@app.route("/api/admin/unread-count", methods=["GET"])
+def unread_count():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM messages WHERE is_read = 0")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return jsonify({"count": count})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
