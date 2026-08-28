@@ -22,16 +22,16 @@ def init_db():
         )
     ''')
     
-    # গ্রাহক/সংযোগ টেবিল (ডকুমেন্ট ফাইলের জন্য doc_url কলামসহ)
+    # গ্রাহক/সংযোগ টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT, service_type TEXT, service_no TEXT, phone TEXT, 
-            address TEXT, note TEXT, doc_url TEXT, is_deleted INTEGER DEFAULT 0
+            address TEXT, note TEXT, is_deleted INTEGER DEFAULT 0
         )
     ''')
     
-    # মেসেজ টেবিল
+    # মেসেজ টেবিল (is_read কলামসহ)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,7 +129,9 @@ HTML_LAYOUT = """
         .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
         .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
         .btn-approve { background: #00e65c; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 4px; }
+        .btn-restore { background: #007bff; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; }
         .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .btn-edit { background: #ffaa00; color: #000; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
 
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -158,14 +160,6 @@ HTML_LAYOUT = """
         .chat-msg.sent { background: #005c26; color: #fff; align-self: flex-end; }
         .chat-msg.received { background: #2a2a2a; color: #fff; align-self: flex-start; }
         
-        /* ক্যামেরা প্রিভিউ ও বাটন */
-        .camera-btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        .cam-btn { flex: 1; padding: 10px; background: #2a2a2a; color: #00ff66; border: 1px solid #00ff66; border-radius: 6px; font-size: 12px; cursor: pointer; text-align: center; }
-        .cam-btn:hover { background: #005c26; color: #fff; }
-        #camera-preview-container { text-align: center; margin-bottom: 10px; display: none; }
-        #video-element { width: 100%; max-height: 200px; background: #000; border-radius: 6px; border: 1px solid #333; }
-        #captured-image-preview { max-width: 100%; max-height: 150px; border-radius: 6px; border: 1px solid #00ff66; margin-top: 5px; display: none; }
-
         .hidden { display: none !important; }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; display: none; }
         .overlay.active { display: block; }
@@ -194,6 +188,8 @@ HTML_LAYOUT = """
             <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. নতুন ইউজার তৈরি করুন</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. নিবন্ধিত ইউজার তথ্য</button>
             <button id="menu-admin-settings" class="menu-item admin-only" onclick="navTo('sec-admin-settings', this)">🔐 ৪. সিকিউরিটি ও পাসওয়ার্ড</button>
+            <button id="menu-deleted-cust" class="menu-item admin-only" onclick="navTo('sec-deleted-customers', this)">🗑️ ৫. ডিলিট হওয়া নম্বর</button>
+            <button id="menu-deleted-users" class="menu-item admin-only" onclick="navTo('sec-deleted-users', this)">🗑️ ৬. ডিলিট হওয়া ইউজার</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
         </div>
         <button class="logout-btn" onclick="logout()">লগআউট</button>
@@ -309,9 +305,9 @@ HTML_LAYOUT = """
             <div id="notif-history-list"></div>
         </div>
 
-        <!-- ১. নম্বর এড করুন (ক্যামেরা ও গ্যালারি অপশনসহ) -->
+        <!-- অ্যাড নম্বর -->
         <div id="sec-add" class="card hidden admin-only">
-            <div class="card-title" id="form-add-title">নতুন নম্বর ও ডকুমেন্ট এড করুন</div>
+            <div class="card-title" id="form-add-title">নতুন নম্বর এড করুন</div>
             <form onsubmit="saveCustomer(event)">
                 <input type="hidden" id="cust-id">
                 <input type="text" id="cust-name" class="input-box" placeholder="গ্রাহকের নাম" required>
@@ -325,30 +321,7 @@ HTML_LAYOUT = """
                 <input type="text" id="cust-service-no" class="input-box" placeholder="সংযোগ নম্বর" required>
                 <input type="text" id="cust-address" class="input-box" placeholder="ঠিকানা" required>
                 <input type="text" id="cust-note" class="input-box" placeholder="অতিরিক্ত নোট">
-
-                <!-- ক্যামেরা ও ফাইল ফাইল সিলেক্টর (ঐচ্ছিক/Optional) -->
-                <div style="font-size:12px; color:#aaa; margin-bottom:5px;">ডকুমেন্ট যুক্ত করুন (ছবি বা ফাইল তুলে দেওয়া ঐচ্ছিক):</div>
-                
-                <div class="camera-btn-group">
-                    <button type="button" class="cam-btn" onclick="startCamera()">📷 ক্যামেরা চালু করুন</button>
-                    <button type="button" class="cam-btn" onclick="triggerGallery()">📁 গ্যালারি থেকে ছবি নিন</button>
-                </div>
-
-                <!-- লুকায়িত ফাইল ইনপুট (গ্যালারির জন্য) -->
-                <input type="file" id="cust-gallery-input" accept="image/*,.pdf" style="display:none;" onchange="handleGallerySelect(event)">
-
-                <!-- লাইভ ক্যামেরা ভিউ -->
-                <div id="camera-preview-container">
-                    <video id="video-element" autoplay playsinline></video>
-                    <button type="button" class="cam-btn" style="background:#00ff66; color:#000; margin-top:5px;" onclick="capturePhoto()">📸 ছবি তুলুন</button>
-                </div>
-
-                <!-- সিলেক্ট হওয়া ছবির প্রিভিউ -->
-                <div style="text-align:center;">
-                    <img id="captured-image-preview" src="" alt="ডকুমেন্ট প্রিভিউ">
-                </div>
-
-                <button type="submit" class="submit-btn" style="margin-top:10px;" id="cust-submit-btn">সংরক্ষণ করুন</button>
+                <button type="submit" class="submit-btn" id="cust-submit-btn">সংরক্ষণ করুন</button>
             </form>
         </div>
 
@@ -396,16 +369,42 @@ HTML_LAYOUT = """
             </form>
         </div>
 
-        <!-- মেসেঞ্জার -->
+        <div id="sec-deleted-customers" class="card hidden admin-only">
+            <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া নম্বর</div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr><th>নাম</th><th>মোবাইল</th><th>সেবার ধরন</th><th>সংযোগ নম্বর</th><th>অ্যাকশন</th></tr>
+                    </thead>
+                    <tbody id="deleted-customers-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="sec-deleted-users" class="card hidden admin-only">
+            <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া ইউজার</div>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr><th>নাম</th><th>ইউজারনেম</th><th>ফোন</th><th>অ্যাকশন</th></tr>
+                    </thead>
+                    <tbody id="deleted-users-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- নতুন মেসেঞ্জার সিস্টেম (Messenger View) -->
         <div id="sec-messenger" class="card hidden">
             <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
             
             <div class="messenger-layout">
+                <!-- অ্যাডমিন দেখার জন্য মেসেঞ্জার ইনবক্স তালিকা -->
                 <div id="messenger-user-list-container" class="chat-user-list admin-only">
                     <div style="font-size:11px; color:#aaa; margin-bottom:5px; text-align:center;">সর্বশেষ মেসেজ অনুযায়ী সিরিয়াল</div>
                     <div id="inbox-user-list"></div>
                 </div>
 
+                <!-- মূল চ্যাটিং এরিয়া -->
                 <div class="chat-area" id="chat-area-main" style="width:100%;">
                     <div id="active-chat-header" class="chat-header">💬 চ্যাট বক্স</div>
                     <div id="chat-messages" class="chat-box"></div>
@@ -432,9 +431,7 @@ HTML_LAYOUT = """
     <script>
         let currentUser = null;
         let customerDataCache = [];
-        let activeSelectedUser = '';
-        let mediaStream = null;
-        let selectedFileBlob = null; // গ্যালারি বা ক্যামেরা থেকে পাওয়া ছবি জমা থাকবে
+        let activeSelectedUser = ''; // অ্যাডমিন যার সাথে চ্যাট করবে
 
         function toggleAuthTab(tab) {
             if(tab === 'login') {
@@ -538,7 +535,6 @@ HTML_LAYOUT = """
                     <th>সেবার ধরন</th>
                     <th>সংযোগ নম্বর</th>
                     <th>ঠিকানা</th>
-                    <th>ডকুমেন্ট</th>
                     <th>মেসেজ</th>
                     <th>অ্যাকশন</th>
                 `;
@@ -566,6 +562,8 @@ HTML_LAYOUT = """
             });
 
             loadAllUsers();
+            loadDeletedCustomers();
+            loadDeletedUsers();
             loadNotifHistory();
             checkNotifications();
             loadMessengerData();
@@ -602,8 +600,6 @@ HTML_LAYOUT = """
 
             data.forEach((c, index) => {
                 const tr = document.createElement('tr');
-                let docHtml = c.doc_url ? `<a href="${c.doc_url}" target="_blank" style="color:#00ff66;">📄 দেখুন</a>` : 'নাই';
-                
                 if (isAdmin) {
                     tr.innerHTML = `
                         <td>${index + 1}</td>
@@ -612,7 +608,6 @@ HTML_LAYOUT = """
                         <td>${c.service_type}</td>
                         <td><strong>${c.service_no}</strong></td>
                         <td>${c.address}</td>
-                        <td>${docHtml}</td>
                         <td>
                             <a href="https://wa.me/${c.phone}" target="_blank" style="color:#00ff66;">WA</a>
                         </td>
@@ -632,123 +627,9 @@ HTML_LAYOUT = """
             });
         }
 
-        /* ---------------------------------------------------------
-           ক্যামেরা ও গ্যালারি হ্যান্ডলিং
-        --------------------------------------------------------- */
-        async function startCamera() {
-            stopCamera();
-            document.getElementById('camera-preview-container').style.display = 'block';
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-                document.getElementById('video-element').srcObject = mediaStream;
-            } catch (err) {
-                alert("ক্যামেরা চালু করা সম্ভব হয়নি! অনুমতি দিন বা ব্রাউজার চেক করুন।");
-                document.getElementById('camera-preview-container').style.display = 'none';
-            }
-        }
-
-        function stopCamera() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            document.getElementById('camera-preview-container').style.display = 'none';
-        }
-
-        function capturePhoto() {
-            const video = document.getElementById('video-element');
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            canvas.toBlob(blob => {
-                selectedFileBlob = new File([blob], "camera_doc.jpg", { type: "image/jpeg" });
-                const previewImg = document.getElementById('captured-image-preview');
-                previewImg.src = URL.createObjectURL(blob);
-                previewImg.style.display = 'inline-block';
-                stopCamera();
-            }, 'image/jpeg');
-        }
-
-        function triggerGallery() {
-            stopCamera();
-            document.getElementById('cust-gallery-input').click();
-        }
-
-        function handleGallerySelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                selectedFileBlob = file;
-                const previewImg = document.getElementById('captured-image-preview');
-                previewImg.src = URL.createObjectURL(file);
-                previewImg.style.display = 'inline-block';
-            }
-        }
-
-        /* ---------------------------------------------------------
-           নম্বর সেভ লজিক
-        --------------------------------------------------------- */
-        function saveCustomer(e) {
-            e.preventDefault();
-
-            const formData = new FormData();
-            formData.append('id', document.getElementById('cust-id').value);
-            formData.append('name', document.getElementById('cust-name').value);
-            formData.append('phone', document.getElementById('cust-phone').value);
-            formData.append('service_type', document.getElementById('cust-service-type').value);
-            formData.append('service_no', document.getElementById('cust-service-no').value);
-            formData.append('address', document.getElementById('cust-address').value);
-            formData.append('note', document.getElementById('cust-note').value);
-
-            // ফাইল সংযুক্ত করা (যদি গ্রহণ করা হয়)
-            if (selectedFileBlob) {
-                formData.append('document', selectedFileBlob);
-            }
-
-            fetch('/api/save-customer', {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.json())
-            .then(res => {
-                if (res.success) {
-                    alert("গ্রাহক তথ্য সফলভাবে সংরক্ষিত হয়েছে!");
-                    // ফর্ম রিসেট
-                    document.getElementById('cust-id').value = '';
-                    document.getElementById('cust-name').value = '';
-                    document.getElementById('cust-phone').value = '';
-                    document.getElementById('cust-service-no').value = '';
-                    document.getElementById('cust-address').value = '';
-                    document.getElementById('cust-note').value = '';
-                    document.getElementById('captured-image-preview').style.display = 'none';
-                    selectedFileBlob = null;
-                    stopCamera();
-                    
-                    loadDashboardData();
-                    navTo('sec-overview');
-                } else {
-                    alert("সংরক্ষণ করতে সমস্যা হয়েছে!");
-                }
-            });
-        }
-
-        function deleteCustomer(id) {
-            if(confirm("আপনি কি এটি ডিলিট করতে চান?")) {
-                fetch('/api/delete-customer', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({id: id})
-                }).then(() => loadDashboardData());
-            }
-        }
-
         function showCustomerDetails(id) {
             const c = customerDataCache.find(item => item.id === id);
             if (!c) return;
-
-            let docPreview = c.doc_url ? `<div class="modal-item"><span>ডকুমেন্ট:</span> <br><a href="${c.doc_url}" target="_blank"><img src="${c.doc_url}" style="max-width:100%; border-radius:6px; margin-top:5px;"></a></div>` : '';
 
             const html = `
                 <div class="modal-item"><span>গ্রাহকের নাম:</span> <strong>${c.name}</strong></div>
@@ -756,8 +637,6 @@ HTML_LAYOUT = """
                 <div class="modal-item"><span>সেবার ধরন:</span> <strong>${c.service_type}</strong></div>
                 <div class="modal-item"><span>সংযোগ নম্বর:</span> <strong>${c.service_no}</strong></div>
                 <div class="modal-item"><span>ঠিকানা:</span> <strong>${c.address}</strong></div>
-                <div class="modal-item"><span>নোট:</span> <strong>${c.note || 'নাই'}</strong></div>
-                ${docPreview}
             `;
             document.getElementById('details-modal-content').innerHTML = html;
             document.getElementById('details-modal').classList.remove('hidden');
@@ -770,12 +649,13 @@ HTML_LAYOUT = """
         }
 
         /* ---------------------------------------------------------
-           মেসেঞ্জার ও চ্যাটিং
+           মেসেঞ্জার ও চ্যাটিং লজিক (আপডেট মেসেজ সবার উপরে থাকবে)
         --------------------------------------------------------- */
         function loadMessengerData() {
             if (!currentUser) return;
 
             if (currentUser.status === 'admin') {
+                // অ্যাডমিনের ইনবক্স লিস্ট লোড করা
                 fetch('/api/admin/messenger-threads')
                 .then(res => res.json())
                 .then(threads => {
@@ -787,6 +667,7 @@ HTML_LAYOUT = """
                         return;
                     }
 
+                    // ডিফল্ট প্রথম ইউজারকে সিলেক্ট করা
                     if (!activeSelectedUser && threads.length > 0) {
                         activeSelectedUser = threads[0].username;
                     }
@@ -801,11 +682,13 @@ HTML_LAYOUT = """
                         `;
                     });
 
+                    // নির্বাচিত ইউজারের মেসেজ লোড
                     if (activeSelectedUser) {
                         loadSpecificUserChat(activeSelectedUser);
                     }
                 });
             } else {
+                // সাধারণ ইউজার কেবল এডমিনের সাথে চ্যাট করবে
                 loadSpecificUserChat('Khushbu23');
                 document.getElementById('active-chat-header').innerText = "💬 Admin এর সাথে চ্যাট";
             }
@@ -835,6 +718,8 @@ HTML_LAYOUT = """
                     }
 
                     const isMe = m.sender === currentUser.username;
+                    
+                    // অ্যাডমিন মেসেজ দিলে "Admin" নাম প্রদর্শন
                     let displayName = (m.sender_status === 'admin') ? 'Admin' : '@' + m.sender;
 
                     html += `<div class="chat-msg ${isMe ? 'sent' : 'received'}">
@@ -878,7 +763,7 @@ HTML_LAYOUT = """
         }
 
         /* ---------------------------------------------------------
-           নোটিফিকেশন
+           নোটিফিকেশন লজিক
         --------------------------------------------------------- */
         function toggleNotifDropdown() {
             document.getElementById('notif-dropdown').classList.toggle('active');
@@ -968,7 +853,7 @@ HTML_LAYOUT = """
         }
 
         /* ---------------------------------------------------------
-           সাইডবার ও ন্যাভিগেশন
+           অন্যান্য একশন ও সাইডবার
         --------------------------------------------------------- */
         function openSidebar() {
             document.getElementById('sidebar').classList.add('active');
@@ -978,18 +863,16 @@ HTML_LAYOUT = """
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('active');
             document.getElementById('overlay').classList.remove('active');
-            stopCamera();
             closeDetailsModal();
         }
 
         function navTo(secId, btnEl) {
-            stopCamera();
             closeSidebar();
             document.querySelectorAll('#dashboard-view > div[id^="sec-"]').forEach(d => d.classList.add('hidden'));
             document.getElementById(secId).classList.remove('hidden');
 
             if(secId === 'sec-notif-history') {
-                loadNotifHistory();
+                loadNotifHistory(); // বারবার প্রবেশ করতে পারার লজিক
             }
 
             if(btnEl) {
@@ -999,11 +882,11 @@ HTML_LAYOUT = """
         }
 
         function logout() {
-            stopCamera();
             currentUser = null;
             location.reload();
         }
 
+        // সহায়ক ফাংশনসমূহ
         function loadAllUsers() {
             fetch('/api/all-users').then(res => res.json()).then(users => {
                 const tbody = document.getElementById('all-users-body');
@@ -1026,6 +909,10 @@ HTML_LAYOUT = """
             .then(() => loadAllUsers());
         }
 
+        function loadDeletedCustomers() {}
+        function loadDeletedUsers() {}
+        function saveCustomer(e) { e.preventDefault(); }
+        function deleteCustomer(id) {}
         function updateAdminProfile(e) { e.preventDefault(); }
         function adminCreateUser(e) { e.preventDefault(); }
     </script>
@@ -1075,67 +962,12 @@ def login():
         })
     return jsonify({"success": False, "message": "ইউজারনেম বা পাসওয়ার্ড ভুল!"})
 
-# গ্রাহক সেভ করা (ক্যামেরা/গ্যালারি ডকুমেন্ট আপলোড সহ)
-@app.route('/api/save-customer', methods=['POST'])
-def save_customer():
-    c_id = request.form.get('id')
-    name = request.form.get('name')
-    phone = request.form.get('phone')
-    service_type = request.form.get('service_type')
-    service_no = request.form.get('service_no')
-    address = request.form.get('address')
-    note = request.form.get('note', '')
-    doc_file = request.files.get('document')
-
-    doc_url = None
-    if doc_file:
-        upload_folder = 'static/uploads'
-        os.makedirs(upload_folder, exist_ok=True)
-        file_path = os.path.join(upload_folder, doc_file.filename)
-        doc_file.save(file_path)
-        doc_url = '/' + file_path
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    if c_id:
-        if doc_url:
-            cursor.execute("UPDATE customers SET name=?, service_type=?, service_no=?, phone=?, address=?, note=?, doc_url=? WHERE id=?",
-                           (name, service_type, service_no, phone, address, note, doc_url, c_id))
-        else:
-            cursor.execute("UPDATE customers SET name=?, service_type=?, service_no=?, phone=?, address=?, note=? WHERE id=?",
-                           (name, service_type, service_no, phone, address, note, c_id))
-    else:
-        cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, address, note, doc_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                       (name, service_type, service_no, phone, address, note, doc_url))
-
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
-@app.route('/api/delete-customer', methods=['POST'])
-def delete_customer():
-    data = request.json
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE customers SET is_deleted=1 WHERE id=?", (data['id'],))
-    conn.commit()
-    conn.close()
-    return jsonify({"success": True})
-
-@app.route('/api/customers', methods=['GET'])
-def get_customers():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, service_type, service_no, phone, address, note, doc_url FROM customers WHERE is_deleted=0")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "address": r[5], "note": r[6], "doc_url": r[7]} for r in rows])
-
+# এডমিনের চ্যাট লিস্ট (আপডেট মেসেজ সবার উপরে থাকবে)
 @app.route('/api/admin/messenger-threads', methods=['GET'])
 def admin_messenger_threads():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    
     cursor.execute("SELECT username, name FROM users WHERE status != 'admin' AND is_deleted = 0")
     users = cursor.fetchall()
 
@@ -1160,9 +992,12 @@ def admin_messenger_threads():
         })
 
     conn.close()
+
+    # মেসেজের সময় অনুযায়ী সর্ট করা (নতুন/Update মেসেজ সবার উপরে থাকবে)
     threads.sort(key=lambda x: x['timestamp'], reverse=True)
     return jsonify(threads)
 
+# নির্দিষ্ট ২ জন ইউজারের মধ্যে মেসেজ চ্যাট বের করা
 @app.route('/api/messages/thread', methods=['GET'])
 def get_message_thread():
     u1 = request.args.get('user1')
@@ -1285,6 +1120,15 @@ def notification_history():
 
     conn.close()
     return jsonify(history)
+
+@app.route('/api/customers', methods=['GET'])
+def get_customers():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, service_type, service_no, phone, address, note FROM customers WHERE is_deleted=0")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "service_type": r[2], "service_no": r[3], "phone": r[4], "address": r[5], "note": r[6]} for r in rows])
 
 @app.route('/api/all-users', methods=['GET'])
 def all_users():
