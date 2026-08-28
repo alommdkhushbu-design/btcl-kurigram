@@ -13,7 +13,6 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
-    # ইউজার টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +20,6 @@ def init_db():
         )
     ''')
     
-    # গ্রাহক ডাটা টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +27,6 @@ def init_db():
         )
     ''')
     
-    # মেসেঞ্জার টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -37,7 +34,6 @@ def init_db():
         )
     ''')
     
-    # ডিফল্ট এডমিন একাউন্ট
     cursor.execute("SELECT * FROM users WHERE username='admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, ?)",
@@ -46,13 +42,10 @@ def init_db():
     conn.commit()
     conn.close()
 
-try:
-    init_db()
-except Exception as e:
-    print("Database Init Error:", e)
+init_db()
 
 # ---------------------------------------------------------
-# UI টেমপ্লেট
+# UI (HTML, CSS & JS)
 # ---------------------------------------------------------
 HTML_LAYOUT = """
 <!DOCTYPE html>
@@ -60,54 +53,53 @@ HTML_LAYOUT = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>বিটিসিএল (BTCL), কুড়িগ্রাম</title>
+    <title>BTCL, কুড়িগ্রাম</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
         body { background-color: #121212; color: #ffffff; padding: 12px; }
 
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .header-left { display: flex; align-items: center; gap: 8px; }
-        .menu-btn, .group-btn { font-size: 18px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; }
-        .header-title { color: #00ff66; font-size: 14px; font-weight: bold; background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #2a2a2a; }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .menu-btn, .group-btn { font-size: 18px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+        .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 12px; border-radius: 6px; border: 1px solid #2a2a2a; }
         
         .search-container { position: relative; margin-bottom: 15px; }
-        .search-box { width: 100%; padding: 10px 12px 10px 35px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px; color: #fff; font-size: 13px; }
-        .search-icon { position: absolute; left: 12px; top: 10px; color: #888; }
+        .search-box { width: 100%; padding: 12px 15px 12px 35px; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px; color: #fff; font-size: 14px; }
+        .search-icon { position: absolute; left: 12px; top: 12px; color: #888; }
 
-        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         .sidebar.active { left: 0; }
-        .close-btn { color: #ff4d4d; background: none; border: none; font-size: 15px; cursor: pointer; float: right; font-weight: bold; }
+        .close-btn { color: #ff4d4d; background: none; border: none; font-size: 16px; cursor: pointer; float: right; font-weight: bold; }
         
-        .menu-title { color: #888; font-size: 12px; margin: 20px 0 10px 0; }
+        .menu-title { color: #888; font-size: 13px; margin: 20px 0 10px 0; }
         .menu-list { display: flex; flex-direction: column; gap: 8px; }
-        .menu-item { background: #2a2a2a; color: #fff; padding: 10px; border-radius: 6px; font-size: 13px; border: none; text-align: left; width: 100%; cursor: pointer; }
+        .menu-item { background: #2a2a2a; color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; border: none; text-align: left; width: 100%; cursor: pointer; }
         .menu-item.active { background: #00e65c; color: #000; font-weight: bold; }
-        .logout-btn { background: #ff4d4d; color: #fff; width: 100%; padding: 10px; border-radius: 6px; border: none; margin-top: 20px; font-weight: bold; cursor: pointer; }
+        .logout-btn { background: #ff4d4d; color: #fff; width: 100%; padding: 12px; border-radius: 6px; border: none; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
         .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
-        .card-title { font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 12px; }
+        .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
         .grid-stats { display: grid; grid-template-columns: 1fr; gap: 10px; text-align: center; }
-        .stat-box { background: #003311; border: 1px solid #00e65c; padding: 12px; border-radius: 8px; }
-        .stat-box h2 { color: #00ff66; margin-top: 5px; font-size: 20px; }
-        .stat-box p { font-size: 12px; color: #ccc; }
+        .stat-box.green { background: #003311; border: 1px solid #00e65c; padding: 15px; border-radius: 8px; }
+        .stat-box h2 { color: #00ff66; margin-top: 5px; font-size: 22px; }
 
-        .input-box { width: 100%; padding: 10px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 13px; }
-        .submit-btn { width: 100%; padding: 10px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
-        .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
-        .btn-edit { background: #ffaa00; color: #000; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
+        .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
+        .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+        .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+        .btn-edit { background: #ffaa00; color: #000; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; }
 
         .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #333; padding: 8px; text-align: left; }
         th { background: #2a2a2a; color: #00ff66; }
 
-        .auth-container { max-width: 400px; margin: 20px auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #2a2a2a; }
+        .auth-container { max-width: 400px; margin: 30px auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #2a2a2a; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         
-        .chat-box { height: 200px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #121212; display: flex; flex-direction: column; gap: 8px; }
-        .chat-msg { max-width: 85%; padding: 8px 10px; border-radius: 8px; font-size: 12px; }
+        .chat-box { height: 220px; overflow-y: auto; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 10px; background: #121212; display: flex; flex-direction: column; gap: 8px; }
+        .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
         .chat-msg.sent { background: #005c26; color: #fff; align-self: flex-end; }
         .chat-msg.received { background: #2a2a2a; color: #fff; align-self: flex-start; }
         
@@ -129,14 +121,14 @@ HTML_LAYOUT = """
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
             <button id="menu-pending" class="menu-item admin-only" onclick="navTo('sec-pending', this)">⏳ ২. পেন্ডিং ইউজার</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. সকল ইউজার তথ্য</button>
-            <button class="menu-item" onclick="navTo('sec-customers', this)">📋 ৪. সকল গ্রাহক তালিকা</button>
             <button class="menu-item" onclick="navTo('sec-messenger', this)">💬 মেসেঞ্জার</button>
         </div>
         <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
+    <!-- লগইন / রেজিস্ট্রেশন -->
     <div id="auth-view" class="auth-container">
-        <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:16px; margin-bottom:15px;">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
+        <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
         <div class="tab-buttons">
             <button id="btn-tab-login" class="tab-btn" style="background:#00e65c; color:#000;" onclick="toggleAuthTab('login')">লগইন</button>
             <button id="btn-tab-reg" class="tab-btn" style="background:#2a2a2a; color:#fff;" onclick="toggleAuthTab('reg')">রেজিস্ট্রেশন</button>
@@ -150,27 +142,26 @@ HTML_LAYOUT = """
 
         <form id="form-reg" class="hidden" onsubmit="sendOTP(event)">
             <input type="text" id="reg-name" class="input-box" placeholder="আপনার নাম" required>
-            <input type="email" id="reg-email" class="input-box" placeholder="জিমেইল আইডি (e.g. name@gmail.com)" required>
-            <input type="tel" id="reg-phone" class="input-box" placeholder="১১ ডিজিট মোবাইল নম্বর (e.g. 01712345678)" required>
+            <input type="email" id="reg-email" class="input-box" placeholder="সঠিক জিমেইল আইডি" required>
+            <input type="tel" id="reg-phone" class="input-box" placeholder="১১ ডিজিট মোবাইল নম্বর" required>
             <input type="text" id="reg-username" class="input-box" placeholder="ইউজারনেম" required>
             <input type="password" id="reg-pass" class="input-box" placeholder="পাসওয়ার্ড" required>
             <input type="password" id="reg-cpass" class="input-box" placeholder="কনফার্ম পাসওয়ার্ড" required>
-            <button type="submit" class="submit-btn">মোবাইল ভেরিফাই করুন (OTP পাঠান)</button>
+            <button type="submit" class="submit-btn">মোবাইল ভেরিফাই করুন (OTP)</button>
         </form>
 
         <form id="form-otp" class="hidden" onsubmit="verifyOTP(event)">
-            <div style="text-align:center; color:#888; font-size:12px; margin-bottom:10px;">মোবাইলে পাঠানো ৪ ডিজিটের OTP কোডটি লিখুন</div>
-            <input type="text" id="otp-input" class="input-box" placeholder="OTP কোড (পরীক্ষার জন্য: 1234)" required>
-            <button type="submit" class="submit-btn">ভেরিফাই করে অ্যাকাউন্ট তৈরি করুন</button>
+            <div style="text-align:center; color:#888; font-size:13px; margin-bottom:10px;">মোবাইলে পাঠানো OTP লিখুন (টেস্ট OTP: 1234)</div>
+            <input type="text" id="otp-input" class="input-box" placeholder="OTP কোড" required>
+            <button type="submit" class="submit-btn">ভেরিফাই করে একাউন্ট করুন</button>
         </form>
     </div>
 
+    <!-- পেন্ডিং ইউজার স্ক্রিন -->
     <div id="pending-user-view" class="auth-container hidden">
         <div style="color:#ffaa00; text-align:center; font-weight:bold; font-size:15px; margin-bottom:10px;">⏳ একাউন্ট পেন্ডিং অবস্থায় রয়েছে</div>
-        <p style="font-size:12px; color:#ccc; text-align:center; margin-bottom:15px;">এডমিন পারমিশন না দেওয়া পর্যন্ত আপনি ডাটা দেখতে পারবেন না। মেসেঞ্জারে এডমিনের সাথে যোগাযোগ করুন।</p>
-        
+        <p style="font-size:12px; color:#ccc; text-align:center; margin-bottom:15px;">এডমিন পারমিশন দেওয়ার পর ডাটা দেখা যাবে। এডমিনের সাথে কথা বলুন:</p>
         <div class="card">
-            <div class="card-title" style="color:#00ff66;">💬 এডমিন লাইভ চ্যাট</div>
             <div id="pending-chat-box" class="chat-box"></div>
             <div style="display:flex; gap:5px;">
                 <input type="text" id="pending-msg-input" class="input-box" style="margin-bottom:0;" placeholder="মেসেজ লিখুন...">
@@ -180,11 +171,12 @@ HTML_LAYOUT = """
         <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
+    <!-- মূল ড্যাশবোর্ড -->
     <div id="dashboard-view" class="hidden">
         <div class="header">
             <div class="header-left">
                 <button class="menu-btn" onclick="openSidebar()">☰</button>
-                <button class="group-btn" title="গ্রুপ ব্রডকাস্ট" onclick="openGroupModal()">📢 গ্রুপ</button>
+                <button class="group-btn" onclick="openGroupModal()">📢 গ্রুপ</button>
             </div>
             <div class="header-title">BTCL, কুড়িগ্রাম</div>
             <div style="font-size: 14px;" id="user-badge">👤 ইউজার</div>
@@ -192,13 +184,13 @@ HTML_LAYOUT = """
 
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" class="search-box" onkeyup="filterCustomers()" placeholder="নাম, নম্বর বা ঠিকানা দিয়ে খুঁজুন...">
+            <input type="text" id="search-input" class="search-box" onkeyup="filterCustomers()" placeholder="নাম, মোবাইল, বা নম্বর দিয়ে খুঁজুন...">
         </div>
 
         <div id="sec-overview">
             <div class="card">
                 <div class="grid-stats">
-                    <div class="stat-box">
+                    <div class="stat-box green">
                         <p>মোট গ্রাহক সংযোগ</p>
                         <h2 id="stat-total">0</h2>
                     </div>
@@ -206,7 +198,7 @@ HTML_LAYOUT = """
             </div>
 
             <div class="card">
-                <div class="card-title" style="text-align:left;">গ্রাহক তথ্য তালিকা</div>
+                <div class="card-title" style="text-align:left;">গ্রাহক নম্বর ও ডাটা তালিকা</div>
                 <div class="table-responsive">
                     <table>
                         <thead>
@@ -239,13 +231,13 @@ HTML_LAYOUT = """
                 <input type="text" id="cust-phone" class="input-box" placeholder="ফোন নম্বর" required>
                 <input type="text" id="cust-amount" class="input-box" placeholder="বিল পরিমাণ (টাকা)" required>
                 <input type="text" id="cust-address" class="input-box" placeholder="ঠিকানা" required>
-                <input type="text" id="cust-note" class="input-box" placeholder="অতিরিক্ত তথ্য/ডকুমেন্ট নম্বর">
+                <input type="text" id="cust-note" class="input-box" placeholder="অতিরিক্ত তথ্য/ডকুমেন্ট">
                 <button type="submit" class="submit-btn" id="cust-submit-btn">ডাটা সংরক্ষণ করুন</button>
             </form>
         </div>
 
         <div id="sec-pending" class="card hidden admin-only">
-            <div class="card-title">পেন্ডিং ইউজার পারমিশন রিকুয়েস্ট</div>
+            <div class="card-title">পেন্ডিং ইউজার পারমিশন</div>
             <div class="table-responsive">
                 <table>
                     <thead>
@@ -253,7 +245,7 @@ HTML_LAYOUT = """
                             <th>নাম</th>
                             <th>জিমেইল</th>
                             <th>ফোন</th>
-                            <th>পারমিশন</th>
+                            <th>অ্যাকশন</th>
                         </tr>
                     </thead>
                     <tbody id="pending-users-body"></tbody>
@@ -279,25 +271,8 @@ HTML_LAYOUT = """
             </div>
         </div>
 
-        <div id="sec-customers" class="card hidden">
-            <div class="card-title">সকল গ্রাহকের তালিকা</div>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>নাম</th>
-                            <th>ফোন</th>
-                            <th>ঠিকানা</th>
-                            <th>নোট/ডকুমেন্ট</th>
-                        </tr>
-                    </thead>
-                    <tbody id="all-customers-list-body"></tbody>
-                </table>
-            </div>
-        </div>
-
         <div id="sec-messenger" class="card hidden">
-            <div class="card-title" style="color:#00ff66;">💬 বিটিসিএল মেসেঞ্জার</div>
+            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
             <div id="chat-messages" class="chat-box"></div>
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <input type="file" id="chat-file-input" class="input-box" style="padding:5px;" accept="image/*,video/*,.pdf,.doc">
@@ -309,13 +284,13 @@ HTML_LAYOUT = """
         </div>
     </div>
 
+    <!-- গ্রুপ মোডাল -->
     <div id="group-modal" class="auth-container hidden" style="position:fixed; top:10%; left:5%; right:5%; z-index:1001; max-width:500px;">
-        <div class="card-title" style="color:#00ff66;">📢 গ্রুপ মেসেজ (অ্যানাউন্সমেন্ট)</div>
+        <div class="card-title" style="color:#00ff66;">📢 গ্রুপ মেসেজ</div>
         <div id="group-broadcast-list" class="chat-box" style="height:150px;"></div>
-
         <div class="admin-only">
             <input type="text" id="group-msg-input" class="input-box" placeholder="সবাইকে গ্রুপ মেসেজ পাঠান...">
-            <button class="submit-btn" onclick="sendGroupBroadcast()">গ্রুপে সেন্ড করুন</button>
+            <button class="submit-btn" onclick="sendGroupBroadcast()">গ্রুপে পাঠালুন</button>
         </div>
         <button class="btn-danger" style="width:100%; margin-top:10px;" onclick="closeGroupModal()">বন্ধ করুন</button>
     </div>
@@ -355,15 +330,15 @@ HTML_LAYOUT = """
                 return;
             }
             if (!email.includes("@") || !email.includes(".")) {
-                alert("অনুগ্রহ করে একটি সঠিক জিমেইল আইডি প্রদান করুন।");
+                alert("একটি সঠিক জিমেইল আইডি প্রদান করুন।");
                 return;
             }
             if (pass !== cpass) {
-                alert("পাসওয়ার্ড মিলছে না!");
+                alert("পাসওয়ার্ড দুটি মিলছে না!");
                 return;
             }
 
-            alert("OTP কোড: 1234");
+            alert("OTP পাঠানো হয়েছে (পরীক্ষার জন্য OTP: 1234)");
             document.getElementById('form-reg').classList.add('hidden');
             document.getElementById('form-otp').classList.remove('hidden');
         }
@@ -391,7 +366,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("রেজিস্ট্রেশন সফল! এডমিন অনুমোদন দেওয়া পর্যন্ত অপেক্ষা করুন।");
+                    alert("রেজিস্ট্রেশন সফল! এডমিন পারমিশন দিলে লগইন করে ডাটা দেখতে পারবেন।");
                     toggleAuthTab('login');
                 } else {
                     alert(res.message);
@@ -455,46 +430,36 @@ HTML_LAYOUT = """
 
         function renderCustomers(data) {
             const tbody = document.getElementById('customer-table-body');
-            const tbodyAll = document.getElementById('all-customers-list-body');
             document.getElementById('stat-total').innerText = data.length;
             tbody.innerHTML = '';
-            tbodyAll.innerHTML = '';
 
             data.forEach(c => {
+                const tr = document.createElement('tr');
                 let actionBtns = currentUser.status === 'admin' ? 
                     `<td>
                         <button class="btn-edit" onclick="editCustomer(${c.id}, '${c.name}', '${c.service}', '${c.phone}', '${c.amount}', '${c.address}', '${c.note}')">এডিট</button>
                         <button class="btn-danger" onclick="deleteCustomer(${c.id})">ডিলিট</button>
                      </td>` : '';
                 
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${c.name}</td>
-                        <td>${c.service}</td>
-                        <td>${c.phone}</td>
-                        <td>৳${c.amount}</td>
-                        <td>${c.address}</td>
-                        ${actionBtns}
-                    </tr>
+                tr.innerHTML = `
+                    <td>${c.name}</td>
+                    <td>${c.service}</td>
+                    <td>${c.phone}</td>
+                    <td>৳${c.amount}</td>
+                    <td>${c.address}</td>
+                    ${actionBtns}
                 `;
-
-                tbodyAll.innerHTML += `
-                    <tr>
-                        <td>${c.name}</td>
-                        <td>${c.phone}</td>
-                        <td>${c.address}</td>
-                        <td>${c.note || '-'}</td>
-                    </tr>
-                `;
+                tbody.appendChild(tr);
             });
         }
 
         function filterCustomers() {
-            const query = document.getElementById('search-input').value.toLowerCase();
+            const q = document.getElementById('search-input').value.toLowerCase();
             const filtered = customerDataCache.filter(c => 
-                c.name.toLowerCase().includes(query) ||
-                c.phone.includes(query) ||
-                c.address.toLowerCase().includes(query)
+                c.name.toLowerCase().includes(q) ||
+                c.phone.includes(q) ||
+                c.service.toLowerCase().includes(q) ||
+                c.address.toLowerCase().includes(q)
             );
             renderCustomers(filtered);
         }
@@ -520,6 +485,8 @@ HTML_LAYOUT = """
             .then(res => {
                 alert(res.message);
                 document.getElementById('cust-id').value = '';
+                document.getElementById('form-add-title').innerText = 'নতুন নম্বর যুক্ত করুন';
+                document.getElementById('cust-submit-btn').innerText = 'ডাটা সংরক্ষণ করুন';
                 navTo('sec-overview');
                 loadDashboardData();
             });
@@ -533,11 +500,14 @@ HTML_LAYOUT = """
             document.getElementById('cust-amount').value = amount;
             document.getElementById('cust-address').value = address;
             document.getElementById('cust-note').value = note;
+
+            document.getElementById('form-add-title').innerText = 'ডাটা এডিট ও সেট করুন';
+            document.getElementById('cust-submit-btn').innerText = 'আপডেট করুন';
             navTo('sec-add');
         }
 
         function deleteCustomer(id) {
-            const pin = prompt("ডিলিট করতে সিকিউরিটি পাসওয়ার্ড দিন:");
+            const pin = prompt("ডিলিট করতে সিকিউরিটি পাসওয়ার্ড লিখুন:");
             if (pin !== "137955") {
                 alert("ভুল পাসওয়ার্ড!");
                 return;
@@ -567,7 +537,7 @@ HTML_LAYOUT = """
                             <td>${u.name}</td>
                             <td>${u.email}</td>
                             <td>${u.phone}</td>
-                            <td><button class="submit-btn" style="padding:4px 8px; font-size:11px;" onclick="approveUser(${u.id})">পারমিশন দিন</button></td>
+                            <td><button class="submit-btn" style="padding:4px 8px; font-size:12px;" onclick="approveUser(${u.id})">পারমিশন দিন</button></td>
                         </tr>
                     `;
                 });
@@ -610,9 +580,9 @@ HTML_LAYOUT = """
         }
 
         function deleteUser(id) {
-            const pin = prompt("সিকিউরিটি পাসওয়ার্ড:");
+            const pin = prompt("ইউজার ডিলিট করতে পাসওয়ার্ড দিন:");
             if (pin !== "137955") {
-                alert("ভুল পাসওয়ার্ড!");
+                alert("ভুল সিকিউরিটি পাসওয়ার্ড!");
                 return;
             }
             fetch('/api/delete-user', {
@@ -630,10 +600,13 @@ HTML_LAYOUT = """
         function sendChatMessage() {
             const msgInput = document.getElementById('chat-msg-input');
             const fileInput = document.getElementById('chat-file-input');
+            
             const formData = new FormData();
             formData.append('sender', currentUser.username);
             formData.append('message', msgInput.value);
-            if (fileInput.files[0]) formData.append('file', fileInput.files[0]);
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            }
 
             fetch('/api/send-message', { method: 'POST', body: formData })
             .then(() => {
@@ -663,12 +636,24 @@ HTML_LAYOUT = """
                 const container = document.getElementById('chat-messages');
                 const pendingContainer = document.getElementById('pending-chat-box');
                 const groupContainer = document.getElementById('group-broadcast-list');
-                let html = '', groupHtml = '';
+                
+                let html = '';
+                let groupHtml = '';
 
                 msgs.forEach(m => {
-                    let media = m.file_url ? `<br><a href="${m.file_url}" target="_blank" style="color:#00ff66;">📄 ফাইল লিঙ্ক</a>` : '';
+                    let media = '';
+                    if(m.file_url) {
+                        if(m.file_type && m.file_type.startsWith('image/')) {
+                            media = `<br><img src="${m.file_url}" style="max-width:140px; border-radius:6px; margin-top:5px;">`;
+                        } else {
+                            media = `<br><a href="${m.file_url}" target="_blank" style="color:#00ff66;">📄 ডাউনলোড ফাইল</a>`;
+                        }
+                    }
+
                     const isMe = m.sender === currentUser.username;
-                    const msgDiv = `<div class="chat-msg ${isMe ? 'sent' : 'received'}"><strong>${m.sender}:</strong> ${m.message}${media}</div>`;
+                    const msgDiv = `<div class="chat-msg ${isMe ? 'sent' : 'received'}">
+                        <strong>${m.sender}:</strong> ${m.message}${media}
+                    </div>`;
 
                     html += msgDiv;
                     if(m.receiver === 'group') groupHtml += msgDiv;
@@ -702,3 +687,206 @@ HTML_LAYOUT = """
             })
             .then(() => {
                 document.getElementById('group-msg-input').value = '';
+                loadMessages();
+            });
+        }
+
+        function openSidebar() {
+            document.getElementById('sidebar').classList.add('active');
+            document.getElementById('overlay').classList.add('active');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            closeGroupModal();
+        }
+
+        function navTo(secId, btnEl) {
+            closeSidebar();
+            document.querySelectorAll('#dashboard-view > div[id^="sec-"]').forEach(d => d.classList.add('hidden'));
+            document.getElementById(secId).classList.remove('hidden');
+
+            if(btnEl) {
+                document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
+                btnEl.classList.add('active');
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            location.reload();
+        }
+    </script>
+</body>
+</html>
+"""
+
+# ---------------------------------------------------------
+# API এ্যান্ডপয়েন্ট
+# ---------------------------------------------------------
+@app.route('/')
+def index():
+    return render_template_string(HTML_LAYOUT)
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, status) VALUES (?, ?, ?, ?, ?, 'pending')",
+                       (data['name'], data['email'], data['phone'], data['username'], data['password']))
+        conn.commit()
+        return jsonify({"success": True})
+    except sqlite3.IntegrityError:
+        return jsonify({"success": False, "message": "ইউজারনেম বা ফোন নম্বরটি ব্যবহার করা হয়ে গেছে!"})
+    finally:
+        conn.close()
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, email, phone, username, status FROM users WHERE (username=? OR email=? OR phone=?) AND password=?",
+                   (data['username'], data['username'], data['username'], data['password']))
+    user = cursor.fetchone()
+    conn.close()
+    
+    if user:
+        return jsonify({
+            "success": True,
+            "user": {"id": user[0], "name": user[1], "email": user[2], "phone": user[3], "username": user[4], "status": user[5]}
+        })
+    return jsonify({"success": False, "message": "ভুল ইউজারনেম বা পাসওয়ার্ড!"})
+
+@app.route('/api/customers', methods=['GET'])
+def get_customers():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, service, phone, amount, address, note FROM customers")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "service": r[2], "phone": r[3], "amount": r[4], "address": r[5], "note": r[6]} for r in rows])
+
+@app.route('/api/save-customer', methods=['POST'])
+def save_customer():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    
+    if data.get('id'):
+        cursor.execute("UPDATE customers SET name=?, service=?, phone=?, amount=?, address=?, note=? WHERE id=?",
+                       (data['name'], data['service'], data['phone'], data['amount'], data['address'], data['note'], data['id']))
+        msg = "ডাটা সফলভাবে আপডেট করা হয়েছে!"
+    else:
+        cursor.execute("INSERT INTO customers (name, service, phone, amount, address, note) VALUES (?, ?, ?, ?, ?, ?)",
+                       (data['name'], data['service'], data['phone'], data['amount'], data['address'], data['note']))
+        msg = "নতুন নম্বর ও ডাটা সংরক্ষিত হয়েছে!"
+        
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": msg})
+
+@app.route('/api/delete-customer', methods=['POST'])
+def delete_customer():
+    data = request.json
+    if data.get('pin') != SECURITY_PIN:
+        return jsonify({"success": False, "message": "ভুল সিকিউরিটি পাসওয়ার্ড!"})
+        
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM customers WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ডাটা মুছে ফেলা হয়েছে!"})
+
+@app.route('/api/pending-users', methods=['GET'])
+def pending_users():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, email, phone FROM users WHERE status='pending'")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "email": r[2], "phone": r[3]} for r in rows])
+
+@app.route('/api/approve-user', methods=['POST'])
+def approve_user():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET status='user' WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ইউজারকে পারমিশন দেওয়া হয়েছে!"})
+
+@app.route('/api/all-users', methods=['GET'])
+def all_users():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, username, phone, status FROM users")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"id": r[0], "name": r[1], "username": r[2], "phone": r[3], "status": r[4]} for r in rows])
+
+@app.route('/api/delete-user', methods=['POST'])
+def delete_user():
+    data = request.json
+    if data.get('pin') != SECURITY_PIN:
+        return jsonify({"success": False, "message": "ভুল পাসওয়ার্ড!"})
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE id=?", (data['id'],))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True, "message": "ইউজার একাউন্ট ডিলিট করা হয়েছে!"})
+
+@app.route('/api/send-message', methods=['POST'])
+def send_message():
+    sender = request.form.get('sender')
+    message = request.form.get('message', '')
+    file = request.files.get('file')
+    
+    file_url = None
+    file_type = None
+
+    if file:
+        upload_folder = 'static/uploads'
+        os.makedirs(upload_folder, exist_ok=True)
+        file_path = os.path.join(upload_folder, file.filename)
+        file.save(file_path)
+        file_url = '/' + file_path
+        file_type = file.content_type
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO messages (sender, receiver, message, file_url, file_type) VALUES (?, 'admin', ?, ?, ?)",
+                   (sender, message, file_url, file_type))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/group-broadcast', methods=['POST'])
+def group_broadcast():
+    data = request.json
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO messages (sender, receiver, message) VALUES (?, 'group', ?)",
+                   (data['sender'], data['message']))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/messages', methods=['GET'])
+def get_messages():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT sender, receiver, message, file_url, file_type, timestamp FROM messages ORDER BY id ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return jsonify([{"sender": r[0], "receiver": r[1], "message": r[2], "file_url": r[3], "file_type": r[4], "time": r[5]} for r in rows])
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
