@@ -4,7 +4,6 @@ from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 DB_NAME = "btcl_system.db"
-SECURITY_PIN = "137955"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -45,6 +44,8 @@ def init_db():
             user_id INTEGER,
             sender_name TEXT,
             message TEXT,
+            file_url TEXT,
+            file_type TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_read INTEGER DEFAULT 0
         )
@@ -71,56 +72,87 @@ HTML_TEMPLATE = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BTCL Kurigram System</title>
     <style>
-        :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --sidebar: #181818; }
+        :root { --primary: #00e676; --bg: #121212; --card: #1e1e1e; --text: #ffffff; --sidebar: #181818; --chat-bg: #252525; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 0; }
         
-        .top-navbar { background: #000; display: flex; align-items: center; justify-content: space-between; padding: 10px 15px; border-bottom: 2px solid var(--primary); position: sticky; top: 0; z-index: 1000; }
-        .menu-btn { font-size: 24px; cursor: pointer; color: var(--primary); background: none; border: none; padding: 0 10px; }
-        .header-title { font-size: 16px; font-weight: bold; color: var(--primary); text-align: center; flex-grow: 1; margin: 0 10px; }
-        .nav-right { display: flex; align-items: center; gap: 15px; }
+        /* Sticky Top Navbar & Global Search Bar */
+        .top-navbar-container { position: sticky; top: 0; z-index: 1000; background: #000; border-bottom: 2px solid var(--primary); }
+        .top-navbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 15px; }
+        .menu-btn { font-size: 22px; cursor: pointer; color: var(--primary); background: none; border: none; }
+        .header-title { font-size: 15px; font-weight: bold; color: var(--primary); text-align: center; }
         .notif-box { position: relative; cursor: pointer; font-size: 20px; }
         .notif-badge { position: absolute; top: -5px; right: -8px; background: #ff5252; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; }
 
-        .auth-container { max-width: 400px; margin: 50px auto; background: var(--card); padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        /* Global Persistent Search Bar (YouTube Style) */
+        .global-search-box { padding: 5px 15px 10px 15px; background: #000; position: relative; }
+        .search-input-wrapper { position: relative; max-width: 800px; margin: 0 auto; }
+        .search-input-wrapper input { width: 100%; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #1a1a1a; color: #fff; font-size: 14px; outline: none; }
+        .search-input-wrapper input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(0,230,118,0.3); }
+        
+        .search-results-dropdown { position: absolute; top: 45px; left: 0; right: 0; background: var(--card); border: 1px solid #333; border-radius: 8px; max-height: 350px; overflow-y: auto; box-shadow: 0 10px 20px rgba(0,0,0,0.8); z-index: 2000; display: none; }
+        .search-item { padding: 10px 15px; border-bottom: 1px solid #2e2e2e; cursor: pointer; transition: 0.2s; }
+        .search-item:hover { background: #2a2a2a; }
+        .search-item-title { font-weight: bold; color: var(--primary); font-size: 14px; }
+        .search-item-sub { font-size: 12px; color: #aaa; margin-top: 3px; }
+
+        .auth-container { max-width: 400px; margin: 40px auto; background: var(--card); padding: 25px; border-radius: 10px; }
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #333; background: #2a2a2a; color: #fff; box-sizing: border-box; }
         button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: var(--primary); color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .btn-danger { background: #ff5252; color: #fff; }
         .btn-warning { background: #ffb74d; color: #000; }
 
-        .sidebar-overlay { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--sidebar); z-index: 2000; transition: 0.3s; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; box-shadow: 5px 0 15px rgba(0,0,0,0.7); }
+        .sidebar-overlay { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: var(--sidebar); z-index: 3000; transition: 0.3s; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; }
         .sidebar-overlay.active { left: 0; }
-        .close-sidebar { align-self: flex-end; font-size: 20px; cursor: pointer; color: #888; margin-bottom: 10px; }
-        .nav-menu-list { flex-grow: 1; overflow-y: auto; }
-        .nav-item { padding: 12px; margin: 6px 0; background: #222; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .close-sidebar { align-self: flex-end; font-size: 18px; cursor: pointer; color: #888; margin-bottom: 10px; }
+        .nav-item { padding: 12px; margin: 5px 0; background: #222; border-radius: 6px; cursor: pointer; font-size: 14px; }
         .nav-item:hover, .nav-item.active { background: var(--primary); color: #000; font-weight: bold; }
 
         .main-content { padding: 15px; max-width: 900px; margin: 0 auto; }
         .card { background: var(--card); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; }
-        .stat-card:hover { background: #2e2e2e; transform: translateY(-2px); }
-        .stat-card h4 { margin: 0; color: #aaa; font-size: 12px; }
-        .stat-card .number { font-size: 20px; font-weight: bold; color: var(--primary); margin-top: 5px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+        .stat-card { background: #222; border-left: 4px solid var(--primary); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; }
+        .stat-card h4 { margin: 0; color: #aaa; font-size: 11px; }
+        .stat-card .number { font-size: 18px; font-weight: bold; color: var(--primary); margin-top: 5px; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #333; padding: 10px; text-align: left; font-size: 13px; }
         th { background: #2a2a2a; color: var(--primary); }
-        tr:nth-child(even) { background: #181818; }
 
-        .backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1500; display: none; }
+        /* Messenger Premium UI */
+        .chat-container { display: flex; flex-direction: column; height: 500px; background: var(--chat-bg); border-radius: 10px; overflow: hidden; border: 1px solid #333; }
+        .chat-header { padding: 12px 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
+        .chat-body { flex-grow: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 13px; line-height: 1.4; word-wrap: break-word; }
+        .chat-bubble.me { background: var(--primary); color: #000; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .chat-bubble.other { background: #333; color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .chat-bubble img, .chat-bubble video { max-width: 100%; border-radius: 8px; margin-top: 5px; }
+        .typing-indicator { font-size: 11px; color: var(--primary); padding: 0 15px 5px 15px; font-style: italic; }
+        .chat-footer { padding: 10px; background: #1a1a1a; display: flex; align-items: center; gap: 8px; }
+        .chat-footer input[type="text"] { margin: 0; border-radius: 20px; }
+        .file-btn { cursor: pointer; font-size: 20px; padding: 0 8px; }
+
+        .backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2500; display: none; }
         .backdrop.active { display: block; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="top-navbar">
-        <button id="hamburger-btn" class="menu-btn hidden" onclick="toggleSidebar()">☰</button>
-        <div class="header-title">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
-        <div class="nav-right">
+    <div class="top-navbar-container">
+        <div class="top-navbar">
+            <button id="hamburger-btn" class="menu-btn hidden" onclick="toggleSidebar()">☰</button>
+            <div class="header-title">বিটিসিএল (BTCL), কুড়িগ্রাম</div>
             <div id="notif-icon" class="notif-box hidden" onclick="openMessages()">
                 🔔 <span id="notif-count" class="notif-badge hidden">0</span>
+            </div>
+        </div>
+
+        <!-- YouTube Style Persistent Global Search Bar -->
+        <div id="global-search-container" class="global-search-box hidden">
+            <div class="search-input-wrapper">
+                <input type="text" id="global-search-input" placeholder="🔍 নাম, মোবাইল, টেলিফোন, সেবা বা ঠিকানা দিয়ে খুঁজুন..." oninput="liveSearch()" autocomplete="off">
+                <div id="search-results-dropdown" class="search-results-dropdown"></div>
             </div>
         </div>
     </div>
@@ -131,14 +163,14 @@ HTML_TEMPLATE = """
         <div class="close-sidebar" onclick="toggleSidebar()">✖ বন্ধ করুন</div>
         <h3 style="font-size:14px; color:#888; border-bottom:1px solid #333; padding-bottom:5px;">মেনু বার</h3>
         <div class="nav-menu-list">
-            <div class="nav-item active" onclick="showTab('overview')">📊 ওভারভিউ ও সার্চ</div>
+            <div class="nav-item active" onclick="showTab('overview')">📊 ওভারভিউ ও ডাটা</div>
             <div class="nav-item" onclick="showTab('add-entry')">➕ ১. নম্বর এড করুন</div>
             <div class="nav-item admin-only hidden" onclick="showTab('user-requests')">⏳ ২. পেন্ডিং ইউজার</div>
             <div class="nav-item admin-only hidden" onclick="showTab('all-users')">👥 ৩. সকল ইউজার তথ্য</div>
             <div class="nav-item admin-only hidden" onclick="showTab('manage-users')">❌ ৪. ইউজার ডিলিট</div>
             <div class="nav-item" onclick="showTab('customer-list')">📋 ৫. সকল গ্রাহক তালিকা</div>
             <div class="nav-item admin-only hidden" onclick="showTab('recycle-bin')">🗑️ রিসাইকেল বিন</div>
-            <div class="nav-item" onclick="showTab('messages')">💬 মেসেজ ও রিকুয়েস্ট</div>
+            <div class="nav-item" onclick="showTab('messages')">💬 মেসেঞ্জার</div>
         </div>
         <button onclick="logout()" class="btn-danger" style="margin-top:auto;">লগআউট</button>
     </div>
@@ -151,8 +183,8 @@ HTML_TEMPLATE = """
         </div>
 
         <form id="login-form" autocomplete="off">
-            <input type="text" id="login-username" placeholder="ইউজারনেম / জিমেইল / ফোন" value="" autocomplete="off" required>
-            <input type="password" id="login-pass" placeholder="পাসওয়ার্ড" value="" autocomplete="new-password" required>
+            <input type="text" id="login-username" placeholder="ইউজারনেম / জিমেইল / ফোন" required autocomplete="off">
+            <input type="password" id="login-pass" placeholder="পাসওয়ার্ড" required autocomplete="new-password">
             <button type="submit">লগইন করুন</button>
         </form>
 
@@ -193,7 +225,6 @@ HTML_TEMPLATE = """
 
             <div class="card" id="filtered-section">
                 <h3 id="filter-title">সকল গ্রাহক নম্বর এর তালিকা</h3>
-                <input type="text" id="search-input" placeholder="খুঁজতে নাম বা ফোন নম্বর লিখুন..." oninput="handleSearch()">
                 <div style="overflow-x:auto;">
                     <table>
                         <thead>
@@ -291,14 +322,24 @@ HTML_TEMPLATE = """
             </div>
         </div>
 
+        <!-- Premium Messenger UI -->
         <div id="tab-content-messages" class="hidden">
-            <div class="card">
-                <h3>মেসেজ ও পারমিশন রিকুয়েস্ট</h3>
-                <div id="user-msg-box" class="hidden">
-                    <textarea id="msg-text" placeholder="এডমিনকে মেসেজ বা রিকুয়েস্ট পাঠান..."></textarea>
-                    <button onclick="sendMessage()">মেসেজ পাঠান</button>
+            <div class="card" style="padding:10px;">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <div style="font-weight:bold; color:var(--primary);">💬 বিটিসিএল লাইভ মেসেঞ্জার</div>
+                        <span style="font-size:11px; color:#888;">অনলাইন হেল্পডেস্ক</span>
+                    </div>
+                    <div id="chat-body" class="chat-body"></div>
+                    <div id="typing-indicator" class="typing-indicator hidden">মেসেজ সেন্ড হচ্ছে...</div>
+                    <div class="chat-footer">
+                        <label class="file-btn" title="ছবি/ভিডিও/ডকুমেন্ট দিন">
+                            📎 <input type="file" id="chat-file-input" style="display:none;" onchange="handleFileSelect(this)">
+                        </label>
+                        <input type="text" id="chat-msg-input" placeholder="এখানে মেসেজ লিখুন..." oninput="handleTyping()">
+                        <button onclick="sendChatMessage()" style="width:auto; margin:0; padding:10px 18px;">পাঠান</button>
+                    </div>
                 </div>
-                <div id="msg-history-list" style="margin-top:15px;"></div>
             </div>
         </div>
     </div>
@@ -306,6 +347,7 @@ HTML_TEMPLATE = """
     <script>
         let currentUser = JSON.parse(localStorage.getItem('btcl_user')) || null;
         let allCustomersData = [];
+        let selectedFile = null;
 
         window.onload = () => {
             if(currentUser) initDashboard();
@@ -379,17 +421,17 @@ HTML_TEMPLATE = """
             document.getElementById('app-view').classList.remove('hidden');
             document.getElementById('hamburger-btn').classList.remove('hidden');
             document.getElementById('notif-icon').classList.remove('hidden');
+            document.getElementById('global-search-container').classList.remove('hidden');
 
             if(currentUser.is_admin) {
                 document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-            } else {
-                document.getElementById('user-msg-box').classList.remove('hidden');
             }
 
             loadStats();
             loadOverviewData();
             checkNotifications();
-            setInterval(checkNotifications, 10000);
+            setInterval(checkNotifications, 5000);
+            setInterval(loadMessages, 3000);
         }
 
         function showTab(tabName) {
@@ -457,10 +499,48 @@ HTML_TEMPLATE = """
             document.getElementById('filtered-section').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function handleSearch() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            const filtered = allCustomersData.filter(i => i.name.toLowerCase().includes(q) || i.phone_number.includes(q));
-            renderTable(filtered);
+        /* YouTube Style Global Real-Time Search Function */
+        function liveSearch() {
+            const query = document.getElementById('global-search-input').value.toLowerCase().trim();
+            const dropdown = document.getElementById('search-results-dropdown');
+
+            if(!query) {
+                dropdown.style.display = 'none';
+                renderTable(allCustomersData);
+                return;
+            }
+
+            const results = allCustomersData.filter(item => 
+                item.name.toLowerCase().includes(query) ||
+                item.phone_number.includes(query) ||
+                item.service_type.toLowerCase().includes(query) ||
+                item.address.toLowerCase().includes(query)
+            );
+
+            if(results.length > 0) {
+                let html = '';
+                results.forEach(r => {
+                    html += `<div class="search-item" onclick="selectSearchResult('${r.phone_number}')">
+                        <div class="search-item-title">${r.name} (${r.service_type})</div>
+                        <div class="search-item-sub">📞 ${r.phone_number} | 🏠 ${r.address} | ৳${r.bill_amount}</div>
+                    </div>`;
+                });
+                dropdown.innerHTML = html;
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.innerHTML = '<div class="search-item" style="color:#888;">কোনো মিল পাওয়া যায়নি</div>';
+                dropdown.style.display = 'block';
+            }
+
+            renderTable(results);
+        }
+
+        function selectSearchResult(phone) {
+            document.getElementById('search-results-dropdown').style.display = 'none';
+            showTab('overview');
+            const matched = allCustomersData.filter(i => i.phone_number === phone);
+            renderTable(matched);
+            document.getElementById('filtered-section').scrollIntoView({ behavior: 'smooth' });
         }
 
         document.getElementById('add-data-form').onsubmit = async (e) => {
@@ -576,28 +656,93 @@ HTML_TEMPLATE = """
             loadRecycleBin();
         }
 
-        async function sendMessage() {
-            const text = document.getElementById('msg-text').value;
-            if(!text) return;
+        /* Messenger Functionality with Attachment & Typing Support */
+        function handleFileSelect(input) {
+            if(input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                alert(`ফাইল সিলেক্ট করা হয়েছে: ${selectedFile.name}`);
+            }
+        }
+
+        function handleTyping() {
+            // Simulated typing feedback
+        }
+
+        async function sendChatMessage() {
+            const textInput = document.getElementById('chat-msg-input');
+            const message = textInput.value;
+
+            if(!message && !selectedFile) return;
+
+            document.getElementById('typing-indicator').classList.remove('hidden');
+
+            let file_url = "";
+            let file_type = "";
+
+            if(selectedFile) {
+                const reader = new FileReader();
+                reader.readAsDataURL(selectedFile);
+                reader.onload = async function () {
+                    file_url = reader.result;
+                    file_type = selectedFile.type.startsWith('image') ? 'image' : (selectedFile.type.startsWith('video') ? 'video' : 'file');
+                    await executeSendMessage(message, file_url, file_type);
+                };
+            } else {
+                await executeSendMessage(message, "", "");
+            }
+        }
+
+        async function executeSendMessage(message, file_url, file_type) {
             await fetch('/api/messages/send', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ user_id: currentUser.id, sender_name: currentUser.name, message: text })
+                body: JSON.stringify({ 
+                    user_id: currentUser.id, 
+                    sender_name: currentUser.name, 
+                    message: message,
+                    file_url: file_url,
+                    file_type: file_type
+                })
             });
-            document.getElementById('msg-text').value = '';
+
+            document.getElementById('chat-msg-input').value = '';
+            document.getElementById('chat-file-input').value = '';
+            selectedFile = null;
+            document.getElementById('typing-indicator').classList.add('hidden');
             loadMessages();
         }
 
         async function loadMessages() {
+            if(!currentUser) return;
             const res = await fetch(`/api/messages?user_id=${currentUser.id}&is_admin=${currentUser.is_admin}`);
             const msgs = await res.json();
+            
             let html = '';
             msgs.forEach(m => {
-                html += `<div style="background:#2a2a2a; padding:10px; margin-top:8px; border-radius:5px;">
-                    <strong>${m.sender_name}</strong> <small style="color:#888;">(${m.created_at})</small><br>${m.message}
+                const isMe = m.sender_name === currentUser.name;
+                let attachmentHtml = '';
+                
+                if(m.file_url) {
+                    if(m.file_type === 'image') {
+                        attachmentHtml = `<br><img src="${m.file_url}" alt="Attachment">`;
+                    } else if(m.file_type === 'video') {
+                        attachmentHtml = `<br><video controls src="${m.file_url}"></video>`;
+                    } else {
+                        attachmentHtml = `<br><a href="${m.file_url}" download style="color:#00e676;">📎 ডকুমেন্ট ডাউনলোড করুন</a>`;
+                    }
+                }
+
+                html += `<div class="chat-bubble ${isMe ? 'me' : 'other'}">
+                    <strong style="font-size:11px; opacity:0.8;">${m.sender_name}</strong><br>
+                    ${m.message || ''}
+                    ${attachmentHtml}
+                    <div style="font-size:9px; text-align:right; margin-top:3px; opacity:0.6;">${m.created_at}</div>
                 </div>`;
             });
-            document.getElementById('msg-history-list').innerHTML = html || '<p style="color:#888;">কোনো মেসেজ নেই</p>';
+
+            const chatBody = document.getElementById('chat-body');
+            chatBody.innerHTML = html || '<p style="color:#888; text-align:center;">কোনো কথোপকথন নেই</p>';
+            chatBody.scrollTop = chatBody.scrollHeight;
         }
 
         async function checkNotifications() {
@@ -766,8 +911,8 @@ def send_message():
     data = request.json
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (user_id, sender_name, message) VALUES (?, ?, ?)",
-                   (data['user_id'], data['sender_name'], data['message']))
+    cursor.execute("INSERT INTO messages (user_id, sender_name, message, file_url, file_type) VALUES (?, ?, ?, ?, ?)",
+                   (data['user_id'], data['sender_name'], data['message'], data.get('file_url', ''), data.get('file_type', '')))
     conn.commit()
     conn.close()
     return jsonify({"success": True})
@@ -779,14 +924,14 @@ def get_messages():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     if is_admin == '1':
-        cursor.execute("SELECT sender_name, message, created_at FROM messages ORDER BY id DESC")
+        cursor.execute("SELECT sender_name, message, file_url, file_type, created_at FROM messages ORDER BY id ASC")
         cursor.execute("UPDATE messages SET is_read = 1")
         conn.commit()
     else:
-        cursor.execute("SELECT sender_name, message, created_at FROM messages WHERE user_id = ? ORDER BY id DESC", (user_id,))
+        cursor.execute("SELECT sender_name, message, file_url, file_type, created_at FROM messages WHERE user_id = ? ORDER BY id ASC", (user_id,))
     rows = cursor.fetchall()
     conn.close()
-    return jsonify([{"sender_name": r[0], "message": r[1], "created_at": r[2]} for r in rows])
+    return jsonify([{"sender_name": r[0], "message": r[1], "file_url": r[2], "file_type": r[3], "created_at": r[4]} for r in rows])
 
 @app.route("/api/admin/unread-count", methods=["GET"])
 def unread_count():
