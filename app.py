@@ -6,12 +6,13 @@ app = Flask(__name__)
 DB_NAME = "database.db"
 
 # ---------------------------------------------------------
-# ডাটাবেস সেটআপ
+# ডাটাবেস ইনিশিয়ালাইজেশন
 # ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
+    # ইউজার টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +21,7 @@ def init_db():
         )
     ''')
     
+    # গ্রাহক/সংযোগ টেবিল (টাকার ফিল্ড সম্পূর্ণ বাদ দেওয়া হয়েছে)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,6 +30,7 @@ def init_db():
         )
     ''')
     
+    # মেসেজ টেবিল
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,7 +38,7 @@ def init_db():
         )
     ''')
     
-    # এডমিন একাউন্ট সেটআপ (Khushbu23)
+    # ডিফাল্ট এডমিন অ্যাকাউন্ট সেটআপ
     cursor.execute("SELECT * FROM users WHERE username='Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, status, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
@@ -49,7 +52,7 @@ def init_db():
 init_db()
 
 # ---------------------------------------------------------
-# UI (HTML, CSS & JavaScript)
+# ফ্রন্টএন্ড UI (HTML, CSS, JS)
 # ---------------------------------------------------------
 HTML_LAYOUT = """
 <!DOCTYPE html>
@@ -63,20 +66,17 @@ HTML_LAYOUT = """
         body { background-color: #121212; color: #ffffff; padding: 12px; }
 
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .header-left { display: flex; align-items: center; gap: 6px; }
-        .header-right { display: flex; align-items: center; gap: 6px; }
+        .header-left, .header-right { display: flex; align-items: center; gap: 6px; }
         
-        .nav-btn { font-size: 14px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .nav-btn { font-size: 13px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
         .nav-btn:hover { background: #2a2a2a; }
         
         .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #2a2a2a; }
         
-        /* ইউজার / এডমিন ট্যাগ স্টাইল */
         .role-badge { font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 6px; }
         .admin-badge-style { background: #ff4d4d; color: #ffffff; border: 1px solid #ff1a1a; }
         .user-badge-style { background: #1e1e1e; color: #00ff66; border: 1px solid #333; }
 
-        /* নোটিফিকেশন বেল */
         .notif-bell-btn { position: relative; font-size: 16px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: #fff; }
         .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 50%; display: none; }
         .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 280px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
@@ -86,7 +86,6 @@ HTML_LAYOUT = """
         .notif-item:hover { background: #2a2a2a; }
         .notif-empty { padding: 15px; text-align: center; color: #888; font-size: 12px; }
 
-        /* ইনস্ট্যান্ট সার্চ বার */
         .search-container { position: relative; margin-bottom: 15px; }
         .search-box { width: 100%; padding: 12px 15px 12px 38px; background: #1e1e1e; border: 1px solid #00ff66; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
         .search-box:focus { box-shadow: 0 0 10px rgba(0,255,102,0.3); }
@@ -145,7 +144,6 @@ HTML_LAYOUT = """
         .wa-link { background: #25D366; }
         .sms-link { background: #007bff; }
 
-        /* ডিটেইলস পপআপ মোডাল */
         .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e1e1e; border: 1px solid #00ff66; border-radius: 10px; padding: 20px; width: 90%; max-width: 450px; z-index: 1001; box-shadow: 0 5px 20px rgba(0,0,0,0.8); }
         .modal-title { color: #00ff66; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
         .modal-item { margin-bottom: 8px; font-size: 13px; }
@@ -156,6 +154,7 @@ HTML_LAYOUT = """
 
     <div id="overlay" class="overlay" onclick="closeSidebar()"></div>
 
+    <!-- সাইডবার মেনু -->
     <div id="sidebar" class="sidebar">
         <button class="close-btn" onclick="closeSidebar()">✖ বন্ধ করুন</button>
         <div style="clear:both;"></div>
@@ -172,6 +171,7 @@ HTML_LAYOUT = """
         <button class="logout-btn" onclick="logout()">লগআউট</button>
     </div>
 
+    <!-- লগইন ও রেজিস্ট্রেশন ভিউ -->
     <div id="auth-view" class="auth-container">
         <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
         <div class="tab-buttons">
@@ -195,6 +195,7 @@ HTML_LAYOUT = """
         </form>
     </div>
 
+    <!-- মূল ড্যাশবোর্ড -->
     <div id="dashboard-view" class="hidden">
         <div class="header">
             <div class="header-left">
@@ -217,9 +218,10 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- ইনস্ট্যান্ট সার্চ বার -->
         <div class="search-container">
             <span class="search-icon">🔍</span>
-            <input type="text" id="search-input" class="search-box" oninput="filterCustomers()" placeholder="যেকোনো অক্ষর বা নম্বর দিয়ে ইনস্ট্যান্ট সার্চ করুন...">
+            <input type="text" id="search-input" class="search-box" oninput="filterCustomers()" placeholder="যেকোনো অক্ষর বা নম্বর দিয়ে সার্চ করুন...">
         </div>
 
         <div id="sec-overview">
@@ -246,7 +248,8 @@ HTML_LAYOUT = """
                     <table>
                         <thead>
                             <tr id="table-header-row">
-                                </tr>
+                                <!-- জেনারেটেড টেবিল হেডার -->
+                            </tr>
                         </thead>
                         <tbody id="customer-table-body"></tbody>
                     </table>
@@ -254,6 +257,7 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- নম্বর ইনপুট ফর্ম (এডমিন) -->
         <div id="sec-add" class="card hidden admin-only">
             <div class="card-title" id="form-add-title">নতুন নম্বর এড করুন</div>
             <form onsubmit="saveCustomer(event)">
@@ -274,13 +278,13 @@ HTML_LAYOUT = """
                 </select>
 
                 <label style="font-size:12px; color:#aaa;">৪. সার্ভিস/সংযোগ নম্বর লিখুন:</label>
-                <input type="text" id="cust-service-no" class="input-box" placeholder="যে নম্বরটি এড করতে চান" required>
+                <input type="text" id="cust-service-no" class="input-box" placeholder="সংযোগ নম্বর" required>
 
                 <label style="font-size:12px; color:#aaa;">৫. ঠিকানা:</label>
                 <input type="text" id="cust-address" class="input-box" placeholder="গ্রাহকের ঠিকানা" required>
 
-                <label style="font-size:12px; color:#aaa;">৬. অতিরিক্ত তথ্য / গোপন নোট:</label>
-                <input type="text" id="cust-note" class="input-box" placeholder="অন্যান্য তথ্য (কেবল এডমিন দেখতে পাবে)">
+                <label style="font-size:12px; color:#aaa;">৬. অতিরিক্ত তথ্য / নোট:</label>
+                <input type="text" id="cust-note" class="input-box" placeholder="অন্যান্য গোপন তথ্য (এডমিন ভিউ)">
 
                 <button type="submit" class="submit-btn" id="cust-submit-btn">নম্বর সংরক্ষণ করুন</button>
             </form>
@@ -298,6 +302,7 @@ HTML_LAYOUT = """
             </form>
         </div>
 
+        <!-- নিবন্ধিত ইউজার ও সিক্রেট পাসওয়ার্ড লিস্ট (এডমিন) -->
         <div id="sec-users" class="card hidden admin-only">
             <div class="card-title">সকল নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</div>
             <div class="table-responsive">
@@ -318,6 +323,7 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- ডিলিট করা ডাটা সেকশন -->
         <div id="sec-deleted-customers" class="card hidden admin-only">
             <div class="card-title" style="color:#ff4d4d;">🗑️ ডিলিট হওয়া নম্বর ও ডাটা তালিকা</div>
             <div class="table-responsive">
@@ -353,11 +359,12 @@ HTML_LAYOUT = """
             </div>
         </div>
 
+        <!-- মেসেঞ্জার -->
         <div id="sec-messenger" class="card hidden">
             <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
             
             <div id="admin-chat-select-container" style="margin-bottom:10px;" class="admin-only">
-                <input type="text" id="chat-user-search" class="input-box" onkeyup="filterChatUsers()" placeholder="🔍 ইউজার আইডি বা নাম দিয়ে সার্চ করুন...">
+                <input type="text" id="chat-user-search" class="input-box" onkeyup="filterChatUsers()" placeholder="🔍 ইউজার ফিল্টার করুন...">
                 <select id="chat-receiver-select" class="input-box" onchange="loadMessages()"></select>
             </div>
 
@@ -366,26 +373,28 @@ HTML_LAYOUT = """
             <div style="display:flex; flex-direction:column; gap:5px;">
                 <input type="file" id="chat-file-input" class="input-box" style="padding:5px;" accept="image/*,.pdf,.doc">
                 <div style="display:flex; gap:5px;">
-                    <input type="text" id="chat-msg-input" class="input-box" style="margin-bottom:0;" placeholder="মেসেজ লিখুন...">
+                    <input type="text" id="chat-msg-input" class="input-box" style="margin-bottom:0;" placeholder="মেসেজ টাইপ করুন...">
                     <button class="submit-btn" style="width:80px;" onclick="sendChatMessage()">পাঠান</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- ডিটেইলস পপআপ মোডাল (এডমিন) -->
     <div id="details-modal" class="modal hidden">
         <div class="modal-title">📄 গ্রাহকের সম্পূর্ণ তথ্য</div>
         <div id="details-modal-content"></div>
         <button class="btn-danger" style="width:100%; margin-top:15px; padding:8px;" onclick="closeDetailsModal()">বন্ধ করুন</button>
     </div>
 
+    <!-- গ্রুপ মেসেজ মোডাল -->
     <div id="group-modal" class="auth-container hidden" style="position:fixed; top:5%; left:5%; right:5%; z-index:1001; max-width:500px;">
         <div class="card-title" style="color:#00ff66;">📢 গ্রুপ মেসেজ (WhatsApp & SMS)</div>
         <div id="group-broadcast-list" class="chat-box" style="height:150px;"></div>
         
         <div class="admin-only">
-            <textarea id="group-msg-input" class="input-box" style="height:60px;" placeholder="গ্রুপ বার্তা টাইপ করুন..."></textarea>
-            <button class="submit-btn" onclick="sendGroupBroadcast()">গ্রুপে বার্তা পাঠান</button>
+            <textarea id="group-msg-input" class="input-box" style="height:60px;" placeholder="গ্রুপ বার্তা লিখুন..."></textarea>
+            <button class="submit-btn" onclick="sendGroupBroadcast()">পাঠান</button>
         </div>
 
         <button class="btn-danger" style="width:100%; margin-top:10px;" onclick="closeGroupModal()">বন্ধ করুন</button>
@@ -433,7 +442,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("রেজিস্ট্রেশন সফল হয়েছে! এডমিনের অনুমোদনের পর লগইন করতে পারবেন।");
+                    alert("রেজিস্ট্রেশন সফল হয়েছে! এডমিন অনুমোদনের পর লগইন করতে পারবেন।");
                     toggleAuthTab('login');
                 } else {
                     alert(res.message);
@@ -459,7 +468,7 @@ HTML_LAYOUT = """
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("নতুন ইউজার একাউন্ট সফলভাবে তৈরি করা হয়েছে!");
+                    alert("ইউজার সফলভাবে তৈরি হয়েছে!");
                     document.getElementById('adm-user-name').value = '';
                     document.getElementById('adm-user-email').value = '';
                     document.getElementById('adm-user-phone').value = '';
@@ -513,7 +522,6 @@ HTML_LAYOUT = """
                 badgeEl.className = "role-badge user-badge-style";
             }
 
-            // টেবিল হেডার ডাইনামিকভাবে ইউজার/এডমিন অনুযায়ী পরিবর্তন
             const headerRow = document.getElementById('table-header-row');
             if (isAdmin) {
                 headerRow.innerHTML = `
@@ -626,7 +634,6 @@ HTML_LAYOUT = """
                         </td>
                     `;
                 } else {
-                    // সাধারণ ইউজারদের জন্য সংক্ষিপ্ত ভিউ (নাম ও মেসেজ অপশন ছাড়া)
                     tr.innerHTML = `
                         <td>${index + 1}</td>
                         <td><strong>${c.service_no}</strong></td>
@@ -638,7 +645,6 @@ HTML_LAYOUT = """
             });
         }
 
-        /* এডমিনের জন্য কাস্টমার ডিটেইলস দেখা */
         function showCustomerDetails(id) {
             const c = customerDataCache.find(item => item.id === id);
             if (!c) return;
@@ -704,7 +710,7 @@ HTML_LAYOUT = """
         }
 
         function deleteCustomer(id) {
-            if(!confirm("আপনি কি এই নম্বরটি ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
+            if(!confirm("ডাটাটি ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
             fetch('/api/delete-customer', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -732,7 +738,7 @@ HTML_LAYOUT = """
                             <td>${c.service_type}</td>
                             <td>${c.service_no}</td>
                             <td>
-                                <button class="btn-restore" onclick="restoreCustomer(${c.id})">পুনরুদ্ধার করুন</button>
+                                <button class="btn-restore" onclick="restoreCustomer(${c.id})">পুনরুদ্ধার</button>
                             </td>
                         </tr>
                     `;
@@ -806,7 +812,7 @@ HTML_LAYOUT = """
         }
 
         function deleteUser(id) {
-            if(!confirm("আপনি কি নিশ্চিত এই ইউজার ডিলিট ট্র্যাশ বিনে পাঠাতে চান?")) return;
+            if(!confirm("ইউজার একাউন্টটি ডিলিট করতে চান?")) return;
             fetch('/api/delete-user', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -834,7 +840,7 @@ HTML_LAYOUT = """
                             <td>@${u.username}</td>
                             <td>${u.phone}</td>
                             <td>
-                                <button class="btn-restore" onclick="restoreUser(${u.id})">পুনরুদ্ধার করুন</button>
+                                <button class="btn-restore" onclick="restoreUser(${u.id})">পুনরুদ্ধার</button>
                             </td>
                         </tr>
                     `;
@@ -911,7 +917,7 @@ HTML_LAYOUT = """
                         if(m.file_type && m.file_type.startsWith('image/')) {
                             media = `<br><img src="${m.file_url}" style="max-width:140px; border-radius:6px; margin-top:5px;">`;
                         } else {
-                            media = `<br><a href="${m.file_url}" target="_blank" style="color:#00ff66;">📄 ফাইল ডাউনলোড</a>`;
+                            media = `<br><a href="${m.file_url}" target="_blank" style="color:#00ff66;">📄 ডাউনলোড</a>`;
                         }
                     }
 
@@ -925,8 +931,8 @@ HTML_LAYOUT = """
                         groupHtml += `<div class="chat-msg received">
                             <strong>📢 @${m.sender}:</strong> ${m.message}${media}
                             <div style="margin-top:5px;">
-                                <a href="https://wa.me/?text=${encodedMsg}" target="_blank" class="action-link wa-link">WhatsApp-এ শেয়ার</a>
-                                <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS পাঠান</a>
+                                <a href="https://wa.me/?text=${encodedMsg}" target="_blank" class="action-link wa-link">WhatsApp</a>
+                                <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS</a>
                             </div>
                         </div>`;
                     } else {
@@ -965,7 +971,7 @@ HTML_LAYOUT = """
                         let notifHtml = '';
                         if(item.type === 'registration') {
                             notifHtml = `<div class="notif-item" onclick="handleNotifClick('registration')">
-                                👤 <strong>নতুন রেজিস্ট্রেশন:</strong> ${item.title} একাউন্ট খোলার আবেদন করেছেন।
+                                👤 <strong>নতুন ইউজার:</strong> ${item.title}
                             </div>`;
                         } else if(item.type === 'message') {
                             notifHtml = `<div class="notif-item" onclick="handleNotifClick('message', '${item.sender}')">
@@ -976,17 +982,15 @@ HTML_LAYOUT = """
                     });
                 } else {
                     badge.style.display = 'none';
-                    listBody.innerHTML = '<div class="notif-empty">কোনো নতুন নোটিফিকেশন নেই।</div>';
+                    listBody.innerHTML = '<div class="notif-empty">কোনো নোটিফিকেশন নেই</div>';
                 }
             });
         }
 
         function handleNotifClick(type, sender) {
             document.getElementById('notif-dropdown').classList.remove('active');
-            
-            if(type === 'registration') {
-                navTo('sec-users');
-            } else if(type === 'message') {
+            if(type === 'registration') navTo('sec-users');
+            else if(type === 'message') {
                 navTo('sec-messenger');
                 if(currentUser.status === 'admin' && sender) {
                     document.getElementById('chat-receiver-select').value = sender;
@@ -1054,7 +1058,7 @@ HTML_LAYOUT = """
 """
 
 # ---------------------------------------------------------
-# API সার্ভিস
+# ব্যাকএন্ড API রাউটস
 # ---------------------------------------------------------
 @app.route('/')
 def index():
@@ -1071,7 +1075,7 @@ def register():
         conn.commit()
         return jsonify({"success": True})
     except sqlite3.IntegrityError:
-        return jsonify({"success": False, "message": "ইউজারনেম বা ফোন নম্বরটি ইতোমধ্যে ব্যবহার করা হয়েছে!"})
+        return jsonify({"success": False, "message": "ইউজারনেম বা ফোন নম্বরটি ইতোমধ্যে নিবন্ধিত!"})
     finally:
         conn.close()
 
@@ -1087,13 +1091,13 @@ def login():
     
     if user:
         if user[5] == 'pending':
-            return jsonify({"success": False, "message": "আপনার একাউন্টটি এখনও এডমিন অনুমোদন করেননি। দয়া করে অপেক্ষা করুন!"})
+            return jsonify({"success": False, "message": "আপনার অ্যাকাউন্টটি এডমিন অনুমোদনের অপেক্ষায় আছে।"})
             
         return jsonify({
             "success": True,
             "user": {"id": user[0], "name": user[1], "email": user[2], "phone": user[3], "username": user[4], "status": user[5]}
         })
-    return jsonify({"success": False, "message": "ভুল ইউজারনেম বা পাসওয়ার্ড অথবা একাউন্টটি ডিলিট করা হয়েছে!"})
+    return jsonify({"success": False, "message": "ইউজারনেম বা পাসওয়ার্ড ভুল অথবা অ্যাকাউন্ট নেই!"})
 
 @app.route('/api/approve-user', methods=['POST'])
 def approve_user():
@@ -1103,7 +1107,7 @@ def approve_user():
     cursor.execute("UPDATE users SET status='approved' WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ইউজার একাউন্ট অনুমোদন করা হয়েছে!"})
+    return jsonify({"success": True, "message": "ইউজার অ্যাকাউন্ট সফলভাবে অনুমোদন করা হয়েছে!"})
 
 @app.route('/api/notifications', methods=['GET'])
 def get_notifications():
@@ -1116,13 +1120,11 @@ def get_notifications():
 
     if status == 'admin':
         cursor.execute("SELECT name, username FROM users WHERE status='pending' AND is_deleted=0")
-        pending_users = cursor.fetchall()
-        for u in pending_users:
+        for u in cursor.fetchall():
             notifications.append({"type": "registration", "title": f"{u[0]} (@{u[1]})"})
 
     cursor.execute("SELECT sender, message FROM messages WHERE receiver=? ORDER BY id DESC LIMIT 5", (username,))
-    msgs = cursor.fetchall()
-    for m in msgs:
+    for m in cursor.fetchall():
         notifications.append({"type": "message", "sender": m[0], "title": m[1]})
 
     conn.close()
@@ -1155,11 +1157,11 @@ def save_customer():
     if data.get('id'):
         cursor.execute("UPDATE customers SET name=?, service_type=?, service_no=?, phone=?, address=?, note=? WHERE id=?",
                        (data['name'], data['service_type'], data['service_no'], data['phone'], data['address'], data['note'], data['id']))
-        msg = "গ্রাহক তথ্য ও নম্বর আপডেট করা হয়েছে!"
+        msg = "তথ্য সফলভাবে আপডেট হয়েছে!"
     else:
         cursor.execute("INSERT INTO customers (name, service_type, service_no, phone, address, note, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
                        (data['name'], data['service_type'], data['service_no'], data['phone'], data['address'], data['note']))
-        msg = "নতুন নম্বর ও ডাটা সফলভাবে সংরক্ষিত হয়েছে!"
+        msg = "নতুন তথ্য সংরক্ষিত হয়েছে!"
         
     conn.commit()
     conn.close()
@@ -1173,7 +1175,7 @@ def delete_customer():
     cursor.execute("UPDATE customers SET is_deleted=1 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ডাটা ডিলিট বিনে পাঠানো হয়েছে!"})
+    return jsonify({"success": True, "message": "ডাটা ট্র্যাশ বিনে পাঠানো হয়েছে!"})
 
 @app.route('/api/restore-customer', methods=['POST'])
 def restore_customer():
@@ -1183,7 +1185,7 @@ def restore_customer():
     cursor.execute("UPDATE customers SET is_deleted=0 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ডাটা সফলভাবে পুনরুদ্ধার করা হয়েছে!"})
+    return jsonify({"success": True, "message": "ডাটা পুনরুদ্ধার করা হয়েছে!"})
 
 @app.route('/api/all-users', methods=['GET'])
 def all_users():
@@ -1211,7 +1213,7 @@ def delete_user():
     cursor.execute("UPDATE users SET is_deleted=1 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ইউজার একাউন্ট ডিলিট বিনে পাঠানো হয়েছে!"})
+    return jsonify({"success": True, "message": "ইউজার অ্যাকাউন্ট ডিলিট ট্র্যাশে পাঠানো হয়েছে!"})
 
 @app.route('/api/restore-user', methods=['POST'])
 def restore_user():
@@ -1221,7 +1223,7 @@ def restore_user():
     cursor.execute("UPDATE users SET is_deleted=0 WHERE id=?", (data['id'],))
     conn.commit()
     conn.close()
-    return jsonify({"success": True, "message": "ইউজার একাউন্ট পুনরুদ্ধার করা হয়েছে!"})
+    return jsonify({"success": True, "message": "ইউজার অ্যাকাউন্ট পুনরুদ্ধার করা হয়েছে!"})
 
 @app.route('/api/send-message', methods=['POST'])
 def send_message():
@@ -1230,8 +1232,7 @@ def send_message():
     message = request.form.get('message', '')
     file = request.files.get('file')
     
-    file_url = None
-    file_type = None
+    file_url, file_type = None, None
 
     if file:
         upload_folder = 'static/uploads'
@@ -1271,4 +1272,4 @@ def get_messages():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port))
