@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 DB_NAME = "database.db"
-ADMIN_SECURITY_CODE = "137955"  # সিকিউরিটি কোড সেট করা হলো: 137955
+ADMIN_SECURITY_CODE = "137955"
 
 # ---------------------------------------------------------
 # ডাটাবেস ইনিশিয়ালাইজেশন
@@ -31,15 +31,26 @@ def init_db():
         )
     ''')
     
-    # মেসেজ টেবিল
+    # মেসেজ টেবিল (is_read কলামসহ)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sender TEXT, receiver TEXT, message TEXT, file_url TEXT, file_type TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            sender TEXT, receiver TEXT, message TEXT, file_url TEXT, file_type TEXT, 
+            is_read INTEGER DEFAULT 0, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # পড়া হওয়া নোটিফিকেশন ট্র্যাক করার টেবিল (রেজিস্ট্রেশনের জন্য)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS read_notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            notif_type TEXT,
+            target_id INTEGER,
+            username TEXT
         )
     ''')
     
-    # ডিফাল্ট এডমিন অ্যাকাউন্ট সেটআপ
+    # ডিফাল্ট এডমিন অ্যাকাউন্ট
     cursor.execute("SELECT * FROM users WHERE status='admin'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, status, is_deleted) VALUES (?, ?, ?, ?, ?, ?, 0)",
@@ -78,7 +89,7 @@ HTML_LAYOUT = """
 
         .notif-bell-btn { position: relative; font-size: 16px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: #fff; }
         .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 50%; display: none; }
-        .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 280px; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
+        .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 300px; max-height: 350px; overflow-y: auto; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
         .notif-dropdown.active { display: block; }
         .notif-header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: #00ff66; font-size: 13px; }
         .notif-item { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 12px; cursor: pointer; }
@@ -94,7 +105,7 @@ HTML_LAYOUT = """
         .sort-label { font-size: 12px; color: #aaa; }
         .sort-select { background: #2a2a2a; color: #00ff66; border: 1px solid #333; padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
 
-        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); overflow-y: auto; }
         .sidebar.active { left: 0; }
         .close-btn { color: #ff4d4d; background: none; border: none; font-size: 16px; cursor: pointer; float: right; font-weight: bold; }
         
@@ -151,6 +162,8 @@ HTML_LAYOUT = """
         .modal-title { color: #00ff66; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
         .modal-item { margin-bottom: 8px; font-size: 13px; }
         .modal-item span { color: #aaa; }
+        
+        .history-card { background: #2a2a2a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #00ff66; }
     </style>
 </head>
 <body>
@@ -164,6 +177,7 @@ HTML_LAYOUT = """
         <div class="menu-title">প্রধান মেনু</div>
         <div class="menu-list">
             <button class="menu-item active" onclick="navTo('sec-overview', this)">📊 ওভারভিউ ও ডাটা</button>
+            <button id="menu-notif-history" class="menu-item" onclick="navTo('sec-notif-history', this)">📜 নোটিফিকেশন হিস্ট্রি</button>
             <button id="menu-add" class="menu-item admin-only" onclick="navTo('sec-add', this)">➕ ১. নম্বর এড করুন</button>
             <button id="menu-create-user" class="menu-item admin-only" onclick="navTo('sec-create-user', this)">👤 ২. নতুন ইউজার তৈরি করুন</button>
             <button id="menu-users" class="menu-item admin-only" onclick="navTo('sec-users', this)">👥 ৩. নিবন্ধিত ইউজার ও পাসওয়ার্ড তথ্য</button>
@@ -271,14 +285,18 @@ HTML_LAYOUT = """
                 <div class="table-responsive">
                     <table>
                         <thead>
-                            <tr id="table-header-row">
-                                <!-- জেনারেটেড টেবিল হেডার -->
-                            </tr>
+                            <tr id="table-header-row"></tr>
                         </thead>
                         <tbody id="customer-table-body"></tbody>
                     </table>
                 </div>
             </div>
+        </div>
+
+        <!-- নোটিফিকেশন হিস্ট্রি সেকশন -->
+        <div id="sec-notif-history" class="card hidden">
+            <div class="card-title" style="color:#00ff66;">📜 নোটিফিকেশন হিস্ট্রি</div>
+            <div id="notif-history-list"></div>
         </div>
 
         <!-- নম্বর ইনপুট ফর্ম (এডমিন) -->
@@ -607,6 +625,7 @@ HTML_LAYOUT = """
             loadMessages();
             loadDeletedCustomers();
             loadDeletedUsers();
+            loadNotifHistory();
             checkNotifications();
         }
 
@@ -822,7 +841,6 @@ HTML_LAYOUT = """
             .then(users => {
                 allUsersCache = users;
                 
-                // টোটাল ইউজার আপডেট
                 const nonAdminUsers = users.filter(u => u.status !== 'admin');
                 document.getElementById('stat-users-count').innerText = nonAdminUsers.length;
 
@@ -1009,14 +1027,18 @@ HTML_LAYOUT = """
                     }
 
                     const isMe = m.sender === currentUser.username;
+                    
+                    // এডমিনের নাম গোপন রাখা (এডমিন মেসেজ পাঠালে Admin দেখাবে)
+                    let displayName = m.sender_status === 'admin' ? 'Admin' : '@' + m.sender;
+
                     const msgDiv = `<div class="chat-msg ${isMe ? 'sent' : 'received'}">
-                        <strong>@${m.sender}:</strong> ${m.message}${media}
+                        <strong>${displayName}:</strong> ${m.message}${media}
                     </div>`;
 
                     if (m.receiver === 'group') {
                         const encodedMsg = encodeURIComponent(m.message);
                         groupHtml += `<div class="chat-msg received">
-                            <strong>📢 @${m.sender}:</strong> ${m.message}${media}
+                            <strong>📢 ${displayName}:</strong> ${m.message}${media}
                             <div style="margin-top:5px;">
                                 <a href="https://wa.me/?text=${encodedMsg}" target="_blank" class="action-link wa-link">WhatsApp</a>
                                 <a href="sms:?body=${encodedMsg}" class="action-link sms-link">SMS</a>
@@ -1057,11 +1079,11 @@ HTML_LAYOUT = """
                     data.forEach(item => {
                         let notifHtml = '';
                         if(item.type === 'registration') {
-                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('registration')">
-                                👤 <strong>নতুন ইউজার:</strong> ${item.title}
+                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('${item.type}', '${item.id}', '${item.sender || ''}')">
+                                👤 <strong>নতুন ইউজার রিকোয়েস্ট:</strong> ${item.title}
                             </div>`;
                         } else if(item.type === 'message') {
-                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('message', '${item.sender}')">
+                            notifHtml = `<div class="notif-item" onclick="handleNotifClick('${item.type}', '${item.id}', '${item.sender || ''}')">
                                 💬 <strong>নতুন মেসেজ:</strong> @${item.sender}: "${item.title}"
                             </div>`;
                         }
@@ -1069,21 +1091,63 @@ HTML_LAYOUT = """
                     });
                 } else {
                     badge.style.display = 'none';
-                    listBody.innerHTML = '<div class="notif-empty">কোনো নোটিফিকেশন নেই</div>';
+                    listBody.innerHTML = '<div class="notif-empty">কোনো নতুন নোটিফিকেশন নেই</div>';
                 }
             });
         }
 
-        function handleNotifClick(type, sender) {
+        function handleNotifClick(type, id, sender) {
             document.getElementById('notif-dropdown').classList.remove('active');
-            if(type === 'registration') navTo('sec-users');
-            else if(type === 'message') {
-                navTo('sec-messenger');
-                if(currentUser.status === 'admin' && sender) {
-                    document.getElementById('chat-receiver-select').value = sender;
-                    loadMessages();
+            
+            // ক্লিক করা নির্দিষ্ট নোটিফিকেশন পড়া হিসেবে চিহ্নিত করা
+            fetch('/api/mark-notification-read', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    type: type,
+                    id: id,
+                    username: currentUser.username
+                })
+            }).then(() => {
+                checkNotifications(); // কাউন্টার আপডেট
+                
+                if(type === 'registration') {
+                    navTo('sec-users');
+                } else if(type === 'message') {
+                    navTo('sec-messenger');
+                    if(currentUser.status === 'admin' && sender) {
+                        document.getElementById('chat-receiver-select').value = sender;
+                        loadMessages();
+                    }
                 }
-            }
+            });
+        }
+
+        function loadNotifHistory() {
+            fetch('/api/notification-history?username=' + currentUser.username + '&status=' + currentUser.status)
+            .then(res => res.json())
+            .then(data => {
+                const historyList = document.getElementById('notif-history-list');
+                historyList.innerHTML = '';
+
+                if(data.length === 0) {
+                    historyList.innerHTML = '<div style="color:#aaa; text-align:center; padding:10px;">কোনো হিস্ট্রি পাওয়া যায়নি।</div>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    let badgeColor = item.type === 'registration' ? '#ffaa00' : '#00ff66';
+                    historyList.innerHTML += `
+                        <div class="history-card">
+                            <div style="font-size:11px; color:${badgeColor}; font-weight:bold; margin-bottom:4px;">
+                                ${item.type === 'registration' ? '👤 রেজিস্ট্রেশন রিকোয়েস্ট' : '💬 ইনকামিং মেসেজ'}
+                            </div>
+                            <div style="font-size:13px;">${item.details}</div>
+                            <div style="font-size:10px; color:#aaa; margin-top:4px;">সময়: ${item.timestamp}</div>
+                        </div>
+                    `;
+                });
+            });
         }
 
         function openGroupModal() {
@@ -1128,6 +1192,10 @@ HTML_LAYOUT = """
             closeSidebar();
             document.querySelectorAll('#dashboard-view > div[id^="sec-"]').forEach(d => d.classList.add('hidden'));
             document.getElementById(secId).classList.remove('hidden');
+
+            if(secId === 'sec-notif-history') {
+                loadNotifHistory();
+            }
 
             if(btnEl) {
                 document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
@@ -1224,16 +1292,69 @@ def get_notifications():
     cursor = conn.cursor()
 
     if status == 'admin':
-        cursor.execute("SELECT name, username FROM users WHERE status='pending' AND is_deleted=0")
+        cursor.execute("""
+            SELECT id, name, username FROM users 
+            WHERE status='pending' AND is_deleted=0 AND id NOT IN (
+                SELECT target_id FROM read_notifications WHERE notif_type='registration'
+            )
+        """)
         for u in cursor.fetchall():
-            notifications.append({"type": "registration", "title": f"{u[0]} (@{u[1]})"})
+            notifications.append({"type": "registration", "id": u[0], "title": f"{u[1]} ({u[2]})"})
 
-    cursor.execute("SELECT sender, message FROM messages WHERE receiver=? ORDER BY id DESC LIMIT 5", (username,))
+    cursor.execute("SELECT id, sender, message FROM messages WHERE receiver=? AND is_read=0 ORDER BY id DESC", (username,))
     for m in cursor.fetchall():
-        notifications.append({"type": "message", "sender": m[0], "title": m[1]})
+        notifications.append({"type": "message", "id": m[0], "sender": m[1], "title": m[2]})
 
     conn.close()
     return jsonify(notifications)
+
+@app.route('/api/mark-notification-read', methods=['POST'])
+def mark_notification_read():
+    data = request.json
+    notif_type = data.get('type')
+    notif_id = data.get('id')
+    username = data.get('username')
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    if notif_type == 'message':
+        cursor.execute("UPDATE messages SET is_read=1 WHERE id=?", (notif_id,))
+    elif notif_type == 'registration':
+        cursor.execute("INSERT INTO read_notifications (notif_type, target_id, username) VALUES ('registration', ?, ?)", (notif_id, username))
+
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/notification-history', methods=['GET'])
+def notification_history():
+    username = request.args.get('username')
+    status = request.args.get('status')
+    
+    history = []
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    if status == 'admin':
+        cursor.execute("SELECT name, username, email, phone, status FROM users WHERE status='pending' OR status='approved' ORDER BY id DESC")
+        for u in cursor.fetchall():
+            history.append({
+                "type": "registration",
+                "details": f"ইউজার রিকোয়েস্ট: {u[0]} (@{u[1]}) - ফোন: {u[3]}, ইমেইল: {u[2]}",
+                "timestamp": "নিবন্ধন রিকোয়েস্ট"
+            })
+
+    cursor.execute("SELECT sender, message, timestamp FROM messages WHERE receiver=? OR receiver='group' ORDER BY id DESC LIMIT 50", (username,))
+    for m in cursor.fetchall():
+        history.append({
+            "type": "message",
+            "details": f"মেসেজ প্রেরক @{m[0]}: \"{m[1]}\"",
+            "timestamp": m[2]
+        })
+
+    conn.close()
+    return jsonify(history)
 
 @app.route('/api/customers', methods=['GET'])
 def get_customers():
@@ -1370,10 +1491,24 @@ def group_broadcast():
 def get_messages():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute("SELECT sender, receiver, message, file_url, file_type, timestamp FROM messages ORDER BY id ASC")
+    cursor.execute("""
+        SELECT m.sender, m.receiver, m.message, m.file_url, m.file_type, m.timestamp, u.status 
+        FROM messages m 
+        LEFT JOIN users u ON m.sender = u.username 
+        ORDER BY m.id ASC
+    """)
     rows = cursor.fetchall()
     conn.close()
-    return jsonify([{"sender": r[0], "receiver": r[1], "message": r[2], "file_url": r[3], "file_type": r[4], "time": r[5]} for r in rows])
+    
+    return jsonify([{
+        "sender": r[0], 
+        "receiver": r[1], 
+        "message": r[2], 
+        "file_url": r[3], 
+        "file_type": r[4], 
+        "time": r[5],
+        "sender_status": r[6]
+    } for r in rows])
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
