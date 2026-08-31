@@ -1,3 +1,80 @@
+import os
+import sqlite3
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
+
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "super_secret_btcl_kurigram_key_2026")
+
+ADMIN_USERNAME = "Khushbu23"
+ADMIN_PASSWORD = "01751947523"
+ADMIN_SECURITY_CODE = "137955"
+
+# --- Database Setup ---
+def init_db():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    # Users Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            username TEXT UNIQUE,
+            email TEXT,
+            phone TEXT,
+            password TEXT,
+            status TEXT DEFAULT 'pending'
+        )
+    ''')
+    
+    # Phone Records Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS phone_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_name TEXT,
+            mobile TEXT,
+            service_type TEXT,
+            connection_num TEXT,
+            address TEXT,
+            note TEXT
+        )
+    ''')
+    
+    # Messages Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_username TEXT,
+            receiver_username TEXT,
+            message TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Notifications Table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT,
+            is_read INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Create Admin Account
+    cursor.execute("SELECT * FROM users WHERE username = ?", (ADMIN_USERNAME,))
+    if not cursor.fetchone():
+        hashed_pw = generate_password_hash(ADMIN_PASSWORD)
+        cursor.execute("INSERT INTO users (name, username, email, phone, password, status) VALUES (?, ?, ?, ?, ?, ?)",
+                       ('Admin', ADMIN_USERNAME, 'admin@btcl.com', '01751947523', hashed_pw, 'active'))
+
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# --- Single File HTML Template ---
+HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -7,15 +84,13 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #121212; color: #fff; font-family: sans-serif; }
-        .bg-dark-custom { background-color: #1e1e1e; }
-        .card { background-color: #242424; color: white; border: 1px solid #333; }
-        .form-control, .form-select { background-color: #333; color: #fff; border: 1px solid #444; }
-        .form-control:focus { background-color: #333; color: #fff; }
+        .card { background-color: #1e1e1e; color: white; border: 1px solid #333; }
+        .form-control, .form-select { background-color: #2b2b2b; color: #fff; border: 1px solid #444; }
+        .form-control:focus, .form-select:focus { background-color: #333; color: #fff; }
         .btn-success-custom { background-color: #00e676; border: none; color: #000; font-weight: bold; }
     </style>
 </head>
 <body>
-
 <div class="container py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="text-success">BTCL, কুড়িগ্রাম</h4>
@@ -62,7 +137,6 @@
             </div>
         </div>
     </div>
-
     {% else %}
     <div class="mb-3">
         <input type="text" id="searchInput" class="form-control" placeholder="যেকোনো কিছু দিয়ে সার্চ করুন (নাম, নম্বর, ঠিকানা...)" onkeyup="performSearch()">
@@ -74,17 +148,10 @@
             <table class="table table-dark table-striped mt-2">
                 <thead>
                     <tr>
-                        <th>নাম</th>
-                        <th>মোবাইল</th>
-                        <th>সেবার ধরন</th>
-                        <th>সংযোগ নম্বর</th>
-                        <th>ঠিকানা</th>
-                        <th>নোট</th>
-                        <th>অ্যাকশন</th>
+                        <th>নাম</th><th>মোবাইল</th><th>সেবা</th><th>সংযোগ নং</th><th>ঠিকানা</th><th>নোট</th><th>অ্যাকশন</th>
                     </tr>
                 </thead>
-                <tbody id="searchResults">
-                    </tbody>
+                <tbody id="searchResults"></tbody>
             </table>
         </div>
     </div>
@@ -109,17 +176,6 @@
             </div>
         </form>
     </div>
-
-    <div class="card p-3">
-        <h5>মেসেঞ্জার</h5>
-        <div id="chatBox" class="border p-2 mb-2" style="height: 150px; overflow-y: scroll; background-color: #1a1a1a;">
-            </div>
-        <div class="input-group">
-            <input type="text" id="msgInput" class="form-control" placeholder="মেসেজ টাইপ করুন...">
-            <button class="btn btn-success" onclick="sendMessage()">পাঠান</button>
-        </div>
-    </div>
-
     {% endif %}
 </div>
 
@@ -127,16 +183,12 @@
   <div class="modal-dialog">
     <div class="modal-content bg-dark text-white">
       <form id="deleteForm" method="POST">
-          <div class="modal-header">
-            <h5 class="modal-title">ডিলেটের নিশ্চিতকরণ</h5>
-          </div>
+          <div class="modal-header"><h5 class="modal-title">ডিলেটের নিশ্চিতকরণ</h5></div>
           <div class="modal-body">
-            <p>ডিলেট করার জন্য এডমিন সিকিউরিটি কোড প্রদান করুন:</p>
+            <p>ডিলেট করতে এডমিন সিকিউরিটি কোড দিন:</p>
             <input type="password" name="security_code" class="form-control" required placeholder="সিকিউরিটি কোড">
           </div>
-          <div class="modal-footer">
-            <button type="submit" class="btn btn-danger">ডিলেট নিশ্চিত করুন</button>
-          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-danger">ডিলেট নিশ্চিত করুন</button></div>
       </form>
     </div>
   </div>
@@ -145,49 +197,120 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 function performSearch() {
-    let q = document.getElementById('searchInput').value;
+    let q = document.getElementById('searchInput') ? document.getElementById('searchInput').value : '';
     fetch('/api/search?q=' + q)
     .then(res => res.json())
     .then(data => {
         let html = '';
         data.forEach(row => {
             html += `<tr>
-                <td>${row[1]}</td>
-                <td>${row[2]}</td>
-                <td>${row[3]}</td>
-                <td>${row[4]}</td>
-                <td>${row[5]}</td>
-                <td>${row[6]}</td>
-                <td>
-                    <button class="btn btn-danger btn-sm" onclick="promptDelete(${row[0]})">ডিলেট</button>
-                </td>
+                <td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td><td>${row[5]}</td><td>${row[6]}</td>
+                <td><button class="btn btn-danger btn-sm" onclick="promptDelete(${row[0]})">ডিলেট</button></td>
             </tr>`;
         });
-        document.getElementById('searchResults').innerHTML = html;
+        if(document.getElementById('searchResults')) document.getElementById('searchResults').innerHTML = html;
     });
 }
-
 function promptDelete(id) {
     document.getElementById('deleteForm').action = '/delete_record/' + id;
-    var myModal = new bootstrap.Modal(document.getElementById('deleteModal'));
-    myModal.show();
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
-
-function sendMessage() {
-    let msg = document.getElementById('msgInput').value;
-    let formData = new FormData();
-    formData.append('message', msg);
-    fetch('/send_message', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('msgInput').value = '';
-    });
-}
-
-// Initial Search Load
-if (document.getElementById('searchInput')) {
-    performSearch();
-}
+if (document.getElementById('searchInput')) performSearch();
 </script>
 </body>
 </html>
+"""
+
+# --- Routes ---
+@app.route('/')
+def home():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = ? OR email = ? OR phone = ?", (username, username, username))
+    user = cursor.fetchone()
+    conn.close()
+
+    if user and check_password_hash(user[5], password):
+        if user[6] == 'pending':
+            return "আপনার একাউন্টটি এখনও এডমিন অনুমোদন করেনি।"
+        elif user[6] == 'blocked':
+            return "আপনার একাউন্টটি ব্লক করা হয়েছে।"
+        
+        session['user'] = {'id': user[0], 'name': user[1], 'username': user[2], 'is_admin': (user[2] == ADMIN_USERNAME)}
+        return redirect(url_for('home'))
+    return "ভুল ইউজারনেম অথবা পাসওয়ার্ড!"
+
+@app.route('/register', methods=['POST'])
+def register():
+    name = request.form['name']
+    email = request.form['email']
+    phone = request.form['phone']
+    username = request.form['username']
+    password = request.form['password']
+    confirm_password = request.form['confirm_password']
+
+    if password != confirm_password:
+        return "পাসওয়ার্ড দুটি মেলেনি!"
+
+    hashed_pw = generate_password_hash(password)
+    try:
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (name, username, email, phone, password) VALUES (?, ?, ?, ?, ?)",
+                       (name, username, email, phone, hashed_pw))
+        conn.commit()
+        conn.close()
+        return "রেজিস্ট্রেশন সফল হয়েছে! এডমিন অনুমোদন দিলে লগইন করতে পারবেন।"
+    except:
+        return "ইউজারনেমটি আগে থেকেই ব্যবহৃত হচ্ছে।"
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    return redirect(url_for('home'))
+
+@app.route('/add_record', methods=['POST'])
+def add_record():
+    if 'user' not in session: return redirect(url_for('home'))
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note) 
+                      VALUES (?, ?, ?, ?, ?, ?)''', 
+                   (request.form['customer_name'], request.form['mobile'], request.form['service_type'],
+                    request.form['connection_num'], request.form['address'], request.form['note']))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('home'))
+
+@app.route('/delete_record/<int:id>', methods=['POST'])
+def delete_record(id):
+    if request.form.get('security_code') != ADMIN_SECURITY_CODE:
+        return "সিকিউরিটি কোড ভুল!"
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM phone_records WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('home'))
+
+@app.route('/api/search')
+def api_search():
+    query = request.args.get('q', '')
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''SELECT * FROM phone_records WHERE customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ? OR address LIKE ? OR note LIKE ?''',
+                   (f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%'))
+    records = cursor.fetchall()
+    conn.close()
+    return jsonify(records)
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
