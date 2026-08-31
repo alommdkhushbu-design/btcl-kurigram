@@ -81,7 +81,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL, কুড়িগ্রাম - Smart Control Desk</title>
+    <title>BTCL, কুড়িগ্রাম - Smart Control Desk & Chat</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -99,22 +99,25 @@ HTML_TEMPLATE = """
         .dropdown-menu-dark { background-color: #2b001e; border: 1px solid #d4af37; }
         .dropdown-item { color: #ffe6f2; }
         .dropdown-item:hover { background-color: #ff66b2; color: #000; }
+        .notification-badge { position: absolute; top: -5px; right: -5px; font-size: 10px; padding: 3px 6px; border-radius: 50%; background: #ff1493; color: white; }
+        .chat-box { height: 350px; overflow-y: auto; background: #15030d; padding: 15px; border-radius: 8px; border: 1px solid #ff66b2; }
+        .message-bubble { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 75%; word-break: break-word; }
+        .msg-incoming { background: #3b0d26; color: #fff; align-self: flex-start; }
+        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; margin-left: auto; }
     </style>
 </head>
 <body>
 
 <div class="gold-pink-header text-center py-2">
     <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
-    <small>Smart Management Portal</small>
+    <small>Smart Management Portal & Messenger</small>
 </div>
 
 <div class="container py-3">
     {% if session.get('user') %}
 
-    <!-- Top Navigation Bar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
-            <!-- মেনু অপশন ড্রপডাউন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
@@ -128,18 +131,26 @@ HTML_TEMPLATE = """
             </div>
 
             <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
-            <button class="btn btn-outline-warning btn-sm" onclick="openMessenger()"><i class="fa-solid fa-comments"></i> মেসেঞ্জার</button>
+            
+            <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
+                <i class="fa-solid fa-comments"></i> মেসেজ
+                <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
+            </button>
+
+            <button class="btn btn-outline-danger btn-sm position-relative" onclick="openNotificationModal()">
+                <i class="fa-solid fa-bell"></i> নোটিফিকেশন
+                <span id="notifBadge" class="notification-badge" style="display:none;">0</span>
+            </button>
         </div>
         
         <div>
-            <!-- প্রোফাইল অপশন ড্রপডাউন -->
             <div class="dropdown d-inline-block">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-circle-user"></i> প্রোফাইল
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                     <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-user-gear me-2"></i>প্রোফাইল আপডেট</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি (Administory)</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি</a></li>
                     <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি</a></li>
                 </ul>
             </div>
@@ -147,7 +158,6 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Search & Sort Options -->
     <div class="row g-2 mb-3">
         <div class="col-md-6">
             <div class="input-group">
@@ -167,7 +177,6 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Filter Cards -->
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">শুধুমাত্র টেলিফোন</div></div></div>
@@ -175,10 +184,9 @@ HTML_TEMPLATE = """
         <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">শুধুমাত্র ওয়াইফাই</div></div></div>
     </div>
 
-    <!-- Main Customer Table -->
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
-            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
+            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহک ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-warning text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
         <div class="table-responsive">
@@ -201,7 +209,6 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- User List Section (Hidden by default, shown via modal/toggle) -->
     <div id="userListSection" class="card-custom p-3 mb-4" style="display:none;">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
             <h5 class="text-warning mb-0"><i class="fa-solid fa-users"></i> রেজিস্টার্ড ইউজার তালিকা</h5>
@@ -218,7 +225,6 @@ HTML_TEMPLATE = """
     </div>
 
     {% else %}
-    <!-- Login Form -->
     <div class="row justify-content-center mt-4">
         <div class="col-md-5">
             <div class="card-custom p-4 text-center">
@@ -234,7 +240,55 @@ HTML_TEMPLATE = """
     {% endif %}
 </div>
 
-<!-- Add/Edit Record Modal -->
+<div class="modal fade" id="messengerModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-warning d-flex justify-content-between">
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> মেসেঞ্জার চ্যাট</h5>
+        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+            <div class="col-md-4 border-end border-warning">
+                <div class="d-flex gap-1 mb-2">
+                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইনবক্স</button>
+                    <button class="btn btn-sm btn-pink w-50" onclick="switchChatTab('group')">গ্রুপ চ্যাট</button>
+                </div>
+                <div id="chatUserList" class="list-group list-group-flush bg-transparent" style="max-height: 350px; overflow-y: auto;">
+                    </div>
+            </div>
+            <div class="col-md-8 d-flex flex-column">
+                <div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-warning">চ্যাট নির্বাচন করুন</div>
+                <div id="chatMessages" class="chat-box d-flex flex-column mb-2">
+                    <p class="text-muted text-center m-auto">মেসেজ দেখতে বা পাঠাতে বামপাশ থেকে ইউজার বা গ্রুপ সিলেক্ট করুন।</p>
+                </div>
+                <form id="chatForm" onsubmit="sendMessage(event)" class="input-group" style="display:none;">
+                    <input type="text" id="chatInput" class="form-control" placeholder="একটি মেসেজ লিখুন..." required>
+                    <button type="submit" class="btn btn-gold"><i class="fa-solid fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="notificationModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-warning d-flex justify-content-between">
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশনসমূহ</h5>
+        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
+      </div>
+      <div class="modal-body">
+        <div id="notificationList" class="list-group list-group-flush bg-transparent">
+            <p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -263,7 +317,6 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Create User Modal (ইউজার এড করা) -->
 <div class="modal fade" id="createUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -289,7 +342,6 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Admin History Modal (এডমিন হিস্ট্রি ও অ্যাক্টিভিটি) -->
 <div class="modal fade" id="adminHistoryModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -317,7 +369,6 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Profile Modal -->
 <div class="modal fade" id="profileModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -339,6 +390,9 @@ HTML_TEMPLATE = """
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let activeServiceFilter = '';
+let currentChatTarget = '';
+let currentChatIsGroup = 0;
+let currentChatTabType = 'users';
 
 function showHome() {
     document.getElementById('recordsSection').style.display = 'block';
@@ -397,7 +451,7 @@ function openCreateUserModal() {
 }
 
 function openCreateAdminModal() {
-    openCreateUserModal(); // Admin creation uses user modal with admin role selection
+    openCreateUserModal();
 }
 
 function openUserListModal() {
@@ -437,6 +491,168 @@ function openAdminHistoryModal() {
             </tr>`;
         });
         document.getElementById('adminHistoryTableBody').innerHTML = html;
+    });
+}
+
+// --- MESSENGER & NOTIFICATION SYSTEM ---
+
+function openMessengerModal() {
+    new bootstrap.Modal(document.getElementById('messengerModal')).show();
+    switchChatTab('users');
+}
+
+function switchChatTab(tab) {
+    currentChatTabType = tab;
+    let listEl = document.getElementById('chatUserList');
+    listEl.innerHTML = '<p class="text-muted text-center p-2">লোড হচ্ছে...</p>';
+    
+    if(tab === 'users') {
+        fetch('/api/chat/users')
+        .then(res => res.json())
+        .then(data => {
+            let html = '';
+            if(data.length === 0) {
+                html = '<p class="text-muted text-center">কোনো ইউজার নেই।</p>';
+            } else {
+                data.forEach(u => {
+                    let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger rounded-pill">${u.unread}</span>` : '';
+                    let subTextClass = u.replied ? 'text-muted small' : 'fw-bold text-warning small';
+                    html += `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('${u.username}', '${u.name}', 0)">
+                        <div>
+                            <div><strong>${u.name}</strong></div>
+                            <div class="${subTextClass}">${u.last_msg || 'চ্যাট শুরু করুন'}</div>
+                        </div>
+                        ${badgeHtml}
+                    </a>`;
+                });
+            }
+            listEl.innerHTML = html;
+        });
+    } else {
+        // Group chat
+        listEl.innerHTML = `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('BTCL_Group', 'অফিসিয়াল গ্রুপ চ্যাট', 1)">
+            <div>
+                <div><strong><i class="fa-solid fa-users"></i> অফিসিয়াল গ্রুপ চ্যাট</strong></div>
+                <div class="text-muted small">গ্রুপ মেসেজিং</div>
+            </div>
+        </a>`;
+    }
+}
+
+function selectChatUser(target, name, isGroup) {
+    currentChatTarget = target;
+    currentChatIsGroup = isGroup;
+    document.getElementById('activeChatTitle').innerText = name;
+    document.getElementById('chatForm').style.display = 'flex';
+    loadMessages();
+}
+
+function loadMessages() {
+    if(!currentChatTarget) return;
+    fetch(`/api/chat/messages?target=${encodeURIComponent(currentChatTarget)}&is_group=${currentChatIsGroup}`)
+    .then(res => res.json())
+    .then(data => {
+        let html = '';
+        if(data.length === 0) {
+            html = '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই। প্রথম মেসেজ পাঠান!</p>';
+        } else {
+            data.forEach(m => {
+                let bubbleClass = m.is_mine ? 'msg-outgoing' : 'msg-incoming';
+                let senderName = !m.is_mine && currentChatIsGroup ? `<div class="small text-warning fw-bold mb-1">${m.sender}</div>` : '';
+                html += `<div class="message-bubble ${bubbleClass}">
+                    ${senderName}
+                    <div>${m.message}</div>
+                    <div style="font-size: 9px; opacity: 0.7; text-align: right;">${m.timestamp}</div>
+                </div>`;
+            });
+        }
+        let box = document.getElementById('chatMessages');
+        box.innerHTML = html;
+        box.scrollTop = box.scrollHeight;
+        checkNotifications();
+    });
+}
+
+function sendMessage(e) {
+    e.preventDefault();
+    let text = document.getElementById('chatInput').value;
+    if(!text.trim()) return;
+
+    let formData = new FormData();
+    formData.append('receiver', currentChatTarget);
+    formData.append('message', text);
+    formData.append('is_group', currentChatIsGroup);
+
+    fetch('/api/chat/send', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(res => {
+        if(res.status === 'success') {
+            document.getElementById('chatInput').value = '';
+            loadMessages();
+            if(currentChatTabType === 'users') switchChatTab('users');
+        }
+    });
+}
+
+function openNotificationModal() {
+    new bootstrap.Modal(document.getElementById('notificationModal')).show();
+    fetch('/api/notifications')
+    .then(res => res.json())
+    .then(data => {
+        let html = '';
+        if(data.length === 0) {
+            html = '<p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>';
+        } else {
+            data.forEach(n => {
+                html += `<div class="list-group-item bg-dark text-white border-warning mb-1 rounded cursor-pointer" onclick="goToChatFromNotification('${n.sender}', ${n.is_group})">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-warning">${n.sender} ${n.is_group ? '(গ্রুপ)' : ''}</h6>
+                        <small>${n.timestamp}</small>
+                    </div>
+                    <p class="mb-1">${n.message}</p>
+                </div>`;
+            });
+        }
+        document.getElementById('notificationList').innerHTML = html;
+        checkNotifications();
+    });
+}
+
+function goToChatFromNotification(sender, isGroup) {
+    bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide();
+    openMessengerModal();
+    if(isGroup) {
+        switchChatTab('group');
+        selectChatUser('BTCL_Group', 'অফিসিয়াল গ্রুপ চ্যাট', 1);
+    } else {
+        switchChatTab('users');
+        selectChatUser(sender, sender, 0);
+    }
+}
+
+function checkNotifications() {
+    fetch('/api/notifications/count')
+    .then(res => res.json())
+    .then(data => {
+        let msgBadge = document.getElementById('msgBadge');
+        let notifBadge = document.getElementById('notifBadge');
+        
+        if(msgBadge) {
+            if(data.msg_count > 0) {
+                msgBadge.innerText = data.msg_count;
+                msgBadge.style.display = 'inline-block';
+            } else {
+                msgBadge.style.display = 'none';
+            }
+        }
+        if(notifBadge) {
+            if(data.notif_count > 0) {
+                notifBadge.innerText = data.notif_count;
+                notifBadge.style.display = 'inline-block';
+            } else {
+                notifBadge.style.display = 'none';
+            }
+        }
     });
 }
 
@@ -480,6 +696,8 @@ function openProfileModal() {
 
 if(document.getElementById('searchInput')) {
     loadRecords();
+    setInterval(checkNotifications, 10000);
+    checkNotifications();
 }
 </script>
 </body>
@@ -565,6 +783,118 @@ def api_search():
         'counts': {'total': total, 'tel': tel, 'both': both, 'wifi': wifi}
     })
 
+# --- CHAT & NOTIFICATION APIS ---
+
+@app.route('/api/chat/users')
+def chat_users():
+    if 'user' not in session: return jsonify([])
+    current_user = session['user']['username']
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted=0", (current_user,))
+    users = cursor.fetchall()
+    
+    result = []
+    for u in users:
+        u_username, u_name = u[0], u[1]
+        
+        # Unread count
+        cursor.execute("SELECT COUNT(*) FROM messages WHERE sender = ? AND receiver = ? AND is_group = 0 AND is_read = 0", (u_username, current_user))
+        unread = cursor.fetchone()[0]
+        
+        # Last message & reply status check
+        cursor.execute("SELECT message, sender FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) AND is_group = 0 ORDER BY id DESC LIMIT 1", (u_username, current_user, current_user, u_username))
+        last_m = cursor.fetchone()
+        
+        last_msg_text = last_m[0] if last_m else ''
+        replied = last_m and last_m[1] == current_user if last_m else True
+        
+        result.append({
+            'username': u_username,
+            'name': u_name,
+            'unread': unread,
+            'last_msg': last_msg_text,
+            'replied': replied
+        })
+    conn.close()
+    return jsonify(result)
+
+@app.route('/api/chat/messages')
+def chat_messages():
+    if 'user' not in session: return jsonify([])
+    current_user = session['user']['username']
+    target = request.args.get('target')
+    is_group = int(request.args.get('is_group', 0))
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    if is_group:
+        cursor.execute("SELECT sender, message, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
+    else:
+        cursor.execute("""SELECT sender, message, timestamp FROM messages 
+                          WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) 
+                          ORDER BY id ASC""", (current_user, target, target, current_user))
+        # Mark as read for this target
+        cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_group = 0", (target, current_user))
+        conn.commit()
+        
+    rows = cursor.fetchall()
+    conn.close()
+    
+    messages = []
+    for r in rows:
+        messages.append({
+            'sender': r[0],
+            'message': r[1],
+            'timestamp': r[2],
+            'is_mine': r[0] == current_user
+        })
+    return jsonify(messages)
+
+@app.route('/api/chat/send', methods=['POST'])
+def chat_send():
+    if 'user' not in session: return jsonify({'status': 'unauthorized'})
+    current_user = session['user']['username']
+    receiver = request.form.get('receiver')
+    message = request.form.get('message')
+    is_group = int(request.form.get('is_group', 0))
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("""INSERT INTO messages (sender, receiver, message, is_group, is_read) 
+                      VALUES (?, ?, ?, ?, 0)""", (current_user, receiver, message, is_group))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/api/notifications/count')
+def notif_count():
+    if 'user' not in session: return jsonify({'msg_count': 0, 'notif_count': 0})
+    username = session['user']['username']
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (username,))
+    msg_count = cursor.fetchone()[0]
+    
+    conn.close()
+    return jsonify({'msg_count': msg_count, 'notif_count': msg_count})
+
+@app.route('/api/notifications')
+def notifications():
+    if 'user' not in session: return jsonify([])
+    username = session['user']['username']
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT sender, message, timestamp, is_group FROM messages WHERE receiver = ? ORDER BY id DESC LIMIT 20", (username,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    notifs = [{'sender': r[0], 'message': r[1], 'timestamp': r[2], 'is_group': r[3]} for r in rows]
+    return jsonify(notifs)
+
 @app.route('/api/save_record', methods=['POST'])
 def save_record():
     rec_id = request.form.get('id')
@@ -633,16 +963,13 @@ def admin_history():
     for adm in admins:
         adm_name, adm_username, role, last_active = adm[0], adm[1], adm[2], adm[3]
         
-        # Count users added by this admin
         cursor.execute("SELECT COUNT(*) FROM users WHERE added_by=?", (adm_username,))
         users_added = cursor.fetchone()[0]
         
-        # Count records added by this admin
         cursor.execute("SELECT COUNT(*) FROM phone_records WHERE added_by=?", (adm_username,))
         records_added = cursor.fetchone()[0]
         
-        # Calculate active minutes roughly based on last_active vs created or fixed estimate
-        active_mins = 15 # default estimation or based on sessions
+        active_mins = 10
         if last_active:
             try:
                 dt = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
