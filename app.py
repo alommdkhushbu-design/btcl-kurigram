@@ -51,7 +51,6 @@ def init_db():
             message TEXT,
             file_url TEXT,
             is_group INTEGER DEFAULT 0,
-            is_deleted_by_sender INTEGER DEFAULT 0,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -60,8 +59,8 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS notifications (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_user TEXT DEFAULT 'ADMIN',
             type TEXT,
-            reference_id INTEGER,
             message TEXT,
             is_read INTEGER DEFAULT 0,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -104,7 +103,7 @@ HTML_TEMPLATE = """
             box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
         }
         .card-custom {
-            background: rgba(45, 10, 30, 0.85);
+            background: rgba(45, 10, 30, 0.9);
             border: 1px solid #d4af37;
             border-radius: 12px;
             box-shadow: 0 4px 10px rgba(255, 102, 178, 0.2);
@@ -148,10 +147,10 @@ HTML_TEMPLATE = """
         .stat-number { font-size: 22px; font-weight: bold; color: #ffd700; }
         .stat-label { font-size: 11px; color: #ffccf2; }
         .offcanvas { background-color: #1f0012; color: #ffe6f2; border-right: 2px solid #d4af37; }
-        .nav-link-custom { color: #ffd700; padding: 12px 15px; border-bottom: 1px solid #4a1525; display: block; text-decoration: none; }
+        .nav-link-custom { color: #ffd700; padding: 12px 15px; border-bottom: 1px solid #4a1525; display: block; text-decoration: none; cursor: pointer; }
         .nav-link-custom:hover { background-color: #ff66b2; color: #fff; }
-        .chat-bubble-me { background: #ff66b2; color: #fff; border-radius: 12px 12px 0 12px; margin-left: auto; max-width: 75%; }
-        .chat-bubble-them { background: #d4af37; color: #000; border-radius: 12px 12px 12px 0; margin-right: auto; max-width: 75%; }
+        .chat-bubble-me { background: #ff66b2; color: #fff; border-radius: 12px 12px 0 12px; margin-left: auto; max-width: 80%; }
+        .chat-bubble-them { background: #d4af37; color: #000; border-radius: 12px 12px 12px 0; margin-right: auto; max-width: 80%; }
     </style>
 </head>
 <body>
@@ -191,9 +190,9 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <div id="groupBroadcast" class="card-custom p-2 mb-3 border-warning" style="display:none;">
-        <span class="badge bg-warning text-dark"><i class="fa-solid fa-bullhorn"></i> এডমিন নোটিশ</span>
-        <p id="broadcastMsg" class="m-0 mt-1 small text-white"></p>
+    <div id="successAlert" class="alert alert-success alert-dismissible fade show" role="alert" style="display:none;">
+        <strong>সাকসেসফুল!</strong> <span id="successMsg">নম্বরটি সফলভাবে যোগ করা হয়েছে।</span>
+        <button type="button" class="btn-close" onclick="document.getElementById('successAlert').style.display='none'"></button>
     </div>
 
     <div class="row g-2 mb-3">
@@ -215,7 +214,7 @@ HTML_TEMPLATE = """
 
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')">
-            <div class="stat-card"><div class="stat-number" id="countTotal">0</div><div class="stat-label">টোটাল বিল/নম্বর</div></div>
+            <div class="stat-card"><div class="stat-number" id="countTotal">0</div><div class="stat-label">টোটাল নম্বর</div></div>
         </div>
         <div class="col" onclick="filterService('টেলিফোন নম্বর')">
             <div class="stat-card"><div class="stat-number" id="countTel">0</div><div class="stat-label">টেলিফোন</div></div>
@@ -235,8 +234,8 @@ HTML_TEMPLATE = """
 
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
-            <h5 class="m-0 text-warning"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ তালিকা</h5>
-            <button class="btn btn-gold btn-sm" onclick="toggleAddForm()"><i class="fa-solid fa-plus"></i> নতুন এড</button>
+            <h5 class="m-0 text-warning"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বর তালিকা</h5>
+            <button class="btn btn-gold btn-sm" onclick="openAddRecordModal()"><i class="fa-solid fa-plus"></i> নতুন নম্বর এড</button>
         </div>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle mt-2">
@@ -249,43 +248,6 @@ HTML_TEMPLATE = """
                 <tbody id="recordsTableBody"></tbody>
             </table>
         </div>
-    </div>
-
-    <div id="addRecordSection" class="card-custom p-3 mb-4" style="display:none;">
-        <h5 class="text-warning border-bottom border-warning pb-2">নতুন নম্বর এড করুন</h5>
-        <form action="/add_record" method="POST" class="row g-3">
-            <div class="col-md-6">
-                <label class="form-label">গ্রাহকের নাম (বাধ্যতামূলক) *</label>
-                <input type="text" name="customer_name" class="form-control" required placeholder="নাম লিখুন">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">মোবাইল নম্বর (ঐচ্ছিক)</label>
-                <input type="text" name="mobile" class="form-control" placeholder="মোবাইল নম্বর">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">সেবার ধরন সিলেক্ট করুন *</label>
-                <select name="service_type" class="form-select" required>
-                    <option value="টেলিফোন নম্বর">টেলিফোন নম্বর</option>
-                    <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
-                    <option value="ওয়াইফাই নম্বর">ওয়াইফাই নম্বর</option>
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">সংযোগ নম্বর (ঐচ্ছিক)</label>
-                <input type="text" name="connection_num" class="form-control" placeholder="সংযোগ নম্বর">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">ঠিকানা (ঐচ্ছিক)</label>
-                <input type="text" name="address" class="form-control" placeholder="ঠিকানা">
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">অতিরিক্ত নোট (ঐচ্ছিক)</label>
-                <input type="text" name="note" class="form-control" placeholder="নোট">
-            </div>
-            <div class="col-12">
-                <button type="submit" class="btn btn-gold w-100 py-2">সংরক্ষণ করুন</button>
-            </div>
-        </form>
     </div>
 
     {% if session['user']['is_admin'] %}
@@ -305,7 +267,7 @@ HTML_TEMPLATE = """
         <h5 class="text-danger border-bottom border-danger pb-2">ডিলিট হওয়া নম্বর তালিকা</h5>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
-                <thead><tr><th>নাম</th><th>মোবাইল</th><th>সেবা</th><th>মুছে ফেলার পিন</th></tr></thead>
+                <thead><tr><th>নাম</th><th>মোবাইল</th><th>সেবা</th><th>সংযোগ নং</th></tr></thead>
                 <tbody id="deletedTableBody"></tbody>
             </table>
         </div>
@@ -325,11 +287,11 @@ HTML_TEMPLATE = """
                         <form action="/login" method="POST">
                             <div class="mb-3">
                                 <label class="form-label">ইউজারনেম / মোবাইল</label>
-                                <input type="text" name="username" class="form-control" required>
+                                <input type="text" name="username" class="form-control" required placeholder="ইউজারনেম বা মোবাইল নম্বর">
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">পাসওয়ার্ড</label>
-                                <input type="password" name="password" class="form-control" required>
+                                <input type="password" name="password" class="form-control" required placeholder="পাসওয়ার্ড">
                             </div>
                             <button type="submit" class="btn btn-gold w-100 py-2">লগইন করুন</button>
                         </form>
@@ -358,17 +320,75 @@ HTML_TEMPLATE = """
     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
   </div>
   <div class="offcanvas-body p-0">
-    <a href="#" class="nav-link-custom" onclick="showSection('records')">১. ওভারভিউ ও ডাটা</a>
-    <a href="#" class="nav-link-custom" onclick="showNotifHistory()">২. নোটিফিকেশন হিস্টরি</a>
-    <a href="#" class="nav-link-custom" onclick="toggleAddForm()">৩. নম্বর এড করুন</a>
+    <a class="nav-link-custom" onclick="showSection('records')">১. ওভারভিউ ও ডাটা</a>
+    <a class="nav-link-custom" onclick="showNotifHistoryModal()">২. নোটিফিকেশন হিস্টরি</a>
+    <a class="nav-link-custom" onclick="openAddRecordModal()">৩. নম্বর এড করুন</a>
     {% if session.get('user', {}).get('is_admin') %}
-    <a href="#" class="nav-link-custom" onclick="openCreateUserModal()">৪. নতুন ইউজার তৈরি করুন</a>
-    <a href="#" class="nav-link-custom" onclick="showSection('users')">৫. নিবন্ধিত ইউজার তথ্য</a>
-    <a href="#" class="nav-link-custom" onclick="openAdminSecurityModal()">৬. সিকিউরিটি ও পাসওয়ার্ড পরিবর্তন</a>
-    <a href="#" class="nav-link-custom" onclick="showSection('deleted')">৭. ডিলিট হওয়া নম্বর</a>
-    <a href="#" class="nav-link-custom" onclick="showSection('users')">৮. ডিলিট হওয়া ইউজার</a>
+    <a class="nav-link-custom" onclick="openCreateUserModal()">৪. নতুন ইউজার তৈরি করুন</a>
+    <a class="nav-link-custom" onclick="showSection('users')">৫. নিবন্ধিত ইউজার তথ্য</a>
+    <a class="nav-link-custom" onclick="openAdminSecurityModal()">৬. সিকিউরিটি ও পাসওয়ার্ড পরিবর্তন</a>
+    <a class="nav-link-custom" onclick="verifyPinAndShowDeleted()">৭. ডিলিট হওয়া নম্বর</a>
+    <a class="nav-link-custom" onclick="showSection('users')">৮. ডিলিট হওয়া ইউজার</a>
     {% endif %}
-    <a href="#" class="nav-link-custom" onclick="openMessenger()">৯. মেসেঞ্জার</a>
+    <a class="nav-link-custom" onclick="openMessenger()">৯. এডমিন মেসেঞ্জার (সহযোগিতা)</a>
+  </div>
+</div>
+
+<div class="modal fade" id="addRecordModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-warning">
+        <h5 class="modal-title text-warning">নতুন নম্বর এড করুন</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="addRecordForm" onsubmit="submitAddRecord(event)" class="modal-body row g-3">
+        <div class="col-md-6">
+            <label class="form-label">গ্রাহকের নাম (বাধ্যতামূলক) *</label>
+            <input type="text" id="add_name" name="customer_name" class="form-control" required placeholder="নাম লিখুন">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">মোবাইল নম্বর</label>
+            <input type="text" id="add_mobile" name="mobile" class="form-control" placeholder="মোবাইল নম্বর">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">সেবার ধরন সিলেক্ট করুন *</label>
+            <select id="add_service" name="service_type" class="form-select" required>
+                <option value="টেলিফোন নম্বর">টেলিফোন নম্বর</option>
+                <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
+                <option value="ওয়াইফাই নম্বর">ওয়াইফাই নম্বর</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">সংযোগ নম্বর</label>
+            <input type="text" id="add_conn" name="connection_num" class="form-control" placeholder="সংযোগ নম্বর">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">ঠিকানা</label>
+            <input type="text" id="add_address" name="address" class="form-control" placeholder="ঠিকানা">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">অতিরিক্ত নোট</label>
+            <input type="text" id="add_note" name="note" class="form-control" placeholder="নোট">
+        </div>
+        <div class="col-12 text-end mt-3">
+            <button type="submit" class="btn btn-gold px-4 py-2">সংরক্ষণ করুন</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="notifHistoryModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-warning">
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন হিস্টরি</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="list-group" id="notifHistoryList"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -376,7 +396,7 @@ HTML_TEMPLATE = """
   <div class="modal-dialog">
     <div class="modal-content card-custom">
       <form action="/admin/create_user" method="POST">
-        <div class="modal-header border-warning"><h5 class="modal-title text-warning">নতুন ইউজার তৈরি করুন</h5></div>
+        <div class="modal-header border-warning"><h5 class="modal-title text-warning">নতুন ইউজার আইডি তৈরি করুন</h5></div>
         <div class="modal-body row g-2">
             <div class="col-12"><label class="form-label">ইউজারের নাম</label><input type="text" name="name" class="form-control" required></div>
             <div class="col-12"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" required></div>
@@ -384,7 +404,7 @@ HTML_TEMPLATE = """
             <div class="col-12"><label class="form-label">ইমেইল</label><input type="email" name="email" class="form-control" required></div>
             <div class="col-12"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
         </div>
-        <div class="modal-footer border-warning"><button type="submit" class="btn btn-gold">ইউজার তৈরি করুন</button></div>
+        <div class="modal-footer border-warning"><button type="submit" class="btn btn-gold">তৈরি করুন</button></div>
       </form>
     </div>
   </div>
@@ -394,7 +414,7 @@ HTML_TEMPLATE = """
   <div class="modal-dialog">
     <div class="modal-content card-custom">
       <form action="/admin/change_password" method="POST">
-        <div class="modal-header border-warning"><h5 class="modal-title text-warning">এডমিন পাসওয়ার্ড পরিবর্তন</h5></div>
+        <div class="modal-header border-warning"><h5 class="modal-title text-warning">এডমিন সিকিউরিটি ও পাসওয়ার্ড</h5></div>
         <div class="modal-body">
             <label class="form-label">নতুন ইউজারনেম</label>
             <input type="text" name="new_username" class="form-control mb-2" value="Khushbu23" required>
@@ -403,7 +423,7 @@ HTML_TEMPLATE = """
             <label class="form-label">সিকিউরিটি পিন (137955)</label>
             <input type="password" name="security_code" class="form-control" required placeholder="পিন দিন">
         </div>
-        <div class="modal-footer border-warning"><button type="submit" class="btn btn-gold">পরিবর্তন সংরক্ষণ করুন</button></div>
+        <div class="modal-footer border-warning"><button type="submit" class="btn btn-gold">সংরক্ষণ করুন</button></div>
       </form>
     </div>
   </div>
@@ -413,21 +433,29 @@ HTML_TEMPLATE = """
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> মেসেঞ্জার</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> মেসেঞ্জার হেল্পডেস্ক</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body row g-0">
-        <div class="col-md-4 border-end border-warning pe-2" id="chatUserList">
-            <small class="text-warning">চ্যাট শুরু করতে সিলেক্ট করুন:</small>
-            <div class="list-group list-group-flush mt-2" id="usersChatNav"></div>
+        {% if session.get('user', {}).get('is_admin') %}
+        <div class="col-md-4 border-end border-warning pe-2">
+            <small class="text-warning">ইউজার তালিকা (চ্যাট করতে বেছে নিন):</small>
+            <div class="list-group list-group-flush mt-2" id="usersChatNav" style="max-height: 300px; overflow-y:auto;"></div>
         </div>
-        <div class="col-md-8 ps-2 d-flex flex-column" style="min-height: 350px;">
-            <div id="activeChatHeader" class="fw-bold text-pink pb-2 border-bottom border-secondary">গ্রুপ মেসেঞ্জার (ব্রডকাস্ট)</div>
+        {% endif %}
+        <div class="{% if session.get('user', {}).get('is_admin') %}col-md-8 ps-2{% else %}col-12{% endif %} d-flex flex-column" style="min-height: 350px;">
+            <div id="activeChatHeader" class="fw-bold text-warning pb-2 border-bottom border-secondary">এডমিনের সাথে সরাসরি কথা বলুন</div>
             <div id="chatMessagesBox" class="flex-grow-1 p-2 my-2 border border-secondary rounded overflow-auto" style="height:250px;"></div>
+            
             <div class="input-group">
-                <input type="text" id="chatInputMsg" class="form-control" placeholder="মেসেজ লিখুন...">
+                <label class="btn btn-pink" title="ছবি / ভিডিও তুলুন বা সিলেক্ট করুন">
+                    <i class="fa-solid fa-camera"></i>
+                    <input type="file" id="chatFile" accept="image/*,video/*" capture="environment" style="display:none;" onchange="updateFileName()">
+                </label>
+                <input type="text" id="chatInputMsg" class="form-control" placeholder="মেসেজ বা সমস্যা লিখুন...">
                 <button class="btn btn-gold" onclick="sendChatMsg()"><i class="fa-solid fa-paper-plane"></i></button>
             </div>
+            <small id="selectedFileName" class="text-info mt-1" style="font-size: 11px;"></small>
         </div>
       </div>
     </div>
@@ -443,7 +471,7 @@ HTML_TEMPLATE = """
             <label class="form-label">এডমিন সিকিউরিটি পিন দিন (137955):</label>
             <input type="password" name="security_code" class="form-control" required placeholder="সিকিউরিটি পিন">
           </div>
-          <div class="modal-footer border-danger"><button type="submit" class="btn btn-danger">ডিলিট নিশ্চিত করুন</button></div>
+          <div class="modal-footer border-danger"><button type="submit" class="btn btn-danger">ডিলিট করুন</button></div>
       </form>
     </div>
   </div>
@@ -452,7 +480,7 @@ HTML_TEMPLATE = """
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let activeServiceFilter = '';
-let currentChatTarget = 'GROUP';
+let currentChatTarget = 'Khushbu23'; // Default user target is admin
 
 function loadRecords() {
     let q = document.getElementById('searchInput') ? document.getElementById('searchInput').value : '';
@@ -493,10 +521,55 @@ function filterService(type) {
     loadRecords();
 }
 
-function toggleAddForm() {
-    let form = document.getElementById('addRecordSection');
-    form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    if(form.style.display === 'block') form.scrollIntoView({ behavior: 'smooth' });
+function openAddRecordModal() {
+    closeSidebar();
+    new bootstrap.Modal(document.getElementById('addRecordModal')).show();
+}
+
+function submitAddRecord(e) {
+    e.preventDefault();
+    let formData = new FormData(document.getElementById('addRecordForm'));
+    fetch('/add_record', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            bootstrap.Modal.getInstance(document.getElementById('addRecordModal')).hide();
+            document.getElementById('addRecordForm').reset();
+            document.getElementById('successMsg').innerText = "নতুন নম্বরটি সফলভাবে ড্যাশবোর্ডে যোগ করা হয়েছে!";
+            document.getElementById('successAlert').style.display = 'block';
+            loadRecords();
+        }
+    });
+}
+
+function showNotifHistoryModal() {
+    closeSidebar();
+    new bootstrap.Modal(document.getElementById('notifHistoryModal')).show();
+    fetch('/api/all_notifications')
+    .then(res => res.json())
+    .then(notifs => {
+        let html = '';
+        if(notifs.length === 0) html = '<div class="text-muted p-2">কোনো নোটিফিকেশন নেই।</div>';
+        else {
+            notifs.forEach(n => {
+                html += `<div class="list-group-item bg-dark text-white border-secondary mb-1">
+                    <small class="text-warning d-block">${n.timestamp}</small>
+                    ${n.message}
+                </div>`;
+            });
+        }
+        document.getElementById('notifHistoryList').innerHTML = html;
+    });
+}
+
+function verifyPinAndShowDeleted() {
+    closeSidebar();
+    let pin = prompt("এডমিন সিকিউরিটি পিন দিন (137955):");
+    if(pin === '137955') {
+        showSection('deleted');
+    } else if(pin) {
+        alert("ভুল সিকিউরিটি পিন!");
+    }
 }
 
 function showSection(type) {
@@ -505,10 +578,14 @@ function showSection(type) {
     if(document.getElementById('deletedRecordsSection')) document.getElementById('deletedRecordsSection').style.display = type === 'deleted' ? 'block' : 'none';
     
     if(type === 'users') loadUsers();
-    if(type === 'deleted') loadDeleted();
-    
-    let offcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('sidebarMenu'));
-    if(offcanvas) offcanvas.hide();
+    if(type === 'deleted') loadDeletedRecords();
+    closeSidebar();
+}
+
+function closeSidebar() {
+    let sidebar = document.getElementById('sidebarMenu');
+    let bsOffcanvas = bootstrap.Offcanvas.getInstance(sidebar);
+    if(bsOffcanvas) bsOffcanvas.hide();
 }
 
 function loadUsers() {
@@ -530,9 +607,21 @@ function loadUsers() {
     });
 }
 
+function loadDeletedRecords() {
+    fetch('/api/deleted_records')
+    .then(res => res.json())
+    .then(recs => {
+        let html = '';
+        recs.forEach(r => {
+            html += `<tr><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`;
+        });
+        document.getElementById('deletedTableBody').innerHTML = html;
+    });
+}
+
 function userAction(id, action) {
     let code = '';
-    if(action === 'block' || action === 'delete') {
+    if(action === 'block') {
         code = prompt("এডমিন সিকিউরিটি পিন দিন (137955):");
         if(!code) return;
     }
@@ -543,8 +632,11 @@ function userAction(id, action) {
 }
 
 function openMessenger() {
+    closeSidebar();
     new bootstrap.Modal(document.getElementById('messengerModal')).show();
+    {% if session.get('user', {}).get('is_admin') %}
     loadChatUsers();
+    {% endif %}
     loadMessages();
 }
 
@@ -552,18 +644,25 @@ function loadChatUsers() {
     fetch('/api/users')
     .then(res => res.json())
     .then(users => {
-        let html = `<a href="#" class="list-group-item list-group-item-action bg-dark text-warning border-secondary active" onclick="selectChatTarget('GROUP', 'গ্রুপ মেসেঞ্জার (এডমিন ব্রডকাস্ট)')">📢 গ্রুপ মেসেঞ্জার</a>`;
+        let html = '';
         users.forEach(u => {
-            html += `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-secondary" onclick="selectChatTarget('${u[2]}', '${u[1]}')">👤 ${u[1]}</a>`;
+            if(u[2] !== 'Khushbu23') {
+                html += `<a class="list-group-item list-group-item-action bg-dark text-white border-secondary" onclick="selectChatTarget('${u[2]}', '${u[1]}')">👤 ${u[1]}</a>`;
+            }
         });
-        document.getElementById('usersChatNav').innerHTML = html;
+        if(document.getElementById('usersChatNav')) document.getElementById('usersChatNav').innerHTML = html;
     });
 }
 
 function selectChatTarget(target, name) {
     currentChatTarget = target;
-    document.getElementById('activeChatHeader').innerText = name;
+    document.getElementById('activeChatHeader').innerText = name + ' এর সাথে চ্যাট';
     loadMessages();
+}
+
+function updateFileName() {
+    let file = document.getElementById('chatFile').files[0];
+    if(file) document.getElementById('selectedFileName').innerText = "সিলেক্টেড ফাইল: " + file.name;
 }
 
 function loadMessages() {
@@ -573,26 +672,43 @@ function loadMessages() {
         let html = '';
         msgs.forEach(m => {
             let isMe = m.sender === "{{ session.get('user', {}).get('username') }}";
+            let mediaHtml = '';
+            if(m.file_url) {
+                if(m.file_url.endsWith('.mp4')) {
+                    mediaHtml = `<video src="${m.file_url}" controls class="w-100 rounded mt-1"></video>`;
+                } else {
+                    mediaHtml = `<img src="${m.file_url}" class="img-fluid rounded mt-1" />`;
+                }
+            }
             html += `<div class="d-flex mb-2 ${isMe?'justify-content-end':'justify-content-start'}">
-                <div class="${isMe?'chat-bubble-me':'chat-bubble-them'} p-2" oncontextmenu="deleteMsg(event, ${m.id})">
+                <div class="${isMe?'chat-bubble-me':'chat-bubble-them'} p-2">
                     <small class="d-block fw-bold">${m.sender_name}</small>
-                    ${m.message}
+                    ${m.message || ''}
+                    ${mediaHtml}
                 </div>
             </div>`;
         });
-        document.getElementById('chatMessagesBox').innerHTML = html;
+        let box = document.getElementById('chatMessagesBox');
+        box.innerHTML = html;
+        box.scrollTop = box.scrollHeight;
     });
 }
 
 function sendChatMsg() {
     let msg = document.getElementById('chatInputMsg').value;
-    if(!msg) return;
+    let fileInput = document.getElementById('chatFile');
+    if(!msg && !fileInput.files[0]) return;
+
     let formData = new FormData();
     formData.append('message', msg);
     formData.append('target', currentChatTarget);
+    if(fileInput.files[0]) formData.append('file', fileInput.files[0]);
+
     fetch('/send_message', { method: 'POST', body: formData })
     .then(() => {
         document.getElementById('chatInputMsg').value = '';
+        fileInput.value = '';
+        document.getElementById('selectedFileName').innerText = '';
         loadMessages();
     });
 }
@@ -622,8 +738,8 @@ function readNotif(id) {
     fetch('/api/read_notif/' + id).then(() => { checkNotifications(); openMessenger(); });
 }
 
-function openCreateUserModal() { new bootstrap.Modal(document.getElementById('createUserModal')).show(); }
-function openAdminSecurityModal() { new bootstrap.Modal(document.getElementById('adminSecModal')).show(); }
+function openCreateUserModal() { closeSidebar(); new bootstrap.Modal(document.getElementById('createUserModal')).show(); }
+function openAdminSecurityModal() { closeSidebar(); new bootstrap.Modal(document.getElementById('adminSecModal')).show(); }
 function openDeleteModal(id) {
     document.getElementById('deleteForm').action = '/delete_record/' + id;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
@@ -631,7 +747,7 @@ function openDeleteModal(id) {
 
 if(document.getElementById('searchInput')) {
     loadRecords();
-    setInterval(checkNotifications, 3000);
+    setInterval(checkNotifications, 4000);
 }
 </script>
 </body>
@@ -681,7 +797,7 @@ def register():
         cursor = conn.cursor()
         cursor.execute("INSERT INTO users (name, username, email, phone, password) VALUES (?, ?, ?, ?, ?)",
                        (name, username, email, phone, hashed_pw))
-        cursor.execute("INSERT INTO notifications (type, message) VALUES ('user_reg', ?)",
+        cursor.execute("INSERT INTO notifications (target_user, type, message) VALUES ('ADMIN', 'user_reg', ?)",
                        (f"নতুন রেজিস্ট্রেশন: {name} ({username}) অনুমোদন চান।",))
         conn.commit()
         conn.close()
@@ -724,7 +840,7 @@ def logout():
 
 @app.route('/add_record', methods=['POST'])
 def add_record():
-    if 'user' not in session: return redirect(url_for('home'))
+    if 'user' not in session: return jsonify({'status': 'error'})
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note) 
@@ -733,7 +849,7 @@ def add_record():
                     request.form.get('connection_num', ''), request.form.get('address', ''), request.form.get('note', '')))
     conn.commit()
     conn.close()
-    return redirect(url_for('home'))
+    return jsonify({'status': 'success'})
 
 @app.route('/delete_record/<int:id>', methods=['POST'])
 def delete_record(id):
@@ -799,55 +915,114 @@ def api_users():
     conn.close()
     return jsonify(users)
 
+@app.route('/api/deleted_records')
+def api_deleted_records():
+    if not session.get('user', {}).get('is_admin'): return jsonify([])
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, customer_name, mobile, service_type, connection_num FROM phone_records WHERE is_deleted=1")
+    recs = cursor.fetchall()
+    conn.close()
+    return jsonify(recs)
+
 @app.route('/send_message', methods=['POST'])
 def send_message():
     if 'user' not in session: return jsonify({'error': 'Unauthorized'})
-    msg = request.form['message']
-    target = request.form.get('target', 'GROUP')
+    msg = request.form.get('message', '')
     sender = session['user']['username']
+    
+    target = request.form.get('target', 'Khushbu23')
+    if not session['user']['is_admin']:
+        target = 'Khushbu23'  # Users can only send to Admin
+
+    file_url = ""
+    if 'file' in request.files:
+        f = request.files['file']
+        if f.filename != '':
+            os.makedirs('static/uploads', exist_ok=True)
+            path = os.path.join('static/uploads', f.filename)
+            f.save(path)
+            file_url = '/' + path
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    if target == 'GROUP':
-        cursor.execute("INSERT INTO messages (sender, receiver, message, is_group) VALUES (?, 'ALL', ?, 1)", (sender, msg))
+    cursor.execute("INSERT INTO messages (sender, receiver, message, file_url, is_group) VALUES (?, ?, ?, ?, 0)", 
+                   (sender, target, msg, file_url))
+    
+    if sender != ADMIN_USERNAME:
+        cursor.execute("INSERT INTO notifications (target_user, type, message) VALUES ('ADMIN', 'message', ?)", 
+                       (f"নতুন সাহায্য মেসেজ: {session['user']['name']} থেকে।",))
     else:
-        cursor.execute("INSERT INTO messages (sender, receiver, message, is_group) VALUES (?, ?, ?, 0)", (sender, target, msg))
-        if sender != ADMIN_USERNAME:
-            cursor.execute("INSERT INTO notifications (type, message) VALUES ('message', ?)", (f"নতুন মেসেজ: {session['user']['name']} থেকে।",))
+        cursor.execute("INSERT INTO notifications (target_user, type, message) VALUES (?, 'message', ?)", 
+                       (target, "এডমিন আপনাকে মেসেজ পাঠিয়েছেন।"))
+
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
 
 @app.route('/api/messages')
 def api_messages():
-    target = request.args.get('target', 'GROUP')
+    if 'user' not in session: return jsonify([])
+    curr_user = session['user']['username']
+    
+    if session['user']['is_admin']:
+        target = request.args.get('target', '')
+    else:
+        target = 'Khushbu23'
+
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    
-    if target == 'GROUP':
-        cursor.execute("SELECT m.id, m.sender, u.name, m.message FROM messages m LEFT JOIN users u ON m.sender=u.username WHERE is_group=1 ORDER BY m.id ASC")
-    else:
-        cursor.execute("SELECT m.id, m.sender, u.name, m.message FROM messages m LEFT JOIN users u ON m.sender=u.username WHERE is_group=0 AND ((sender=? AND receiver=?) OR (sender=? AND receiver=?)) ORDER BY m.id ASC",
-                       (session['user']['username'], target, target, session['user']['username']))
+    cursor.execute("""SELECT m.id, m.sender, u.name, m.message, m.file_url 
+                      FROM messages m 
+                      LEFT JOIN users u ON m.sender=u.username 
+                      WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?) 
+                      ORDER BY m.id ASC""",
+                   (curr_user, target, target, curr_user))
     raw = cursor.fetchall()
     conn.close()
-    return jsonify([{'id': r[0], 'sender': r[1], 'sender_name': r[2] or 'Admin', 'message': r[3]} for r in raw])
+    return jsonify([{'id': r[0], 'sender': r[1], 'sender_name': r[2] or 'Admin', 'message': r[3], 'file_url': r[4]} for r in raw])
 
 @app.route('/api/notifications')
 def api_notifications():
-    if not session.get('user', {}).get('is_admin'): return jsonify([])
+    if 'user' not in session: return jsonify([])
+    curr_user = 'ADMIN' if session['user']['is_admin'] else session['user']['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT id, message FROM notifications WHERE is_read=0 ORDER BY id DESC")
+    cursor.execute("SELECT id, message FROM notifications WHERE target_user=? AND is_read=0 ORDER BY id DESC", (curr_user,))
     notifs = cursor.fetchall()
     conn.close()
     return jsonify([{'id': n[0], 'message': n[1]} for n in notifs])
+
+@app.route('/api/all_notifications')
+def api_all_notifications():
+    if 'user' not in session: return jsonify([])
+    curr_user = 'ADMIN' if session['user']['is_admin'] else session['user']['username']
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, message, timestamp FROM notifications WHERE target_user=? ORDER BY id DESC LIMIT 20", (curr_user,))
+    notifs = cursor.fetchall()
+    conn.close()
+    return jsonify([{'id': n[0], 'message': n[1], 'timestamp': n[2]} for n in notifs])
 
 @app.route('/api/read_notif/<int:id>')
 def read_notif(id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE notifications SET is_read=1 WHERE id=?", (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'status': 'success'})
+
+@app.route('/admin/user_action/<int:id>/<string:action>', methods=['POST'])
+def user_action(id, action):
+    if not session.get('user', {}).get('is_admin'): return jsonify({'status': 'unauthorized'})
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    if action == 'approve':
+        cursor.execute("UPDATE users SET status='active' WHERE id=?", (id,))
+    elif action == 'block':
+        if request.form.get('security_code') == ADMIN_SECURITY_CODE:
+            cursor.execute("UPDATE users SET status='blocked' WHERE id=?", (id,))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
