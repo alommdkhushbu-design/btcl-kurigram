@@ -139,13 +139,27 @@ HTML_TEMPLATE = """
         .dropdown-item { color: #ffe6f2; }
         .dropdown-item:hover { background-color: #ff66b2; color: #000; }
         .notif-badge { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; }
+        
+        /* Floating Toast Notification */
+        .toast-success-custom {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            background: linear-gradient(45deg, #28a745, #20c997); color: white;
+            padding: 15px 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: none; font-weight: bold; animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
+<!-- Dynamic Toast Notification -->
+<div id="successToast" class="toast-success-custom">
+    <i class="fa-solid fa-circle-check me-2 fa-lg"></i> <span id="toastMsg">কাজটি সফলভাবে সম্পূর্ণ হয়েছে!</span>
+</div>
+
 <div class="gold-pink-header text-center py-2 position-relative">
     <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
-    <small>Md Khushbu Alom - Admin Panel</small>
+    <small>Md Khushbu Alom - Smart Admin Panel</small>
 </div>
 
 <div class="container py-3">
@@ -154,7 +168,7 @@ HTML_TEMPLATE = """
         <div class="d-flex align-items-center gap-2">
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-solid fa-bars"></i> মেনু অপশন
+                    <i class="fa-solid fa-bars"></i> নেভিগেশন মেনু
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
                     <li><a class="dropdown-item" href="#" onclick="showSection('records')"><i class="fa-solid fa-house me-2"></i>হোম (গ্রাহক তালিকা)</a></li>
@@ -188,30 +202,34 @@ HTML_TEMPLATE = """
         
         <div>
             <button class="btn btn-gold btn-sm" onclick="openProfileModal()">
-                <i class="fa-solid fa-circle-user"></i> প্রোফাইল
+                <i class="fa-solid fa-circle-user"></i> প্রোফাইল ও এডমিন স্টোরি
             </button>
         </div>
     </div>
 
-    <!-- Search Box -->
+    <!-- Enhanced Search & Advanced Sorting Options -->
     <div class="row g-2 mb-3">
-        <div class="col-md-7 position-relative">
+        <div class="col-md-6 position-relative">
             <div class="input-group">
                 <input type="text" id="searchInput" class="form-control" placeholder="নাম, মোবাইল বা সংযোগ নম্বর লিখে খুঁজুন..." oninput="handleSearchInput()" autocomplete="off">
                 <button class="btn btn-gold" onclick="loadRecords()"><i class="fa-solid fa-magnifying-glass"></i> খুঁজুন</button>
             </div>
             <div id="suggestionsBox" class="suggestions-box"></div>
         </div>
-        <div class="col-md-5">
-            <select id="sortSelect" class="form-select" onchange="loadRecords()">
-                <option value="id_asc">১ থেকে শুরু (সিরিয়াল নম্বর ১, ২, ৩...)</option>
-                <option value="id_desc">সর্বশেষ যোগ করা নম্বর উপরে</option>
-                <option value="name_asc">নামের ক্রমানুসারে (A to Z)</option>
-            </select>
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-dark text-warning border-pink"><i class="fa-solid fa-arrow-down-a-z"></i> সাজান:</span>
+                <select id="sortSelect" class="form-select" onchange="loadRecords()">
+                    <option value="id_asc">ছোট সংখ্যা থেকে বড় সংখ্যা (১, ২, ৩...)</option>
+                    <option value="id_desc">বড় সংখ্যা থেকে ছোট সংখ্যা (সর্বশেষ যোগ আগে)</option>
+                    <option value="name_asc">নাম অনুযায়ী (A to Z / অ থেকে ক্ষ)</option>
+                    <option value="name_desc">নাম অনুযায়ী উল্টো (Z to A)</option>
+                </select>
+            </div>
         </div>
     </div>
 
-    <!-- Strict Filter Counters -->
+    <!-- Service Filter Counters -->
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:11px">টোটাল নম্বর</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:11px">শুধুমাত্র টেলিফোন</div></div></div>
@@ -222,7 +240,7 @@ HTML_TEMPLATE = """
         {% endif %}
     </div>
 
-    <!-- Customer Records Section -->
+    <!-- Customer Records Table -->
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
             <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ তালিকা</h5>
@@ -273,7 +291,7 @@ HTML_TEMPLATE = """
     {% endif %}
 
     {% else %}
-    <!-- Public Login / Register Section -->
+    <!-- Login & Register Section -->
     <div class="row justify-content-center mt-4">
         <div class="col-md-6">
             <div class="card-custom p-4">
@@ -306,20 +324,22 @@ HTML_TEMPLATE = """
     {% endif %}
 </div>
 
-<!-- PROFILE MODAL -->
+<!-- PROFILE & ADMIN STORY MODAL -->
 <div class="modal fade" id="profileModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user"></i> প্রোফাইল অপশনসমূহ</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-gear"></i> প্রোফাইল ও এডমিন এক্টিভিটি স্টোরি</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
         <ul class="nav nav-pills nav-justified mb-3">
           <li class="nav-item"><button class="nav-link active btn-gold me-1" data-bs-toggle="pill" data-bs-target="#opt1">আমার প্রোফাইল</button></li>
+          {% if session.get('user',{}).get('is_admin_or_sub') %}
+          <li class="nav-item"><button class="nav-link btn-pink me-1" data-bs-toggle="pill" data-bs-target="#optAdminStory" onclick="loadAdminStory()"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন স্টোরি (আজকের কাজের হিসাব)</button></li>
+          {% endif %}
           {% if session.get('user',{}).get('role') == 'main_admin' %}
-          <li class="nav-item"><button class="nav-link btn-pink me-1" data-bs-toggle="pill" data-bs-target="#opt2">নতুন এডমিন যুক্ত করুন</button></li>
-          <li class="nav-item"><button class="nav-link btn-outline-warning" data-bs-toggle="pill" data-bs-target="#opt4">সিস্টেম হিস্ট্রি</button></li>
+          <li class="nav-item"><button class="nav-link btn-outline-warning" data-bs-toggle="pill" data-bs-target="#opt2">নতুন এডমিন যুক্ত করুন</button></li>
           {% endif %}
           <li class="nav-item"><a href="/logout" class="nav-link btn-danger ms-1">লগআউট</a></li>
         </ul>
@@ -344,6 +364,20 @@ HTML_TEMPLATE = """
             </div>
           </div>
 
+          {% if session.get('user',{}).get('is_admin_or_sub') %}
+          <div class="tab-pane fade" id="optAdminStory">
+            <div class="card bg-dark text-white p-3 border-warning">
+                <h6 class="text-warning border-bottom pb-2 d-flex justify-content-between align-items-center">
+                    <span><i class="fa-solid fa-chart-line me-2"></i>সারাদিনের এডমিন রিপোর্ট ও অ্যাক্টিভিটি টাইমলাইন</span>
+                    <small class="text-muted" style="font-size:11px;">(টাইমসহ প্রতিটি কাজ)</small>
+                </h6>
+                <div class="row g-2 mb-3 mt-1" id="storyStatsContainer"></div>
+                <h6 class="text-pink mt-3 mb-2" style="font-size:14px;"><i class="fa-solid fa-list-check me-1"></i> এডমিনদের অ্যাক্টিভিটি স্টোরি (টাইমস্ট্যাম্প সহ):</h6>
+                <div id="adminStoryList" style="max-height: 250px; overflow-y:auto;" class="pe-1"></div>
+            </div>
+          </div>
+          {% endif %}
+
           {% if session.get('user',{}).get('role') == 'main_admin' %}
           <div class="tab-pane fade" id="opt2">
             <div class="card bg-dark text-white p-3 border-warning mb-3">
@@ -357,13 +391,6 @@ HTML_TEMPLATE = """
                     <div class="col-md-6"><label class="form-label">সিকিউরিটি পিন *</label><input type="password" name="security_code" class="form-control" required placeholder="137955"></div>
                     <div class="col-12 mt-3"><button type="submit" class="btn btn-gold w-100">এডমিন তৈরি করুন</button></div>
                 </form>
-            </div>
-          </div>
-
-          <div class="tab-pane fade" id="opt4">
-            <div class="card bg-dark text-white p-3 border-secondary">
-                <h6 class="text-warning border-bottom pb-2">অ্যাক্টিভিটি লগ / কাজের ইতিহাস</h6>
-                <div id="adminHistoryContent" style="max-height: 250px; overflow-y:auto;"></div>
             </div>
           </div>
           {% endif %}
@@ -460,6 +487,15 @@ HTML_TEMPLATE = """
 let activeServiceFilter = '';
 let currentChatTarget = 'GROUP'; 
 
+function showSuccessToast(message) {
+    let toast = document.getElementById('successToast');
+    document.getElementById('toastMsg').innerText = message;
+    toast.style.display = 'block';
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, 3500);
+}
+
 function handleSearchInput() {
     let q = document.getElementById('searchInput').value.trim();
     let suggestionsBox = document.getElementById('suggestionsBox');
@@ -497,7 +533,7 @@ function loadRecords() {
     let q = document.getElementById('searchInput') ? document.getElementById('searchInput').value : '';
     let sort = document.getElementById('sortSelect') ? document.getElementById('sortSelect').value : 'id_asc';
     
-    fetch(`/api/search?q=${q}&service=${activeServiceFilter}&sort=${sort}`)
+    fetch(`/api/search?q=${q}&service=${encodeURIComponent(activeServiceFilter)}&sort=${sort}`)
     .then(res => res.json())
     .then(data => {
         let html = '';
@@ -575,7 +611,7 @@ function loadPendingUsers() {
                 <td><small class="text-muted">${u[7]}</small></td>
                 <td>
                     <button class="btn btn-success btn-sm me-1" onclick="userAction(${u[0]}, 'approve')"><i class="fa-solid fa-check"></i> Accept</button>
-                    <button class="btn btn-danger btn-sm" onclick="userAction(${u[0]}, 'delete')"><i class="fa-solid fa-xmark"></i> Reject/Delete</button>
+                    <button class="btn btn-danger btn-sm" onclick="userAction(${u[0]}, 'delete')"><i class="fa-solid fa-xmark"></i> Reject</button>
                 </td>
             </tr>`;
         });
@@ -617,6 +653,7 @@ function userAction(id, action) {
     }
     fetch(`/admin/user_action/${id}/${action}`, { method: 'POST', body: formData })
     .then(() => {
+        showSuccessToast(action === 'approve' ? "ইউজার সফলভাবে অনুমোদন করা হয়েছে!" : "ইউজার মুছে ফেলা হয়েছে!");
         loadRecords();
         loadPendingUsers();
         loadUsers();
@@ -657,6 +694,7 @@ function saveRecord(e) {
     .then(res => res.json())
     .then(data => {
         bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+        showSuccessToast("🎉 চমৎকার! নম্বরটি সফলভাবে সেভ করা হয়েছে।");
         loadRecords();
     });
 }
@@ -667,7 +705,10 @@ function deleteRecord(id) {
         let formData = new FormData();
         formData.append('security_code', pin);
         fetch('/delete_record/' + id, { method: 'POST', body: formData })
-        .then(() => loadRecords());
+        .then(() => {
+            showSuccessToast("নম্বরটি সফলভাবে ডিলিট করা হয়েছে!");
+            loadRecords();
+        });
     }
 }
 
@@ -759,22 +800,42 @@ function sendChatMsg(e) {
 
 function openProfileModal() {
     new bootstrap.Modal(document.getElementById('profileModal')).show();
-    loadAdminHistory();
 }
 
-function loadAdminHistory() {
-    fetch('/api/activity_logs')
+function loadAdminStory() {
+    fetch('/api/admin_story')
     .then(res => res.json())
-    .then(logs => {
-        let html = '<ul class="list-group bg-dark">';
-        logs.forEach(l => {
-            html += `<li class="list-group-item bg-dark text-white border-secondary">
-                        <small class="text-warning">${l[3]}</small><br>
-                        <strong>${l[1]}:</strong> ${l[2]}
-                     </li>`;
+    .then(data => {
+        let statsHtml = `
+            <div class="col-6">
+                <div class="p-2 border border-warning rounded text-center bg-dark">
+                    <div class="h4 m-0 text-warning">${data.today_numbers_added}</div>
+                    <small style="font-size:11px;">আজকে মোট এড করা নম্বর</small>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="p-2 border border-pink rounded text-center bg-dark">
+                    <div class="h4 m-0 text-pink">${data.today_users_added}</div>
+                    <small style="font-size:11px;">আজকে মোট তৈরি ইউজার</small>
+                </div>
+            </div>
+        `;
+        document.getElementById('storyStatsContainer').innerHTML = statsHtml;
+
+        let logsHtml = '<ul class="list-group bg-dark border-secondary">';
+        data.logs.forEach(l => {
+            logsHtml += `<li class="list-group-item bg-dark text-white border-secondary p-2">
+                <div class="d-flex justify-content-between">
+                    <strong class="text-warning"><i class="fa-solid fa-user-gear me-1"></i>${l[1]}</strong>
+                    <small class="text-info">${l[3]}</small>
+                </div>
+                <div class="mt-1" style="font-size:13px;">${l[2]}</div>
+            </li>`;
         });
-        html += '</ul>';
-        if(document.getElementById('adminHistoryContent')) document.getElementById('adminHistoryContent').innerHTML = html;
+        logsHtml += '</ul>';
+        if(data.logs.length === 0) logsHtml = '<div class="text-center text-muted p-3">আজকে এখনও কোনো কাজ করা হয়নি।</div>';
+        
+        document.getElementById('adminStoryList').innerHTML = logsHtml;
     });
 }
 
@@ -787,7 +848,7 @@ if(document.getElementById('searchInput')) {
 </html>
 """
 
-# --- BACKEND SERVER ROUTES ---
+# --- FAST BACKEND API ROUTES ---
 
 @app.route('/')
 def home():
@@ -807,7 +868,7 @@ def login():
 
     if user and check_password_hash(user[5], password):
         if user[7] == 'pending':
-            return "<script>alert('আপনার রেজিস্ট্রেশন আবেদন এখনও অনুমোদিত হয়নি! এডমিন একসেপ্ট করলে লগইন করতে পারবেন।'); window.location='/';</script>"
+            return "<script>alert('আপনার রেজিস্ট্রেশন আবেদন এখনও অনুমোদিত হয়নি!'); window.location='/';</script>"
         
         session['user'] = {
             'id': user[0], 
@@ -831,7 +892,7 @@ def register():
                        (request.form['name'], request.form['username'], request.form['email'], request.form['phone'], hashed_pw))
         conn.commit()
         conn.close()
-        return "<script>alert('রেজিস্ট্রেশন আবেদন জমা হয়েছে! এডমিন একসেপ্ট করার পর লগইন করতে পারবেন।'); window.location='/';</script>"
+        return "<script>alert('রেজিস্ট্রেশন আবেদন জমা হয়েছে!'); window.location='/';</script>"
     except:
         return "<script>alert('ইউজারনেম বা তথ্য আগে থেকেই ব্যবহৃত হচ্ছে!'); window.location='/';</script>"
 
@@ -847,9 +908,9 @@ def create_user_direct():
         conn.commit()
         conn.close()
         log_activity(session['user']['username'], f"নতুন ইউজার তৈরি করেছেন: {request.form['username']}")
-        return "<script>alert('নতুন ইউজার সফলভাবে তৈরি ও একসেপ্ট করা হয়েছে!'); window.location='/';</script>"
+        return "<script>alert('নতুন ইউজার সফলভাবে তৈরি করা হয়েছে!'); window.location='/';</script>"
     except:
-        return "<script>alert('ইউজার তৈরিতে সমস্যা হয়েছে বা ইউজারনেম আগে থেকেই আছে!'); window.location='/';</script>"
+        return "<script>alert('ইউজার তৈরিতে সমস্যা হয়েছে!'); window.location='/';</script>"
 
 @app.route('/upload_profile_pic', methods=['POST'])
 def upload_profile_pic():
@@ -901,12 +962,12 @@ def save_record():
         cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?''',
                        (request.form['customer_name'], request.form.get('mobile', ''), request.form['service_type'],
                         request.form.get('connection_num', ''), request.form.get('address', ''), request.form.get('note', ''), rec_id))
-        log_activity(user_name, f"নম্বর আপডেট করেছেন (ID: {rec_id})")
+        log_activity(user_name, f"নম্বর এডিট করেছেন (গ্রাহক: {request.form['customer_name']})")
     else:
         cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)''', 
                        (request.form['customer_name'], request.form.get('mobile', ''), request.form['service_type'],
                         request.form.get('connection_num', ''), request.form.get('address', ''), request.form.get('note', ''), user_name))
-        log_activity(user_name, f"নতুন নম্বর এড করেছেন: {request.form['customer_name']}")
+        log_activity(user_name, f"নতুন নম্বর যোগ করেছেন: {request.form['customer_name']} ({request.form['service_type']})")
         
     conn.commit()
     conn.close()
@@ -952,14 +1013,19 @@ def api_search():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    order_by = "id ASC"
-    if sort == 'id_desc': order_by = "id DESC"
-    elif sort == 'name_asc': order_by = "customer_name ASC"
+    # Dynamic Sorting Handler
+    if sort == 'id_desc':
+        order_by = "id DESC"
+    elif sort == 'name_asc':
+        order_by = "customer_name ASC"
+    elif sort == 'name_desc':
+        order_by = "customer_name DESC"
+    else:
+        order_by = "id ASC"
 
     query = "SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE is_deleted=0 AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ? OR address LIKE ? OR note LIKE ?)"
     params = [f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%']
 
-    # Exact Matching Logic for Filter Buttons
     if service != '':
         query += " AND service_type = ?"
         params.append(service)
@@ -968,7 +1034,6 @@ def api_search():
     cursor.execute(query, params)
     records = cursor.fetchall()
 
-    # Exact Counters for Stats Bar
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0")
     total = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type = 'টেলিফোন নম্বর'")
@@ -1082,14 +1147,34 @@ def api_messages():
         
     return jsonify(msgs)
 
-@app.route('/api/activity_logs')
-def api_activity_logs():
+@app.route('/api/admin_story')
+def api_admin_story():
+    if not session.get('user', {}).get('is_admin_or_sub'): return jsonify({})
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+    
+    today_date = datetime.now().strftime("%Y-%m-%d")
+    
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE DATE(created_at) = ?", (today_date,))
+    today_numbers_added = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?", (today_date,))
+    today_users_added = cursor.fetchone()[0]
+    
     cursor.execute("SELECT id, username, action, timestamp FROM activity_logs ORDER BY id DESC LIMIT 50")
     logs = cursor.fetchall()
     conn.close()
-    return jsonify(logs)
+    
+    formatted_logs = []
+    for l in logs:
+        t_str = datetime.strptime(l[3], "%Y-%m-%d %H:%M:%S").strftime("%d %b, %I:%M %p") if l[3] else ""
+        formatted_logs.append([l[0], l[1], l[2], t_str])
+
+    return jsonify({
+        'today_numbers_added': today_numbers_added,
+        'today_users_added': today_users_added,
+        'logs': formatted_logs
+    })
 
 @app.route('/logout')
 def logout():
