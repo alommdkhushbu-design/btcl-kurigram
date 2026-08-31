@@ -59,6 +59,7 @@ def init_db():
             message TEXT,
             file_url TEXT,
             is_group INTEGER DEFAULT 0,
+            is_read INTEGER DEFAULT 0,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -138,32 +139,32 @@ HTML_TEMPLATE = """
         .dropdown-menu-dark { background-color: #2b001e; border: 1px solid #d4af37; }
         .dropdown-item { color: #ffe6f2; }
         .dropdown-item:hover { background-color: #ff66b2; color: #000; }
-        .notif-badge { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; }
-        
-        /* Floating Toast Notification */
-        .toast-success-custom {
-            position: fixed; top: 20px; right: 20px; z-index: 9999;
-            background: linear-gradient(45deg, #28a745, #20c997); color: white;
-            padding: 15px 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            display: none; font-weight: bold; animation: fadeIn 0.4s ease-in-out;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .unread-user-big { font-size: 1.15rem !important; font-weight: 900 !important; color: #ffd700 !important; }
+        .read-user-normal { font-size: 0.95rem; font-weight: normal; color: #ffe6f2; }
+        .admin-banner { background: linear-gradient(90deg, #ff1493, #d4af37); color: #000; padding: 12px; border-radius: 10px; font-weight: bold; border: 2px solid #fff; }
     </style>
 </head>
 <body>
 
-<!-- Dynamic Toast Notification -->
-<div id="successToast" class="toast-success-custom">
-    <i class="fa-solid fa-circle-check me-2 fa-lg"></i> <span id="toastMsg">কাজটি সফলভাবে সম্পূর্ণ হয়েছে!</span>
-</div>
-
 <div class="gold-pink-header text-center py-2 position-relative">
     <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
-    <small>Md Khushbu Alom - Smart Admin Panel</small>
+    <small>Smart Management Portal</small>
 </div>
 
 <div class="container py-3">
     {% if session.get('user') %}
+    
+    <div id="adminGroupNotice" class="admin-banner mb-3 shadow" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fa-solid fa-bullhorn fa-lg me-2"></i>
+                <span class="text-uppercase" style="letter-spacing:1px;">📢 এডমিন থেকে সর্বশেষ বার্তা:</span>
+                <p id="adminNoticeText" class="mb-0 mt-1 fs-6 text-white"></p>
+            </div>
+            <button class="btn btn-dark btn-sm" onclick="openMessenger()"><i class="fa-solid fa-reply"></i> মেসেঞ্জারে যান</button>
+        </div>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
             <div class="dropdown">
@@ -176,13 +177,9 @@ HTML_TEMPLATE = """
                     {% if session['user']['is_admin_or_sub'] %}
                     <li><a class="dropdown-item" href="#" onclick="openAddRecordModal()"><i class="fa-solid fa-plus me-2"></i>নতুন নম্বর যোগ</a></li>
                     <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>নতুন ইউজার তৈরি</a></li>
+                    {% if session['user']['role'] == 'main_admin' %}
                     <li><a class="dropdown-item" href="#" onclick="showSection('users')"><i class="fa-solid fa-users me-2"></i>ইউজার তালিকা</a></li>
-                    <li>
-                        <a class="dropdown-item d-flex justify-content-between align-items-center" href="#" onclick="showSection('pending_users')">
-                            <span><i class="fa-solid fa-bell me-2"></i>ইউজার রিকোয়েস্ট</span>
-                            <span class="badge bg-danger" id="menuPendingBadge">0</span>
-                        </a>
-                    </li>
+                    {% endif %}
                     {% endif %}
                     <li><hr class="dropdown-divider border-secondary"></li>
                     <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>লগআউট</a></li>
@@ -190,24 +187,21 @@ HTML_TEMPLATE = """
             </div>
             
             <button class="btn btn-pink btn-sm" onclick="showSection('records')"><i class="fa-solid fa-house"></i> হোম</button>
-            <button class="btn btn-outline-warning btn-sm" onclick="openMessenger()"><i class="fa-solid fa-comments"></i> মেসেঞ্জার</button>
+            <button class="btn btn-outline-warning btn-sm" onclick="openMessenger()"><i class="fa-solid fa-comments"></i> মেসেঞ্জার <span id="messengerBadge" class="badge bg-danger"></span></button>
             
             {% if session['user']['is_admin_or_sub'] %}
-            <button class="btn btn-outline-danger btn-sm position-relative" onclick="showSection('pending_users')" title="নতুন রেজিস্ট্রেশন রিকোয়েস্ট">
-                <i class="fa-solid fa-bell"></i> রিকোয়েস্ট
-                <span class="notif-badge" id="navPendingBadge" style="display:none;">0</span>
-            </button>
+            <button class="btn btn-gold btn-sm" onclick="openAddRecordModal()"><i class="fa-solid fa-plus"></i> নম্বর যোগ</button>
+            <button class="btn btn-pink btn-sm" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus"></i> ইউজার তৈরি</button>
             {% endif %}
         </div>
         
         <div>
             <button class="btn btn-gold btn-sm" onclick="openProfileModal()">
-                <i class="fa-solid fa-circle-user"></i> প্রোফাইল ও এডমিন স্টোরি
+                <i class="fa-solid fa-circle-user"></i> প্রোফাইল
             </button>
         </div>
     </div>
 
-    <!-- Enhanced Search & Advanced Sorting Options -->
     <div class="row g-2 mb-3">
         <div class="col-md-6 position-relative">
             <div class="input-group">
@@ -222,36 +216,31 @@ HTML_TEMPLATE = """
                 <select id="sortSelect" class="form-select" onchange="loadRecords()">
                     <option value="id_asc">ছোট সংখ্যা থেকে বড় সংখ্যা (১, ২, ৩...)</option>
                     <option value="id_desc">বড় সংখ্যা থেকে ছোট সংখ্যা (সর্বশেষ যোগ আগে)</option>
-                    <option value="name_asc">নাম অনুযায়ী (A to Z / অ থেকে ক্ষ)</option>
+                    <option value="name_asc">নাম অনুযায়ী (A to Z)</option>
                     <option value="name_desc">নাম অনুযায়ী উল্টো (Z to A)</option>
                 </select>
             </div>
         </div>
     </div>
 
-    <!-- Service Filter Counters -->
     <div class="row g-2 mb-3">
-        <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:11px">টোটাল নম্বর</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:11px">শুধুমাত্র টেলিফোন</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:11px">টেলিফোন+ওয়াইফাই</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:11px">শুধুমাত্র ওয়াইফাই</div></div></div>
-        {% if session['user']['is_admin_or_sub'] %}
-        <div class="col" onclick="showSection('pending_users')"><div class="stat-card border-danger"><div class="stat-number text-danger" id="countPending">0</div><div style="font-size:11px">নতুন রিকোয়েস্ট</div></div></div>
-        {% endif %}
+        <div class="col" onclick="filterService('')"><div class="stat-card">{% if session['user']['is_admin_or_sub'] %}<div class="stat-number" id="countTotal">0</div>{% endif %}<div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card">{% if session['user']['is_admin_or_sub'] %}<div class="stat-number" id="countTel">0</div>{% endif %}<div style="font-size:12px; font-weight:bold;">শুধুমাত্র টেলিফোন</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card">{% if session['user']['is_admin_or_sub'] %}<div class="stat-number" id="countBoth">0</div>{% endif %}<div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
+        <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card">{% if session['user']['is_admin_or_sub'] %}<div class="stat-number" id="countWifi">0</div>{% endif %}<div style="font-size:12px; font-weight:bold;">শুধুমাত্র ওয়াইফাই</div></div></div>
     </div>
 
-    <!-- Customer Records Table -->
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
-            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ তালিকা</h5>
+            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-gold text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle mt-2">
                 <thead>
                     <tr>
-                        <th>সিরিয়াল</th><th>গ্রাহকের নাম</th><th>মোবাইল</th><th>সেবার ধরন</th><th>সংযোগ নম্বর</th><th>ঠিকানা</th><th>নোট</th><th>এডমিন</th>
-                        {% if session['user']['is_admin_or_sub'] %}<th>অ্যাকশন</th>{% endif %}
+                        <th>সিরিয়াল</th><th>গ্রাহকের নাম</th><th>মোবাইল</th><th>সেবার ধরন</th><th>সংযোগ নম্বর</th><th>ঠিকানা</th><th>নোট</th>
+                        {% if session['user']['role'] == 'main_admin' %}<th>অ্যাকশন</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody id="recordsTableBody"></tbody>
@@ -259,39 +248,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Pending User Requests Section -->
-    {% if session['user']['is_admin_or_sub'] %}
-    <div id="pendingUsersSection" class="card-custom p-3 mb-4" style="display:none;">
-        <h5 class="text-danger border-bottom border-danger pb-2"><i class="fa-solid fa-user-clock"></i> নতুন রেজিস্টার্ড ইউজার রিকোয়েস্ট (অনুমোদনের অপেক্ষায়)</h5>
-        <div class="table-responsive">
-            <table class="table table-dark table-striped align-middle">
-                <thead>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>ইমেইল</th><th>মোবাইল</th><th>তারিখ</th><th>সিদ্ধান্ত</th></tr>
-                </thead>
-                <tbody id="pendingUsersTableBody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- User Management Section -->
-    <div id="usersSection" class="card-custom p-3 mb-4" style="display:none;">
-        <div class="d-flex justify-content-between align-items-center mb-2 border-bottom border-warning pb-2">
-            <h5 class="text-warning mb-0">অনুমোদিত ইউজার তালিকা</h5>
-            <input type="text" id="userSearchInput" class="form-control w-50" placeholder="ইউজারনেম বা নাম লিখে খুঁজুন..." onkeyup="loadUsers()">
-        </div>
-        <div class="table-responsive">
-            <table class="table table-dark table-striped align-middle">
-                <thead>
-                    <tr><th>ছবি</th><th>নাম</th><th>ইউজারনেম</th><th>মোবাইল</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
-                </thead>
-                <tbody id="usersTableBody"></tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
     {% else %}
-    <!-- Login & Register Section -->
     <div class="row justify-content-center mt-4">
         <div class="col-md-6">
             <div class="card-custom p-4">
@@ -324,103 +281,6 @@ HTML_TEMPLATE = """
     {% endif %}
 </div>
 
-<!-- PROFILE & ADMIN STORY MODAL -->
-<div class="modal fade" id="profileModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-gear"></i> প্রোফাইল ও এডমিন এক্টিভিটি স্টোরি</h5>
-        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
-      </div>
-      <div class="modal-body">
-        <ul class="nav nav-pills nav-justified mb-3">
-          <li class="nav-item"><button class="nav-link active btn-gold me-1" data-bs-toggle="pill" data-bs-target="#opt1">আমার প্রোফাইল</button></li>
-          {% if session.get('user',{}).get('is_admin_or_sub') %}
-          <li class="nav-item"><button class="nav-link btn-pink me-1" data-bs-toggle="pill" data-bs-target="#optAdminStory" onclick="loadAdminStory()"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন স্টোরি (আজকের কাজের হিসাব)</button></li>
-          {% endif %}
-          {% if session.get('user',{}).get('role') == 'main_admin' %}
-          <li class="nav-item"><button class="nav-link btn-outline-warning" data-bs-toggle="pill" data-bs-target="#opt2">নতুন এডমিন যুক্ত করুন</button></li>
-          {% endif %}
-          <li class="nav-item"><a href="/logout" class="nav-link btn-danger ms-1">লগআউট</a></li>
-        </ul>
-        
-        <div class="tab-content">
-          <div class="tab-pane fade show active" id="opt1">
-            <div class="card bg-dark text-white p-3 border-secondary text-center">
-                {% if session.get('user',{}).get('profile_pic') %}
-                <img src="{{ session['user']['profile_pic'] }}" class="rounded-circle mx-auto mb-2" style="width:90px; height:90px; object-fit:cover; border:2px solid #ffd700;">
-                {% else %}
-                <i class="fa-solid fa-circle-user fa-4x text-warning mb-2"></i>
-                {% endif %}
-                <h5>{{ session.get('user',{}).get('name') }}</h5>
-                <p class="text-warning mb-1"><strong>ইউজারনেম:</strong> {{ session.get('user',{}).get('username') }}</p>
-                <p class="mb-2"><strong>রোল:</strong> {{ session.get('user',{}).get('role') }}</p>
-                
-                <form action="/upload_profile_pic" method="POST" enctype="multipart/form-data" class="mt-2">
-                    <label class="form-label" style="font-size:12px;">প্রোফাইল ছবি আপলোড/পরিবর্তন</label>
-                    <input type="file" name="pic" class="form-control mb-2" accept="image/*" required>
-                    <button type="submit" class="btn btn-gold btn-sm">ছবি সেভ করুন</button>
-                </form>
-            </div>
-          </div>
-
-          {% if session.get('user',{}).get('is_admin_or_sub') %}
-          <div class="tab-pane fade" id="optAdminStory">
-            <div class="card bg-dark text-white p-3 border-warning">
-                <h6 class="text-warning border-bottom pb-2 d-flex justify-content-between align-items-center">
-                    <span><i class="fa-solid fa-chart-line me-2"></i>সারাদিনের এডমিন রিপোর্ট ও অ্যাক্টিভিটি টাইমলাইন</span>
-                    <small class="text-muted" style="font-size:11px;">(টাইমসহ প্রতিটি কাজ)</small>
-                </h6>
-                <div class="row g-2 mb-3 mt-1" id="storyStatsContainer"></div>
-                <h6 class="text-pink mt-3 mb-2" style="font-size:14px;"><i class="fa-solid fa-list-check me-1"></i> এডমিনদের অ্যাক্টিভিটি স্টোরি (টাইমস্ট্যাম্প সহ):</h6>
-                <div id="adminStoryList" style="max-height: 250px; overflow-y:auto;" class="pe-1"></div>
-            </div>
-          </div>
-          {% endif %}
-
-          {% if session.get('user',{}).get('role') == 'main_admin' %}
-          <div class="tab-pane fade" id="opt2">
-            <div class="card bg-dark text-white p-3 border-warning mb-3">
-                <h6 class="text-warning border-bottom pb-2">নতুন সাব-এডমিন তৈরি</h6>
-                <form action="/admin/create_sub_admin" method="POST" class="row g-2">
-                    <div class="col-md-6"><label class="form-label">নাম *</label><input type="text" name="name" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">ইমেইল *</label><input type="email" name="email" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">মোবাইল *</label><input type="text" name="phone" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">ইউজারনেম *</label><input type="text" name="username" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">পাসওয়ার্ড *</label><input type="password" name="password" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">সিকিউরিটি পিন *</label><input type="password" name="security_code" class="form-control" required placeholder="137955"></div>
-                    <div class="col-12 mt-3"><button type="submit" class="btn btn-gold w-100">এডমিন তৈরি করুন</button></div>
-                </form>
-            </div>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Create User Modal -->
-<div class="modal fade" id="createUserModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> সরাসরি নতুন ইউজার তৈরি করুন</h5>
-        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
-      </div>
-      <form action="/admin/create_user_direct" method="POST" class="modal-body row g-3">
-        <div class="col-12"><label class="form-label">নাম *</label><input type="text" name="name" class="form-control" required></div>
-        <div class="col-6"><label class="form-label">ইউজারনেম *</label><input type="text" name="username" class="form-control" required></div>
-        <div class="col-6"><label class="form-label">মোবাইল *</label><input type="text" name="phone" class="form-control" required></div>
-        <div class="col-12"><label class="form-label">ইমেইল *</label><input type="email" name="email" class="form-control" required></div>
-        <div class="col-12"><label class="form-label">পাসওয়ার্ড *</label><input type="password" name="password" class="form-control" required></div>
-        <div class="col-12 text-end"><button type="submit" class="btn btn-gold px-4">ইউজার তৈরি করুন</button></div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Add/Edit Record Modal -->
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -449,7 +309,6 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Messenger Modal -->
 <div class="modal fade" id="messengerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -460,7 +319,7 @@ HTML_TEMPLATE = """
       <div class="modal-body row g-0">
         <div class="col-md-4 border-end border-warning pe-2" style="max-height: 400px; overflow-y:auto;">
             <div class="p-2 bg-dark rounded mb-1 text-warning fw-bold cursor-pointer" onclick="selectChatTarget('GROUP', '📢 গ্রুপ চ্যাট')">
-                📢 গ্রুপ চ্যাট (সকলের জন্য)
+                📢 গ্রুপ চ্যাট
             </div>
             <div id="usersChatNav"></div>
         </div>
@@ -487,46 +346,15 @@ HTML_TEMPLATE = """
 let activeServiceFilter = '';
 let currentChatTarget = 'GROUP'; 
 
-function showSuccessToast(message) {
-    let toast = document.getElementById('successToast');
-    document.getElementById('toastMsg').innerText = message;
-    toast.style.display = 'block';
-    setTimeout(() => {
-        toast.style.display = 'none';
-    }, 3500);
-}
-
-function handleSearchInput() {
-    let q = document.getElementById('searchInput').value.trim();
-    let suggestionsBox = document.getElementById('suggestionsBox');
-    
-    if (q.length === 0) {
-        suggestionsBox.style.display = 'none';
-        loadRecords();
-        return;
-    }
-
-    fetch(`/api/suggestions?q=${q}`)
+function loadAdminPinnedNotice() {
+    fetch('/api/latest_admin_group_msg')
     .then(res => res.json())
-    .then(list => {
-        if(list.length > 0) {
-            let html = '';
-            list.forEach(item => {
-                html += `<div class="suggestion-item" onclick="selectSuggestion('${item}')"><i class="fa-solid fa-magnifying-glass me-2 text-warning"></i>${item}</div>`;
-            });
-            suggestionsBox.innerHTML = html;
-            suggestionsBox.style.display = 'block';
-        } else {
-            suggestionsBox.style.display = 'none';
+    .then(data => {
+        if(data && data.message) {
+            document.getElementById('adminNoticeText').innerText = data.sender_name + ": " + data.message;
+            document.getElementById('adminGroupNotice').style.display = 'block';
         }
     });
-    loadRecords();
-}
-
-function selectSuggestion(val) {
-    document.getElementById('searchInput').value = val;
-    document.getElementById('suggestionsBox').style.display = 'none';
-    loadRecords();
 }
 
 function loadRecords() {
@@ -541,14 +369,13 @@ function loadRecords() {
             let displayIndex = (sort === 'id_desc') ? (data.records.length - idx) : (idx + 1);
             html += `<tr>
                 <td><strong>${displayIndex}</strong></td>
-                <td><a href="#" class="text-warning text-decoration-none">${row[1]}</a></td>
+                <td><span class="text-warning fw-bold">${row[1]}</span></td>
                 <td>${row[2] || '-'}</td>
                 <td><span class="badge bg-warning text-dark">${row[3]}</span></td>
                 <td>${row[4] || '-'}</td>
                 <td>${row[5] || '-'}</td>
                 <td>${row[6] || '-'}</td>
-                <td><small class="text-info">${row[7] || 'System'}</small></td>
-                {% if session.get('user', {}).get('is_admin_or_sub') %}
+                {% if session.get('user', {}).get('role') == 'main_admin' %}
                 <td>
                     <button class="btn btn-warning btn-sm me-1" onclick="openEditRecordModal(${row[0]})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-danger btn-sm" onclick="deleteRecord(${row[0]})"><i class="fa-solid fa-trash"></i></button>
@@ -561,155 +388,7 @@ function loadRecords() {
         if(document.getElementById('countTel')) document.getElementById('countTel').innerText = data.counts.tel;
         if(document.getElementById('countBoth')) document.getElementById('countBoth').innerText = data.counts.both;
         if(document.getElementById('countWifi')) document.getElementById('countWifi').innerText = data.counts.wifi;
-        if(document.getElementById('countPending')) {
-            document.getElementById('countPending').innerText = data.counts.pending;
-            let navBadge = document.getElementById('navPendingBadge');
-            let menuBadge = document.getElementById('menuPendingBadge');
-            if(data.counts.pending > 0) {
-                navBadge.innerText = data.counts.pending;
-                navBadge.style.display = 'inline-block';
-                menuBadge.innerText = data.counts.pending;
-            } else {
-                navBadge.style.display = 'none';
-                menuBadge.innerText = '0';
-            }
-        }
     });
-}
-
-function filterService(type) { 
-    activeServiceFilter = type; 
-    let label = 'সকল নম্বর';
-    if(type === 'টেলিফোন নম্বর') label = 'শুধুমাত্র টেলিফোন নম্বর';
-    else if(type === 'টেলিফোন+ওয়াইফাই নম্বর') label = 'শুধুমাত্র টেলিফোন + ওয়াইফাই নম্বর';
-    else if(type === 'ওয়াইফাই নম্বর') label = 'শুধুমাত্র ওয়াইফাই নম্বর';
-    
-    document.getElementById('currentFilterLabel').innerText = label;
-    loadRecords(); 
-}
-
-function showSection(sec) {
-    document.getElementById('recordsSection').style.display = (sec === 'records') ? 'block' : 'none';
-    if(document.getElementById('usersSection')) document.getElementById('usersSection').style.display = (sec === 'users') ? 'block' : 'none';
-    if(document.getElementById('pendingUsersSection')) document.getElementById('pendingUsersSection').style.display = (sec === 'pending_users') ? 'block' : 'none';
-    
-    if(sec === 'users') loadUsers();
-    if(sec === 'pending_users') loadPendingUsers();
-}
-
-function loadPendingUsers() {
-    fetch('/api/pending_users')
-    .then(res => res.json())
-    .then(users => {
-        let html = '';
-        users.forEach(u => {
-            html += `<tr>
-                <td><strong>${u[1]}</strong></td>
-                <td>${u[2]}</td>
-                <td>${u[3]}</td>
-                <td>${u[4]}</td>
-                <td><small class="text-muted">${u[7]}</small></td>
-                <td>
-                    <button class="btn btn-success btn-sm me-1" onclick="userAction(${u[0]}, 'approve')"><i class="fa-solid fa-check"></i> Accept</button>
-                    <button class="btn btn-danger btn-sm" onclick="userAction(${u[0]}, 'delete')"><i class="fa-solid fa-xmark"></i> Reject</button>
-                </td>
-            </tr>`;
-        });
-        if(users.length === 0) html = '<tr><td colspan="6" class="text-center text-muted">কোনো নতুন রেজিস্ট্রেশন আবেদন নেই।</td></tr>';
-        document.getElementById('pendingUsersTableBody').innerHTML = html;
-    });
-}
-
-function loadUsers() {
-    let q = document.getElementById('userSearchInput') ? document.getElementById('userSearchInput').value : '';
-    fetch('/api/users?q=' + q)
-    .then(res => res.json())
-    .then(users => {
-        let html = '';
-        users.forEach(u => {
-            let img = u[8] ? `<img src="${u[8]}" class="avatar-img">` : `<i class="fa-solid fa-user text-secondary"></i>`;
-            let actionBtn = u[2] !== 'Khushbu23' ? 
-                `<button class="btn btn-danger btn-sm" onclick="userAction(${u[0]}, 'delete')">ডিলিট</button>` : 'সুরক্ষিত';
-
-            html += `<tr>
-                <td>${img}</td>
-                <td>${u[1]}</td>
-                <td>${u[2]}</td>
-                <td>${u[4]}</td>
-                <td><span class="badge bg-info text-dark">${u[5]}</span></td>
-                <td><span class="badge ${u[6]=='active'?'bg-success':'bg-warning'}">${u[6]}</span></td>
-                <td>${actionBtn}</td>
-            </tr>`;
-        });
-        document.getElementById('usersTableBody').innerHTML = html;
-    });
-}
-
-function userAction(id, action) {
-    let formData = new FormData();
-    if(action === 'delete') {
-        if(!confirm("আপনি কি নিশ্চিতভাবে এই অ্যাকাউন্টটি মুছে ফেলতে চান?")) return;
-        formData.append('security_code', '137955');
-    }
-    fetch(`/admin/user_action/${id}/${action}`, { method: 'POST', body: formData })
-    .then(() => {
-        showSuccessToast(action === 'approve' ? "ইউজার সফলভাবে অনুমোদন করা হয়েছে!" : "ইউজার মুছে ফেলা হয়েছে!");
-        loadRecords();
-        loadPendingUsers();
-        loadUsers();
-    });
-}
-
-function openCreateUserModal() {
-    new bootstrap.Modal(document.getElementById('createUserModal')).show();
-}
-
-function openAddRecordModal() {
-    document.getElementById('recordForm').reset();
-    document.getElementById('rec_id').value = '';
-    document.getElementById('recordModalTitle').innerText = "নতুন নম্বর যোগ করুন";
-    new bootstrap.Modal(document.getElementById('recordModal')).show();
-}
-
-function openEditRecordModal(id) {
-    fetch('/api/get_record/' + id)
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('rec_id').value = data[0];
-        document.getElementById('rec_name').value = data[1];
-        document.getElementById('rec_mobile').value = data[2];
-        document.getElementById('rec_service').value = data[3];
-        document.getElementById('rec_conn').value = data[4];
-        document.getElementById('rec_address').value = data[5];
-        document.getElementById('rec_note').value = data[6];
-        document.getElementById('recordModalTitle').innerText = "নম্বর এডিট করুন";
-        new bootstrap.Modal(document.getElementById('recordModal')).show();
-    });
-}
-
-function saveRecord(e) {
-    e.preventDefault();
-    let formData = new FormData(document.getElementById('recordForm'));
-    fetch('/save_record', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(data => {
-        bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
-        showSuccessToast("🎉 চমৎকার! নম্বরটি সফলভাবে সেভ করা হয়েছে।");
-        loadRecords();
-    });
-}
-
-function deleteRecord(id) {
-    let pin = prompt("সিকিউরিটি পিন দিন (137955):");
-    if(pin === '137955') {
-        let formData = new FormData();
-        formData.append('security_code', pin);
-        fetch('/delete_record/' + id, { method: 'POST', body: formData })
-        .then(() => {
-            showSuccessToast("নম্বরটি সফলভাবে ডিলিট করা হয়েছে!");
-            loadRecords();
-        });
-    }
 }
 
 function openMessenger() {
@@ -719,16 +398,18 @@ function openMessenger() {
 }
 
 function loadChatUsers() {
-    fetch('/api/users')
+    fetch('/api/users_with_unread')
     .then(res => res.json())
     .then(users => {
         let html = '';
         users.forEach(u => {
-            if(u[2] !== "{{ session.get('user', {}).get('username') }}") {
-                let img = u[8] ? `<img src="${u[8]}" class="avatar-img me-1">` : '';
-                html += `<div class="p-2 border-bottom border-secondary d-flex align-items-center justify-content-between text-white" style="cursor:pointer;" onclick="selectChatTarget('${u[2]}', '${u[1]}')">
-                            <div>${img} <strong>${u[1]}</strong></div>
-                            <small class="text-info" style="font-size:10px;">${u[9]}</small>
+            if(u.username !== "{{ session.get('user', {}).get('username') }}") {
+                let img = u.profile_pic ? `<img src="${u.profile_pic}" class="avatar-img me-1">` : '';
+                let nameClass = u.unread_count > 0 ? 'unread-user-big' : 'read-user-normal';
+                let badge = u.unread_count > 0 ? `<span class="badge bg-danger ms-1">🔴 (1)</span>` : '';
+                
+                html += `<div class="p-2 border-bottom border-secondary d-flex align-items-center justify-content-between text-white" style="cursor:pointer;" onclick="selectChatTarget('${u.username}', '${u.name}')">
+                            <div class="${nameClass}">${img} ${u.name} ${badge}</div>
                          </div>`;
             }
         });
@@ -739,7 +420,11 @@ function loadChatUsers() {
 function selectChatTarget(target, name) {
     currentChatTarget = target;
     document.getElementById('activeChatHeader').innerText = name;
-    loadMessages();
+    
+    fetch(`/api/mark_read?sender=${target}`).then(() => {
+        loadChatUsers();
+        loadMessages();
+    });
 }
 
 function sendFilePreview() {
@@ -795,60 +480,21 @@ function sendChatMsg(e) {
         fileInput.value = '';
         document.getElementById('filePreviewName').innerText = '';
         loadMessages();
-    });
-}
-
-function openProfileModal() {
-    new bootstrap.Modal(document.getElementById('profileModal')).show();
-}
-
-function loadAdminStory() {
-    fetch('/api/admin_story')
-    .then(res => res.json())
-    .then(data => {
-        let statsHtml = `
-            <div class="col-6">
-                <div class="p-2 border border-warning rounded text-center bg-dark">
-                    <div class="h4 m-0 text-warning">${data.today_numbers_added}</div>
-                    <small style="font-size:11px;">আজকে মোট এড করা নম্বর</small>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="p-2 border border-pink rounded text-center bg-dark">
-                    <div class="h4 m-0 text-pink">${data.today_users_added}</div>
-                    <small style="font-size:11px;">আজকে মোট তৈরি ইউজার</small>
-                </div>
-            </div>
-        `;
-        document.getElementById('storyStatsContainer').innerHTML = statsHtml;
-
-        let logsHtml = '<ul class="list-group bg-dark border-secondary">';
-        data.logs.forEach(l => {
-            logsHtml += `<li class="list-group-item bg-dark text-white border-secondary p-2">
-                <div class="d-flex justify-content-between">
-                    <strong class="text-warning"><i class="fa-solid fa-user-gear me-1"></i>${l[1]}</strong>
-                    <small class="text-info">${l[3]}</small>
-                </div>
-                <div class="mt-1" style="font-size:13px;">${l[2]}</div>
-            </li>`;
-        });
-        logsHtml += '</ul>';
-        if(data.logs.length === 0) logsHtml = '<div class="text-center text-muted p-3">আজকে এখনও কোনো কাজ করা হয়নি।</div>';
-        
-        document.getElementById('adminStoryList').innerHTML = logsHtml;
+        loadChatUsers();
     });
 }
 
 if(document.getElementById('searchInput')) {
     loadRecords();
-    setInterval(loadRecords, 5000);
+    loadAdminPinnedNotice();
+    setInterval(loadChatUsers, 4000);
 }
 </script>
 </body>
 </html>
 """
 
-# --- FAST BACKEND API ROUTES ---
+# --- BACKEND API ROUTES ---
 
 @app.route('/')
 def home():
@@ -882,215 +528,61 @@ def login():
         return redirect(url_for('home'))
     return "<script>alert('ভুল ইউজারনেম অথবা পাসওয়ার্ড!'); window.location='/';</script>"
 
-@app.route('/register', methods=['POST'])
-def register():
-    hashed_pw = generate_password_hash(request.form['password'])
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (name, username, email, phone, password, role, status) VALUES (?, ?, ?, ?, ?, 'user', 'pending')",
-                       (request.form['name'], request.form['username'], request.form['email'], request.form['phone'], hashed_pw))
-        conn.commit()
-        conn.close()
-        return "<script>alert('রেজিস্ট্রেশন আবেদন জমা হয়েছে!'); window.location='/';</script>"
-    except:
-        return "<script>alert('ইউজারনেম বা তথ্য আগে থেকেই ব্যবহৃত হচ্ছে!'); window.location='/';</script>"
+@app.route('/api/latest_admin_group_msg')
+def latest_admin_group_msg():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT m.message, u.name, u.role FROM messages m 
+        JOIN users u ON m.sender = u.username 
+        WHERE m.receiver = 'GROUP' AND (u.role = 'main_admin' OR u.role = 'admin') 
+        ORDER BY m.id DESC LIMIT 1
+    """)
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        sender_name = "সাপোর্ট টিম / এডমিন" if (row[2] == 'main_admin' and session.get('user',{}).get('role') != 'main_admin') else row[1]
+        return jsonify({'message': row[0], 'sender_name': sender_name})
+    return jsonify({})
 
-@app.route('/admin/create_user_direct', methods=['POST'])
-def create_user_direct():
-    if not session.get('user', {}).get('is_admin_or_sub'): return redirect(url_for('home'))
-    hashed_pw = generate_password_hash(request.form['password'])
-    try:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (name, username, email, phone, password, role, status, added_by) VALUES (?, ?, ?, ?, ?, 'user', 'active', ?)",
-                       (request.form['name'], request.form['username'], request.form['email'], request.form['phone'], hashed_pw, session['user']['username']))
-        conn.commit()
-        conn.close()
-        log_activity(session['user']['username'], f"নতুন ইউজার তৈরি করেছেন: {request.form['username']}")
-        return "<script>alert('নতুন ইউজার সফলভাবে তৈরি করা হয়েছে!'); window.location='/';</script>"
-    except:
-        return "<script>alert('ইউজার তৈরিতে সমস্যা হয়েছে!'); window.location='/';</script>"
-
-@app.route('/upload_profile_pic', methods=['POST'])
-def upload_profile_pic():
-    if 'user' not in session: return redirect(url_for('home'))
-    if 'pic' in request.files:
-        file = request.files['pic']
-        if file.filename != '':
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{session['user']['username']}_{filename}")
-            file.save(filepath)
-            
-            conn = sqlite3.connect('database.db')
-            cursor = conn.cursor()
-            cursor.execute("UPDATE users SET profile_pic=? WHERE id=?", ('/' + filepath, session['user']['id']))
-            conn.commit()
-            conn.close()
-            session['user']['profile_pic'] = '/' + filepath
-    return redirect(url_for('home'))
-
-@app.route('/admin/create_sub_admin', methods=['POST'])
-def admin_create_sub_admin():
+@app.route('/api/users_with_unread')
+def users_with_unread():
+    if 'user' not in session: return jsonify([])
+    curr_user = session['user']['username']
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
     if session.get('user', {}).get('role') != 'main_admin':
-        return "<script>alert('শুধুমাত্র মূল এডমিন তৈরি করতে পারবেন!'); window.location='/';</script>"
-    
-    if request.form.get('security_code') != ADMIN_SECURITY_CODE:
-        return "<script>alert('ভুল সিকিউরিটি পিন!'); window.location='/';</script>"
-
-    hashed_pw = generate_password_hash(request.form['password'])
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO users (name, username, email, phone, password, role, status, added_by) VALUES (?, ?, ?, ?, ?, 'admin', 'active', ?)",
-                   (request.form['name'], request.form['username'], request.form['email'], request.form['phone'], hashed_pw, session['user']['username']))
-    conn.commit()
-    conn.close()
-    
-    log_activity(session['user']['username'], f"নতুন এডমিন তৈরি করেছেন: {request.form['username']}")
-    return "<script>alert('নতুন এডমিন সফলভাবে তৈরি হয়েছে!'); window.location='/';</script>"
-
-@app.route('/save_record', methods=['POST'])
-def save_record():
-    if not session.get('user', {}).get('is_admin_or_sub'): return jsonify({'status': 'unauthorized'})
-    rec_id = request.form.get('id')
-    user_name = session['user']['username']
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    if rec_id:
-        cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?''',
-                       (request.form['customer_name'], request.form.get('mobile', ''), request.form['service_type'],
-                        request.form.get('connection_num', ''), request.form.get('address', ''), request.form.get('note', ''), rec_id))
-        log_activity(user_name, f"নম্বর এডিট করেছেন (গ্রাহক: {request.form['customer_name']})")
+        cursor.execute("SELECT name, username, profile_pic FROM users WHERE status='active' AND is_deleted=0 AND role != 'main_admin'")
     else:
-        cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)''', 
-                       (request.form['customer_name'], request.form.get('mobile', ''), request.form['service_type'],
-                        request.form.get('connection_num', ''), request.form.get('address', ''), request.form.get('note', ''), user_name))
-        log_activity(user_name, f"নতুন নম্বর যোগ করেছেন: {request.form['customer_name']} ({request.form['service_type']})")
+        cursor.execute("SELECT name, username, profile_pic FROM users WHERE status='active' AND is_deleted=0")
         
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success'})
-
-@app.route('/delete_record/<int:id>', methods=['POST'])
-def delete_record(id):
-    if request.form.get('security_code') != ADMIN_SECURITY_CODE:
-        return jsonify({'status': 'error'})
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE phone_records SET is_deleted=1 WHERE id=?", (id,))
-    conn.commit()
-    conn.close()
-    log_activity(session['user']['username'], f"নম্বর ডিলিট করেছেন (ID: {id})")
-    return jsonify({'status': 'success'})
-
-@app.route('/api/get_record/<int:id>')
-def get_record(id):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE id=?", (id,))
-    data = cursor.fetchone()
-    conn.close()
-    return jsonify(data)
-
-@app.route('/api/suggestions')
-def api_suggestions():
-    q = request.args.get('q', '')
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT customer_name FROM phone_records WHERE is_deleted=0 AND customer_name LIKE ? LIMIT 6", (f'%{q}%',))
-    suggestions = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    return jsonify(suggestions)
-
-@app.route('/api/search')
-def api_search():
-    q = request.args.get('q', '')
-    service = request.args.get('service', '')
-    sort = request.args.get('sort', 'id_asc')
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-
-    # Dynamic Sorting Handler
-    if sort == 'id_desc':
-        order_by = "id DESC"
-    elif sort == 'name_asc':
-        order_by = "customer_name ASC"
-    elif sort == 'name_desc':
-        order_by = "customer_name DESC"
-    else:
-        order_by = "id ASC"
-
-    query = "SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE is_deleted=0 AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ? OR address LIKE ? OR note LIKE ?)"
-    params = [f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%', f'%{q}%']
-
-    if service != '':
-        query += " AND service_type = ?"
-        params.append(service)
-
-    query += f" ORDER BY {order_by}"
-    cursor.execute(query, params)
-    records = cursor.fetchall()
-
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0")
-    total = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type = 'টেলিফোন নম্বর'")
-    tel = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type = 'টেলিফোন+ওয়াইফাই নম্বর'")
-    both = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type = 'ওয়াইফাই নম্বর'")
-    wifi = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM users WHERE status='pending' AND is_deleted=0")
-    pending = cursor.fetchone()[0]
-
-    conn.close()
-    return jsonify({'records': records, 'counts': {'total': total, 'tel': tel, 'both': both, 'wifi': wifi, 'pending': pending}})
-
-@app.route('/api/pending_users')
-def api_pending_users():
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, email, phone, role, status, created_at FROM users WHERE status='pending' AND is_deleted=0")
     users = cursor.fetchall()
-    conn.close()
-    return jsonify(users)
-
-@app.route('/api/users')
-def api_users():
-    q = request.args.get('q', '')
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, email, phone, role, status, last_active, profile_pic FROM users WHERE status='active' AND is_deleted=0 AND (name LIKE ? OR username LIKE ?)", (f'%{q}%', f'%{q}%'))
-    raw = cursor.fetchall()
+    result = []
     
-    users = []
-    for u in raw:
-        last_act = datetime.strptime(u[7], "%Y-%m-%d %H:%M:%S") if u[7] else datetime.now()
-        diff_mins = int((datetime.now() - last_act).total_seconds() / 60)
-        status_str = "অনলাইন" if diff_mins < 3 else f"{diff_mins} মিনিট আগে"
-        users.append([u[0], u[1], u[2], u[3], u[4], u[5], u[6], u[7], u[8], status_str])
+    for u in users:
+        cursor.execute("SELECT COUNT(*) FROM messages WHERE sender=? AND receiver=? AND is_read=0", (u[1], curr_user))
+        unread_cnt = cursor.fetchone()[0]
+        result.append({
+            'name': u[0],
+            'username': u[1],
+            'profile_pic': u[2],
+            'unread_count': unread_cnt
+        })
         
     conn.close()
-    return jsonify(users)
+    return jsonify(result)
 
-@app.route('/admin/user_action/<int:id>/<string:action>', methods=['POST'])
-def user_action(id, action):
-    if not session.get('user', {}).get('is_admin_or_sub'): return jsonify({'status': 'unauthorized'})
+@app.route('/api/mark_read')
+def mark_read():
+    if 'user' not in session: return jsonify({'status': 'error'})
+    sender = request.args.get('sender')
+    curr_user = session['user']['username']
+    
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    
-    if action == 'approve':
-        cursor.execute("UPDATE users SET status='active' WHERE id=?", (id,))
-        log_activity(session['user']['username'], f"ইউজার রিকোয়েস্ট একসেপ্ট করেছেন (ID: {id})")
-    elif action == 'delete':
-        if request.form.get('security_code') != ADMIN_SECURITY_CODE:
-            conn.close()
-            return jsonify({'status': 'error'})
-        cursor.execute("UPDATE users SET is_deleted=1 WHERE id=?", (id,))
-        log_activity(session['user']['username'], f"ইউজার ডিলিট/রিজেক্ট করেছেন (ID: {id})")
-
+    cursor.execute("UPDATE messages SET is_read=1 WHERE sender=? AND receiver=?", (sender, curr_user))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
@@ -1113,7 +605,7 @@ def send_message():
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (sender, receiver, message, file_url, is_group) VALUES (?, ?, ?, ?, ?)", 
+    cursor.execute("INSERT INTO messages (sender, receiver, message, file_url, is_group, is_read) VALUES (?, ?, ?, ?, ?, 0)", 
                    (sender, target, msg, file_url, 1 if target=='GROUP' else 0))
     conn.commit()
     conn.close()
@@ -1143,38 +635,10 @@ def api_messages():
     msgs = []
     for r in raw:
         t_str = datetime.strptime(r[4], "%Y-%m-%d %H:%M:%S").strftime("%I:%M:%S %p") if r[4] else ""
-        msgs.append({'id': r[0], 'sender': r[1], 'sender_name': r[2] or r[1], 'message': r[3], 'timestamp_time': t_str, 'sender_role': r[5], 'file_url': r[6]})
+        sender_display_name = "সাপোর্ট টিম / এডমিন" if (r[5] == 'main_admin' and session.get('user',{}).get('role') != 'main_admin') else (r[2] or r[1])
+        msgs.append({'id': r[0], 'sender': r[1], 'sender_name': sender_display_name, 'message': r[3], 'timestamp_time': t_str, 'file_url': r[6]})
         
     return jsonify(msgs)
-
-@app.route('/api/admin_story')
-def api_admin_story():
-    if not session.get('user', {}).get('is_admin_or_sub'): return jsonify({})
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    today_date = datetime.now().strftime("%Y-%m-%d")
-    
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE DATE(created_at) = ?", (today_date,))
-    today_numbers_added = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM users WHERE DATE(created_at) = ?", (today_date,))
-    today_users_added = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT id, username, action, timestamp FROM activity_logs ORDER BY id DESC LIMIT 50")
-    logs = cursor.fetchall()
-    conn.close()
-    
-    formatted_logs = []
-    for l in logs:
-        t_str = datetime.strptime(l[3], "%Y-%m-%d %H:%M:%S").strftime("%d %b, %I:%M %p") if l[3] else ""
-        formatted_logs.append([l[0], l[1], l[2], t_str])
-
-    return jsonify({
-        'today_numbers_added': today_numbers_added,
-        'today_users_added': today_users_added,
-        'logs': formatted_logs
-    })
 
 @app.route('/logout')
 def logout():
