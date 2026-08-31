@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -139,11 +139,14 @@ HTML_TEMPLATE = """
             padding: 8px 12px; cursor: pointer; color: #ffe6f2; border-bottom: 1px solid #2b001e;
         }
         .suggestion-item:hover { background-color: #ff66b2; color: #000; font-weight: bold; }
+        .dropdown-menu-dark { background-color: #2b001e; border: 1px solid #d4af37; }
+        .dropdown-item { color: #ffe6f2; }
+        .dropdown-item:hover { background-color: #ff66b2; color: #000; }
     </style>
 </head>
 <body>
 
-<div class="gold-pink-header text-center py-2">
+<div class="gold-pink-header text-center py-2 position-relative">
     <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
     <small>Md Khushbu Alom - Admin Panel</small>
 </div>
@@ -152,6 +155,23 @@ HTML_TEMPLATE = """
     {% if session.get('user') %}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
+            <!-- Full Navigation Menu Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fa-solid fa-bars"></i> মেনু
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark">
+                    <li><a class="dropdown-item" href="/"><i class="fa-solid fa-house me-2"></i>হোম পেজ</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openMessenger()"><i class="fa-solid fa-comments me-2"></i>মেসেঞ্জার</a></li>
+                    {% if session['user']['is_admin_or_sub'] %}
+                    <li><a class="dropdown-item" href="#" onclick="openAddRecordModal()"><i class="fa-solid fa-plus me-2"></i>নতুন নম্বর যোগ</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="showSection('users')"><i class="fa-solid fa-users me-2"></i>ইউজার তালিকা</a></li>
+                    {% endif %}
+                    <li><hr class="dropdown-divider border-secondary"></li>
+                    <li><a class="dropdown-item text-danger" href="/logout"><i class="fa-solid fa-right-from-bracket me-2"></i>লগআউট</a></li>
+                </ul>
+            </div>
+            
             <a href="/" class="btn btn-pink btn-sm"><i class="fa-solid fa-house"></i> হোম</a>
             <button class="btn btn-outline-warning btn-sm" onclick="openMessenger()"><i class="fa-solid fa-comments"></i> মেসেঞ্জার</button>
             {% if session['user']['is_admin_or_sub'] %}
@@ -212,7 +232,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- User Management with Specific Search Bar -->
+    <!-- User Management Section -->
     {% if session['user']['is_admin_or_sub'] %}
     <div id="usersSection" class="card-custom p-3 mb-4" style="display:none;">
         <div class="d-flex justify-content-between align-items-center mb-2 border-bottom border-warning pb-2">
@@ -283,7 +303,6 @@ HTML_TEMPLATE = """
         </ul>
         
         <div class="tab-content">
-          <!-- Option 1: Profile Info -->
           <div class="tab-pane fade show active" id="opt1">
             <div class="card bg-dark text-white p-3 border-secondary text-center">
                 {% if session.get('user',{}).get('profile_pic') %}
@@ -303,7 +322,6 @@ HTML_TEMPLATE = """
             </div>
           </div>
 
-          <!-- Option 2: Create Admin & Admin Search Box -->
           {% if session.get('user',{}).get('role') == 'main_admin' %}
           <div class="tab-pane fade" id="opt2">
             <div class="card bg-dark text-white p-3 border-warning mb-3">
@@ -314,12 +332,11 @@ HTML_TEMPLATE = """
                     <div class="col-md-6"><label class="form-label">মোবাইল *</label><input type="text" name="phone" class="form-control" required></div>
                     <div class="col-md-6"><label class="form-label">ইউজারনেম *</label><input type="text" name="username" class="form-control" required></div>
                     <div class="col-md-6"><label class="form-label">পাসওয়ার্ড *</label><input type="password" name="password" class="form-control" required></div>
-                    <div class="col-md-6"><label class="form-label">এডমিন সিকিউরিটি পিন (বাধ্যতামূলক) *</label><input type="password" name="security_code" class="form-control" required placeholder="পিন দিন"></div>
+                    <div class="col-md-6"><label class="form-label">এডমিন সিকিউরিটি পিন *</label><input type="password" name="security_code" class="form-control" required placeholder="পিন দিন"></div>
                     <div class="col-12 mt-3"><button type="submit" class="btn btn-gold w-100">নতুন এডমিন তৈরি করুন</button></div>
                 </form>
             </div>
 
-            <!-- Specific Admin List Search -->
             <div class="card bg-dark text-white p-3 border-secondary">
                 <h6 class="text-warning border-bottom pb-2">এডমিন তালিকা ও নিজস্ব সার্চ</h6>
                 <input type="text" id="adminSearchInput" class="form-control mb-2" placeholder="এডমিনের নাম লিখে খুঁজুন..." onkeyup="filterAdminList()">
@@ -327,7 +344,6 @@ HTML_TEMPLATE = """
             </div>
           </div>
 
-          <!-- Option 4: Admin History -->
           <div class="tab-pane fade" id="opt4">
             <div class="card bg-dark text-white p-3 border-secondary">
                 <h6 class="text-warning border-bottom pb-2">এডমিনদের কাজের ইতিহাস (History)</h6>
@@ -370,7 +386,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Messenger Modal -->
+<!-- Messenger Modal with File Sharing Ability -->
 <div class="modal fade" id="messengerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -390,10 +406,13 @@ HTML_TEMPLATE = """
             <div id="activeChatHeader" class="fw-bold text-warning pb-2 border-bottom border-secondary">📢 গ্রুপ চ্যাট</div>
             <div id="chatMessagesBox" class="flex-grow-1 p-2 my-2 border border-secondary rounded overflow-auto" style="height:270px; background:#12020d;"></div>
             
-            <div class="input-group" id="chatInputGroup">
-                <input type="text" id="chatInputMsg" class="form-control" placeholder="মেসেজ লিখুন..." onkeypress="if(event.key==='Enter') sendChatMsg()">
-                <button class="btn btn-gold" onclick="sendChatMsg()"><i class="fa-solid fa-paper-plane"></i></button>
-            </div>
+            <form id="chatForm" onsubmit="sendChatMsg(event)" class="input-group" id="chatInputGroup" enctype="multipart/form-data">
+                <input type="file" id="chatFileInput" name="file" class="d-none" onchange="sendFilePreview()">
+                <button type="button" class="btn btn-outline-warning" onclick="document.getElementById('chatFileInput').click()"><i class="fa-solid fa-paperclip"></i></button>
+                <input type="text" id="chatInputMsg" name="message" class="form-control" placeholder="মেসেজ লিখুন...">
+                <button type="submit" class="btn btn-gold"><i class="fa-solid fa-paper-plane"></i></button>
+            </form>
+            <small id="filePreviewName" class="text-warning mt-1" style="font-size:11px;"></small>
         </div>
       </div>
     </div>
@@ -420,7 +439,6 @@ let currentChatTarget = 'GROUP';
 let isUserRole = {{ 'true' if session.get('user',{}).get('role') == 'user' else 'false' }};
 let allAdminsList = [];
 
-// YouTube Style Auto-Suggest Search Functionality
 function handleSearchInput() {
     let q = document.getElementById('searchInput').value.trim();
     let suggestionsBox = document.getElementById('suggestionsBox');
@@ -700,13 +718,14 @@ function loadChatUsers() {
 function selectChatTarget(target, name) {
     currentChatTarget = target;
     document.getElementById('activeChatHeader').innerText = name;
-    
-    if(isUserRole && target === 'GROUP') {
-        document.getElementById('chatInputGroup').style.display = 'none';
-    } else {
-        document.getElementById('chatInputGroup').style.display = 'flex';
-    }
     loadMessages();
+}
+
+function sendFilePreview() {
+    let inp = document.getElementById('chatFileInput');
+    if(inp.files.length > 0) {
+        document.getElementById('filePreviewName').innerText = "সংযুক্ত ফাইল: " + inp.files[0].name;
+    }
 }
 
 function loadMessages() {
@@ -718,10 +737,20 @@ function loadMessages() {
             let isMe = m.sender === "{{ session.get('user', {}).get('username') }}";
             let displayName = (isUserRole && m.sender_role !== 'user') ? 'Admin' : m.sender_name;
             
+            let fileAttachment = '';
+            if(m.file_url) {
+                if(m.file_url.match(/\.(jpeg|jpg|gif|png)$/i)) {
+                    fileAttachment = `<br><img src="${m.file_url}" class="img-fluid rounded mt-1" style="max-height:150px;">`;
+                } else {
+                    fileAttachment = `<br><a href="${m.file_url}" target="_blank" class="badge bg-dark text-warning mt-1"><i class="fa-solid fa-file-arrow-down me-1"></i> ফাইল ডাউনলোড</a>`;
+                }
+            }
+            
             html += `<div class="d-flex mb-2 ${isMe?'justify-content-end':'justify-content-start'}">
                 <div class="${isMe?'chat-bubble-me':'chat-bubble-them'} p-2">
                     <small class="d-block fw-bold cursor-pointer" style="font-size:10px;" onclick="viewUserDetail('${m.sender}')">${displayName}</small>
                     ${m.message || ''}
+                    ${fileAttachment}
                     <small class="d-block text-end opacity-75 mt-1" style="font-size:9px;">${m.timestamp_time}</small>
                 </div>
             </div>`;
@@ -732,17 +761,21 @@ function loadMessages() {
     });
 }
 
-function sendChatMsg() {
-    let msg = document.getElementById('chatInputMsg').value;
-    if(!msg) return;
+function sendChatMsg(e) {
+    e.preventDefault();
+    let msgInput = document.getElementById('chatInputMsg');
+    let fileInput = document.getElementById('chatFileInput');
+    
+    if(!msgInput.value && fileInput.files.length === 0) return;
 
-    let formData = new FormData();
-    formData.append('message', msg);
+    let formData = new FormData(document.getElementById('chatForm'));
     formData.append('target', currentChatTarget);
 
     fetch('/send_message', { method: 'POST', body: formData })
     .then(() => {
-        document.getElementById('chatInputMsg').value = '';
+        msgInput.value = '';
+        fileInput.value = '';
+        document.getElementById('filePreviewName').innerText = '';
         loadMessages();
     });
 }
@@ -989,11 +1022,20 @@ def send_message():
     msg = request.form.get('message', '')
     sender = session['user']['username']
     target = request.form.get('target', 'GROUP')
+    file_url = ""
+
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename != '':
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"chat_{sender}_{filename}")
+            file.save(filepath)
+            file_url = '/' + filepath
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO messages (sender, receiver, message, is_group) VALUES (?, ?, ?, ?)", 
-                   (sender, target, msg, 1 if target=='GROUP' else 0))
+    cursor.execute("INSERT INTO messages (sender, receiver, message, file_url, is_group) VALUES (?, ?, ?, ?, ?)", 
+                   (sender, target, msg, file_url, 1 if target=='GROUP' else 0))
     conn.commit()
     conn.close()
     return jsonify({'status': 'success'})
@@ -1008,11 +1050,11 @@ def api_messages():
     cursor = conn.cursor()
     
     if target == 'GROUP':
-        cursor.execute("""SELECT m.id, m.sender, u.name, m.message, m.timestamp, u.role 
+        cursor.execute("""SELECT m.id, m.sender, u.name, m.message, m.timestamp, u.role, m.file_url 
                           FROM messages m LEFT JOIN users u ON m.sender=u.username 
                           WHERE m.receiver='GROUP' ORDER BY m.id ASC""")
     else:
-        cursor.execute("""SELECT m.id, m.sender, u.name, m.message, m.timestamp, u.role 
+        cursor.execute("""SELECT m.id, m.sender, u.name, m.message, m.timestamp, u.role, m.file_url 
                           FROM messages m LEFT JOIN users u ON m.sender=u.username 
                           WHERE (sender=? AND receiver=?) OR (sender=? AND receiver=?) 
                           ORDER BY m.id ASC""", (curr_user, target, target, curr_user))
@@ -1022,7 +1064,7 @@ def api_messages():
     msgs = []
     for r in raw:
         t_str = datetime.strptime(r[4], "%Y-%m-%d %H:%M:%S").strftime("%I:%M:%S %p") if r[4] else ""
-        msgs.append({'id': r[0], 'sender': r[1], 'sender_name': r[2] or r[1], 'message': r[3], 'timestamp_time': t_str, 'sender_role': r[5]})
+        msgs.append({'id': r[0], 'sender': r[1], 'sender_name': r[2] or r[1], 'message': r[3], 'timestamp_time': t_str, 'sender_role': r[5], 'file_url': r[6]})
         
     return jsonify(msgs)
 
