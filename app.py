@@ -112,6 +112,7 @@ HTML_TEMPLATE = """
         .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
         .floating-add-btn:hover { transform: scale(1.1); color: #fff; }
         .announcement-banner { background: linear-gradient(45deg, #ff1493, #d4af37); color: #000; font-weight: bold; border-radius: 8px; padding: 12px; margin-bottom: 15px; animation: pulse 2s infinite; }
+        .profile-avatar-preview { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #d4af37; object-fit: cover; margin-bottom: 10px; }
     </style>
 </head>
 <body>
@@ -133,20 +134,22 @@ HTML_TEMPLATE = """
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
 
+            {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
                     <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার ও এডমিন তালিকা</a></li>
-                    {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
                     <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
-                    {% endif %}
                     {% if session.get('user').get('username') == 'Khushbu23' %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট <span id="reqMenuBadge" class="badge bg-danger ms-1" style="display:none;">0</span></a></li>
                     {% endif %}
                 </ul>
             </div>
+            {% else %}
+            <button class="btn btn-outline-warning btn-sm" onclick="openUserListModal()"><i class="fa-solid fa-users"></i> ইউজার তালিকা</button>
+            {% endif %}
             
             <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
                 <i class="fa-solid fa-comments"></i> মেসেঞ্জার
@@ -167,7 +170,7 @@ HTML_TEMPLATE = """
                     <i class="fa-solid fa-circle-user"></i> প্রোফাইল
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                    <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-user-gear me-2"></i>প্রোফাইল আপডেট</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-image me-2"></i>প্রোফাইল ছবি আপডেট</a></li>
                     {% if session.get('user').get('username') == 'Khushbu23' %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি (শুধুমাত্র মেইন এডমিন)</a></li>
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি ও অ্যাক্টিভিটি</a></li>
@@ -377,6 +380,7 @@ HTML_TEMPLATE = """
                     <button type="button" class="btn btn-outline-warning" onclick="document.getElementById('chatFile').click()"><i class="fa-solid fa-paperclip"></i></button>
                     <button type="submit" class="btn btn-gold"><i class="fa-solid fa-paper-plane"></i></button>
                 </form>
+                <div id="groupPermissionNotice" class="text-danger small text-center mt-1" style="display:none;">সাধারণ ইউজাররা গ্রুপে মেসেজ পাঠাতে পারবেন না, কেবল দেখতে পারবেন।</div>
                 <div id="selectedFilePreview" class="small text-warning mt-1" style="display:none;"></div>
             </div>
         </div>
@@ -495,18 +499,22 @@ HTML_TEMPLATE = """
 
 <div class="modal fade" id="profileModal" tabindex="-1">
   <div class="modal-dialog">
-    <div class="modal-content card-custom">
+    <div class="modal-content card-custom text-center">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-gear"></i> প্রোফাইল আপডেট</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-gear"></i> প্রোফাইল ছবি আপডেট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
-      <form action="/update_profile" method="POST" enctype="multipart/form-data" class="modal-body text-start">
-        <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" value="{{ session.get('user',{}).get('username') }}" required></div>
-        <div class="mb-2"><label class="form-label">আপনার নাম</label><input type="text" name="name" class="form-control" value="{{ session.get('user',{}).get('name') }}" required></div>
-        <div class="mb-2"><label class="form-label">জিমেইল</label><input type="email" name="email" class="form-control" value="{{ session.get('user',{}).get('email', '') }}"></div>
-        <div class="mb-2"><label class="form-label">মোবাইল নম্বর</label><input type="text" name="phone" class="form-control" value="{{ session.get('user',{}).get('phone') }}"></div>
-        <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড"></div>
-        <button type="submit" class="btn btn-gold w-100 py-2">সেভ করুন</button>
+      <form action="/update_profile_pic" method="POST" enctype="multipart/form-data" class="modal-body">
+        <div class="mb-3">
+            <img id="profilePreviewImg" src="{{ session.get('user',{}).get('profile_pic') or 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/circle-user.svg' }}" class="profile-avatar-preview">
+            <h5 class="text-warning">{{ session.get('user',{}).get('name') }}</h5>
+            <p class="text-muted small">@{{ session.get('user',{}).get('username') }}</p>
+        </div>
+        <div class="mb-3 text-start">
+            <label class="form-label">আপনার নতুন প্রোফাইল ছবি সিলেক্ট করুন</label>
+            <input type="file" name="profile_pic" class="form-control" accept="image/*" required onchange="previewAvatar(event)">
+        </div>
+        <button type="submit" class="btn btn-gold w-100 py-2">ছবি আপডেট করুন</button>
       </form>
     </div>
   </div>
@@ -725,6 +733,10 @@ function openCreateAdminModal() {
     new bootstrap.Modal(document.getElementById('createUserModal')).show();
 }
 
+function openRegisterModal() {
+    new bootstrap.Modal(document.getElementById('registerModal')).show();
+}
+
 function openEditUserCredentials(id, uname) {
     document.getElementById('edit_user_id').value = id;
     document.getElementById('edit_username').value = uname;
@@ -811,6 +823,15 @@ function openProfileModal() {
     new bootstrap.Modal(document.getElementById('profileModal')).show();
 }
 
+function previewAvatar(event) {
+    let reader = new FileReader();
+    reader.onload = function(){
+        let output = document.getElementById('profilePreviewImg');
+        output.src = reader.result;
+    };
+    reader.readAsDataURL(event.target.files[0]);
+}
+
 function openTrashBinModal() {
     fetch('/api/get_trash')
     .then(res => res.json())
@@ -860,7 +881,6 @@ function checkGlobalNotifications() {
     fetch('/api/global_status')
     .then(res => res.json())
     .then(data => {
-        // Unread messages count for messenger badge
         let msgBadge = document.getElementById('msgBadge');
         if(data.unread_msg_count > 0) {
             msgBadge.style.display = 'block';
@@ -869,7 +889,6 @@ function checkGlobalNotifications() {
             msgBadge.style.display = 'none';
         }
 
-        // Notification badge for Main Admin
         let notifBadge = document.getElementById('notifBadge');
         if(notifBadge) {
             let totalNotif = data.pending_requests_count + data.unread_msg_count;
@@ -881,7 +900,6 @@ function checkGlobalNotifications() {
             }
         }
 
-        // Menu badge for Requests
         let reqMenuBadge = document.getElementById('reqMenuBadge');
         if(reqMenuBadge) {
             if(data.pending_requests_count > 0) {
@@ -892,7 +910,6 @@ function checkGlobalNotifications() {
             }
         }
 
-        // Latest group announcement banner for everyone upon login/refresh
         let banner = document.getElementById('latestGroupAnnouncement');
         let bannerText = document.getElementById('announcementText');
         if(data.latest_group_msg && banner && bannerText) {
@@ -921,11 +938,25 @@ function switchChatTab(type) {
         currentChatIsGroup = 1;
         currentChatTarget = 'BTCL_GLOBAL_GROUP';
         document.getElementById('activeChatTitle').innerText = 'অফিসিয়াল গ্রুপ চ্যাট';
-        document.getElementById('chatForm').style.display = 'flex';
+        
+        // ইউজার হলে গ্রুপে মেসেজ লেখার বক্স হাইড থাকবে, শুধুমাত্র এডমিনদের জন্য দেখাবে
+        fetch('/api/check_admin_role')
+        .then(res => res.json())
+        .then(isAdmin => {
+            if(isAdmin) {
+                document.getElementById('chatForm').style.display = 'flex';
+                document.getElementById('groupPermissionNotice').style.display = 'none';
+            } else {
+                document.getElementById('chatForm').style.display = 'none';
+                document.getElementById('groupPermissionNotice').style.display = 'block';
+            }
+        });
+
         listContainer.innerHTML = `<button class="list-group-item list-group-item-action active bg-secondary text-white border-0 rounded my-1" onclick="selectGroupChat()">👥 কুড়িগ্রাম অফিস গ্রুপ</button>`;
         loadMessages();
     } else {
         currentChatIsGroup = 0;
+        document.getElementById('groupPermissionNotice').style.display = 'none';
         fetch('/api/chat_users')
         .then(res => res.json())
         .then(data => {
@@ -944,8 +975,8 @@ function selectUserChat(username, name) {
     currentChatIsGroup = 0;
     document.getElementById('activeChatTitle').innerText = `ইনবক্স: ${name}`;
     document.getElementById('chatForm').style.display = 'flex';
+    document.getElementById('groupPermissionNotice').style.display = 'none';
     
-    // Mark messages from this user as read to decrement badge immediately
     fetch(`/api/mark_read?sender=${username}`).then(() => {
         loadMessages();
         checkGlobalNotifications();
@@ -956,7 +987,18 @@ function selectGroupChat() {
     currentChatTarget = 'BTCL_GLOBAL_GROUP';
     currentChatIsGroup = 1;
     document.getElementById('activeChatTitle').innerText = 'অফিসিয়াল গ্রুপ চ্যাট';
-    document.getElementById('chatForm').style.display = 'flex';
+    
+    fetch('/api/check_admin_role')
+    .then(res => res.json())
+    .then(isAdmin => {
+        if(isAdmin) {
+            document.getElementById('chatForm').style.display = 'flex';
+            document.getElementById('groupPermissionNotice').style.display = 'none';
+        } else {
+            document.getElementById('chatForm').style.display = 'none';
+            document.getElementById('groupPermissionNotice').style.display = 'block';
+        }
+    });
     loadMessages();
 }
 
@@ -978,7 +1020,7 @@ function loadMessages() {
                 <div style="font-size: 9px; text-align: right; opacity: 0.7;">${m.timestamp}</div>
             </div>`;
         });
-        box.innerHTML = html || '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই। প্রথম মেসেজ পাঠান!</p>';
+        box.innerHTML = html || '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই।</p>';
         box.scrollTop = box.scrollHeight;
     });
 }
@@ -1026,11 +1068,12 @@ function sendMessage(e) {
             document.getElementById('selectedFilePreview').style.display = 'none';
             loadMessages();
             checkGlobalNotifications();
+        } else {
+            alert(data.message || 'মেসেজ পাঠানো যায়নি!');
         }
     });
 }
 
-// Initial Load & Global Interval
 document.addEventListener("DOMContentLoaded", function() {
     loadRecords();
     checkGlobalNotifications();
@@ -1067,7 +1110,8 @@ def login():
             'email': user[3],
             'phone': user[4],
             'role': user[7],
-            'status': user[8]
+            'status': user[8],
+            'profile_pic': user[9]
         }
         return redirect(url_for('index'))
     return "লগইন ব্যর্থ হয়েছে! সঠিক তথ্য দিন।"
@@ -1306,6 +1350,13 @@ def reject_user(user_id):
     conn.close()
     return jsonify({'success': True})
 
+@app.route('/api/check_admin_role')
+def check_admin_role():
+    if 'user' not in session:
+        return jsonify(False)
+    role = session['user']['role']
+    return jsonify(role in ['admin', 'main_admin'])
+
 @app.route('/api/chat_users')
 def chat_users():
     if 'user' not in session:
@@ -1318,7 +1369,6 @@ def chat_users():
     users = []
     for r in cursor.fetchall():
         uname = r[0]
-        # Count unread messages from this specific user
         cursor.execute("SELECT COUNT(*) FROM messages WHERE sender = ? AND receiver = ? AND is_read = 0", (uname, current_uname))
         unread = cursor.fetchone()[0]
         users.append({'username': uname, 'name': r[1], 'unread': unread})
@@ -1353,7 +1403,6 @@ def get_messages():
     if is_group:
         cursor.execute("SELECT sender, receiver, message, file_url, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
     else:
-        # Mark messages read when fetched for active chat
         cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_read = 0", (target, current_uname))
         conn.commit()
         
@@ -1380,10 +1429,16 @@ def get_messages():
 def send_message():
     if 'user' not in session:
         return jsonify({'success': False})
-    current_uname = session['user']['username']
+    
+    current_user = session['user']
+    current_uname = current_user['username']
     receiver = request.form.get('receiver')
     is_group = int(request.form.get('is_group', 0))
     message = request.form.get('message', '')
+    
+    # ইউজার যদি গ্রুপে মেসেজ পাঠাতে চায় এবং সে যদি এডমিন না হয়, তবে ব্লক করে দেব
+    if is_group == 1 and current_user['role'] not in ['admin', 'main_admin']:
+        return jsonify({'success': False, 'message': 'সাধারণ ইউজাররা গ্রুপে মেসেজ পাঠাতে পারবেন না!'})
     
     file_url = ''
     if 'file' in request.files:
@@ -1411,17 +1466,14 @@ def global_status():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     
-    # Total unread direct messages for badge decrement
     cursor.execute("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_group = 0 AND is_read = 0", (current_uname,))
     unread_msg_count = cursor.fetchone()[0]
     
-    # Pending requests count for Main Admin
     pending_requests_count = 0
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0")
         pending_requests_count = cursor.fetchone()[0]
         
-    # Latest group message for banner announcement
     cursor.execute("SELECT sender, message, timestamp FROM messages WHERE is_group = 1 ORDER BY id DESC LIMIT 1")
     g_msg = cursor.fetchone()
     latest_group_msg = None
@@ -1445,7 +1497,6 @@ def get_notifications():
     cursor = conn.cursor()
     notifications = []
     
-    # If main admin, include pending account requests
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT id, name, username, created_at FROM users WHERE status = 'pending' AND is_deleted = 0")
         for r in cursor.fetchall():
@@ -1456,7 +1507,6 @@ def get_notifications():
                 'time': r[3]
             })
             
-    # Include unread direct messages
     cursor.execute("""
         SELECT m.sender, u.name, m.message, m.timestamp FROM messages m 
         JOIN users u ON m.sender = u.username
@@ -1512,29 +1562,41 @@ def admin_history():
     conn.close()
     return jsonify({'history': history})
 
-@app.route('/update_profile', methods=['POST'])
-def update_profile():
+@app.route('/update_profile_pic', methods=['POST'])
+def update_profile_pic():
     if 'user' not in session:
         return redirect(url_for('index'))
     user_id = session['user']['id']
-    username = request.form.get('username')
-    name = request.form.get('name')
-    email = request.form.get('email')
-    phone = request.form.get('phone')
-    password = request.form.get('password')
     
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    if password:
-        hashed_pw = generate_password_hash(password)
-        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=?, password=?, raw_pass=? WHERE id=?",
-                       (username, name, email, phone, hashed_pw, password, user_id))
-    else:
-        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=? WHERE id=?",
-                       (username, name, email, phone, user_id))
-    conn.commit()
-    conn.close()
-    session.clear()
+    profile_pic_url = ''
+    if 'profile_pic' in request.files:
+        file = request.files['profile_pic']
+        if file and file.filename:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            profile_pic_url = f'/{filepath}'
+            
+    if profile_pic_url:
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET profile_pic = ? WHERE id = ?", (profile_pic_url, user_id))
+        conn.commit()
+        
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        conn.close()
+        
+        session['user'] = {
+            'id': user[0],
+            'name': user[1],
+            'username': user[2],
+            'email': user[3],
+            'phone': user[4],
+            'role': user[7],
+            'status': user[8],
+            'profile_pic': user[9]
+        }
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
