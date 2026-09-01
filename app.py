@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for, send_from_directory
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_gold_pink_super_secret_2026")
 
 MAIN_ADMIN_USERNAME = "Khushbu23"
-SECURITY_DELETE_PASSWORD = "017"
+SECURITY_DELETE_PASSWORD = "137955"
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -86,7 +86,7 @@ HTML_TEMPLATE = """
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: linear-gradient(135deg, #2b001e 0%, #4a1525 50%, #1f0010 100%); color: #ffe6f2; font-family: 'Segoe UI', sans-serif; min-height: 100vh; }
+        body { background: linear-gradient(135deg, #2b001e 0%, #4a1525 50%, #1f0010 100%); color: #ffe6f2; font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 70px; }
         .gold-pink-header { background: linear-gradient(90deg, #d4af37 0%, #ff66b2 50%, #d4af37 100%); color: #1a000d; font-weight: bold; }
         .card-custom { background: rgba(45, 10, 30, 0.95); border: 1px solid #d4af37; border-radius: 12px; }
         .form-label { color: #ffd700; font-weight: bold; }
@@ -107,6 +107,8 @@ HTML_TEMPLATE = """
         .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; margin-left: auto; }
         .clickable-name { color: #ffd700; cursor: pointer; text-decoration: underline; }
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
+        .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255,102,178,0.5); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
+        .floating-add-btn:hover { transform: scale(1.1); color: #fff; }
     </style>
 </head>
 <body>
@@ -119,25 +121,27 @@ HTML_TEMPLATE = """
 <div class="container py-3">
     {% if session.get('user') %}
 
+    <!-- Top Navigation Bar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
+            <!-- হোম বাটন -->
+            <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
+
+            <!-- ইউজার লিস্ট ও অন্যান্য মেনু অপশন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
-                    <li><a class="dropdown-item" href="#" onclick="showHome()"><i class="fa-solid fa-house me-2"></i>হোম</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="openAddRecordModal()"><i class="fa-solid fa-plus me-2"></i>নম্বর এড করা</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
                     <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার তালিকা</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
                     {% if session.get('user').get('username') == 'Khushbu23' %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট</a></li>
                     {% endif %}
                 </ul>
             </div>
-
-            <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
             
+            <!-- মেসেঞ্জার ও নোটিফিকেশন বাটন -->
             <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
                 <i class="fa-solid fa-comments"></i> মেসেজ
                 <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
@@ -150,6 +154,7 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="d-flex align-items-center gap-2">
+            <!-- প্রোফাইল ও এডমিন হিস্ট্রি ড্রপডাউন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-circle-user"></i> প্রোফাইল
@@ -159,16 +164,17 @@ HTML_TEMPLATE = """
                     {% if session.get('user').get('username') == 'Khushbu23' %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি</a></li>
                     {% endif %}
-                    <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি ও অ্যাক্টিভিটি</a></li>
                 </ul>
             </div>
 
+            <!-- থ্রি ডট (...) এক্সট্রা ডিলিট ও রিসাইকেল বিন মেনু -->
             <div class="dropdown">
                 <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-ellipsis-vertical"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                    <li><a class="dropdown-item text-danger" href="#" onclick="openTrashBinModal()"><i class="fa-solid fa-trash-arrow-up me-2"></i>রিসাইকেল বিন / রিষ্টোর</a></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="openTrashBinModal()"><i class="fa-solid fa-trash-arrow-up me-2"></i>রিসাইকেল বিন / রিস্টোর</a></li>
                     <li><a class="dropdown-item text-warning" href="#" onclick="openExportModal()"><i class="fa-solid fa-file-export me-2"></i>ডাটা এক্সপোর্ট</a></li>
                 </ul>
             </div>
@@ -177,6 +183,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- Search & Sort Options -->
     <div class="row g-2 mb-3">
         <div class="col-md-6">
             <div class="input-group">
@@ -196,6 +203,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- Filter Cards -->
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন সিরিয়াল</div></div></div>
@@ -203,9 +211,10 @@ HTML_TEMPLATE = """
         <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই সিরিয়াল</div></div></div>
     </div>
 
+    <!-- Main Customer Table -->
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
-            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহک ও সংযোগ নম্বরসমূহ</h5>
+            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-warning text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
         <div class="table-responsive">
@@ -227,6 +236,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- User List Section -->
     <div id="userListSection" class="card-custom p-3 mb-4" style="display:none;">
         <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
             <h5 class="text-warning mb-0"><i class="fa-solid fa-users"></i> রেজিস্টার্ড ইউজার ও এডমিন তালিকা</h5>
@@ -235,14 +245,20 @@ HTML_TEMPLATE = """
         <div class="table-responsive mt-2">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>মোবাইল</th><th>পাসওয়ার্ড (মেইন এডমিন ভিউ)</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>মোবাইল</th><th>পাসওয়ার্ড (ভিউ)</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
                 </thead>
                 <tbody id="userTableBody"></tbody>
             </table>
         </div>
     </div>
 
+    <!-- Floating Add Record Button -->
+    <button class="floating-add-btn" onclick="openAddRecordModal()" title="নতুন নম্বর যোগ করুন">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+
     {% else %}
+    <!-- Login Form -->
     <div class="row justify-content-center mt-4">
         <div class="col-md-5">
             <div class="card-custom p-4 text-center">
@@ -261,6 +277,7 @@ HTML_TEMPLATE = """
     {% endif %}
 </div>
 
+<!-- Customer Details Modal -->
 <div class="modal fade" id="customerDetailsModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -273,6 +290,22 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Admin Detailed Activity Modal -->
+<div class="modal fade" id="adminDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-warning d-flex justify-content-between">
+        <h5 class="modal-title text-warning" id="adminDetailModalTitle"><i class="fa-solid fa-user-shield"></i> এডমিন অ্যাক্টিভিটি রিপোর্ট</h5>
+        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
+      </div>
+      <div class="modal-body" id="adminDetailBody">
+        <p class="text-muted text-center">লোড হচ্ছে...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Account Requests Modal -->
 <div class="modal fade" id="accountRequestsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -292,6 +325,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Public Register Modal -->
 <div class="modal fade" id="registerModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -310,6 +344,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Messenger Modal -->
 <div class="modal fade" id="messengerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -345,6 +380,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Notification Modal -->
 <div class="modal fade" id="notificationModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -361,6 +397,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Add/Edit Record Modal -->
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -389,6 +426,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Create User Modal -->
 <div class="modal fade" id="createUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -414,18 +452,20 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Admin History Modal -->
 <div class="modal fade" id="adminHistoryModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন হিস্ট্রি ও পরিসংখ্যান</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন হিস্ট্রি ও সার্বিক পরিসংখ্যান</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
+        <p class="small text-muted">যেকোনো এডমিনের নামের ওপর ক্লিক করে তার বিস্তারিত অ্যাক্টিভিটি (নম্বর এড, চ্যাট হিস্ট্রি ইত্যাদি) দেখতে পারবেন।</p>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সক্রিয় সময় (মিনিট)</th><th>ইউজার যোগ করেছেন</th><th>নম্বর যোগ করেছেন</th></tr>
+                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সক্রিয় সময়</th><th>ইউজার যোগ</th><th>নম্বর যোগ</th></tr>
                 </thead>
                 <tbody id="adminHistoryTableBody"></tbody>
             </table>
@@ -435,6 +475,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Profile Modal -->
 <div class="modal fade" id="profileModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -453,6 +494,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
+<!-- Trash Bin Modal -->
 <div class="modal fade" id="trashBinModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -618,7 +660,7 @@ function openUserListModal() {
 }
 
 function deleteUser(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড দিন (ডিলিট করার জন্য):");
+    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
     if(pin) {
         fetch(`/api/delete_user?id=${id}&pin=${pin}`)
         .then(res => res.json())
@@ -655,7 +697,7 @@ function openTrashBinModal() {
 }
 
 function restoreRecord(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড দিন (রিস্টোর করার জন্য):");
+    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
     if(pin) {
         fetch(`/api/restore_record?id=${id}&pin=${pin}`)
         .then(res => res.json())
@@ -679,7 +721,7 @@ function openAdminHistoryModal() {
         let html = '';
         data.forEach(h => {
             html += `<tr>
-                <td><strong>${h.name}</strong></td>
+                <td><span class="clickable-name fw-bold" onclick="openAdminDetail('${h.username}', '${h.name}')">${h.name}</span></td>
                 <td>${h.username}</td>
                 <td><span class="text-warning">${h.active_minutes} মিনিট</span></td>
                 <td><span class="badge bg-primary">${h.users_added} জন</span></td>
@@ -687,6 +729,27 @@ function openAdminHistoryModal() {
             </tr>`;
         });
         document.getElementById('adminHistoryTableBody').innerHTML = html;
+    });
+}
+
+function openAdminDetail(username, name) {
+    document.getElementById('adminDetailModalTitle').innerText = `এডমিন বিস্তারিত: ${name} (${username})`;
+    new bootstrap.Modal(document.getElementById('adminDetailModal')).show();
+    
+    fetch(`/api/admin_detail_report?username=${username}`)
+    .then(res => res.json())
+    .then(data => {
+        let recHtml = '<h6 class="text-warning mt-2">যোগ করা নম্বরসমূহ:</h6><ul class="list-group list-group-dark mb-3">';
+        if(data.records.length === 0) recHtml += '<li class="list-group-item bg-dark text-muted">কোনো নম্বর যোগ করেনি।</li>';
+        else data.records.forEach(r => { recHtml += `<li class="list-group-item bg-dark text-white border-warning">নাম: <strong>${r.customer_name}</strong> | নম্বর: ${r.connection_num || '-'} | তারিখ: ${r.created_at}</li>`; });
+        recHtml += '</ul>';
+
+        let msgHtml = '<h6 class="text-warning mt-2">সাম্প্রতিক চ্যাট ও মেসেজসমূহ:</h6><ul class="list-group list-group-dark">';
+        if(data.messages.length === 0) msgHtml += '<li class="list-group-item bg-dark text-muted">কোনো মেসেজ নেই।</li>';
+        else data.messages.forEach(m => { msgHtml += `<li class="list-group-item bg-dark text-white border-warning">কাকে/গ্রুপে: <strong>${m.receiver}</strong> | মেসেজ: ${m.message || '[ফাইল]'} | সময়: ${m.timestamp}</li>`; });
+        msgHtml += '</ul>';
+
+        document.getElementById('adminDetailBody').innerHTML = recHtml + msgHtml;
     });
 }
 
@@ -898,7 +961,7 @@ function saveRecord(e) {
 }
 
 function deleteRecord(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড দিন (নম্বর ডিলিট করার জন্য):");
+    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
     if(pin) {
         fetch(`/api/delete_record?id=${id}&pin=${pin}`)
         .then(res => res.json())
@@ -1164,7 +1227,6 @@ def notif_count():
     cursor.execute("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (username,))
     msg_count = cursor.fetchone()[0]
     
-    # If main admin, include pending account requests count in notification count
     req_count = 0
     if username == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT COUNT(*) FROM users WHERE status='pending' AND is_deleted=0")
@@ -1352,6 +1414,25 @@ def admin_history():
     conn.close()
     return jsonify(history)
 
+@app.route('/api/admin_detail_report')
+def admin_detail_report():
+    username = request.args.get('username')
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    # Records added by this admin
+    cursor.execute("SELECT customer_name, connection_num, created_at FROM phone_records WHERE added_by=? AND is_deleted=0 ORDER BY id DESC LIMIT 30", (username,))
+    rec_rows = cursor.fetchall()
+    records = [{'customer_name': r[0], 'connection_num': r[1], 'created_at': r[2]} for r in rec_rows]
+
+    # Messages sent by this admin
+    cursor.execute("SELECT receiver, message, timestamp FROM messages WHERE sender=? ORDER BY id DESC LIMIT 30", (username,))
+    msg_rows = cursor.fetchall()
+    messages = [{'receiver': m[0], 'message': m[1], 'timestamp': m[2]} for m in msg_rows]
+
+    conn.close()
+    return jsonify({'records': records, 'messages': messages})
+
 @app.route('/api/get_record')
 def get_record():
     rec_id = request.args.get('id')
@@ -1374,7 +1455,7 @@ def delete_record():
     cursor.execute("UPDATE phone_records SET is_deleted=1 WHERE id=?", (rec_id,))
     conn.commit()
     conn.close()
-    return jsonify({'status': 'error'})
+    return jsonify({'status': 'success'})
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
