@@ -104,9 +104,10 @@ HTML_TEMPLATE = """
         .dropdown-item:hover { background-color: #ff66b2; color: #000; }
         .notification-badge { position: absolute; top: -5px; right: -5px; font-size: 11px; padding: 3px 7px; border-radius: 50%; background: #ff1493; color: white; font-weight: bold; }
         .chat-box { height: 380px; overflow-y: auto; background: #15030d; padding: 15px; border-radius: 8px; border: 1px solid #ff66b2; display: flex; flex-direction: column; }
-        .message-bubble { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 75%; word-break: break-word; }
+        .message-bubble { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 75%; word-break: break-word; display: flex; gap: 8px; align-items: flex-start; }
         .msg-incoming { background: #3b0d26; color: #fff; align-self: flex-start; }
-        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; }
+        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; flex-direction: row-reverse; }
+        .msg-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #ffd700; }
         .clickable-name { color: #ffd700; cursor: pointer; text-decoration: underline; }
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
         .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
@@ -148,7 +149,6 @@ HTML_TEMPLATE = """
                 </ul>
             </div>
             {% else %}
-            <button class="btn btn-outline-warning btn-sm" onclick="openUserListModal()"><i class="fa-solid fa-users"></i> ইউজার তালিকা</button>
             {% endif %}
             
             <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
@@ -156,12 +156,10 @@ HTML_TEMPLATE = """
                 <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
             </button>
 
-            {% if session.get('user').get('username') == 'Khushbu23' %}
             <button class="btn btn-outline-danger btn-sm position-relative" onclick="openNotificationModal()">
                 <i class="fa-solid fa-bell"></i> নোটিফিকেশন
                 <span id="notifBadge" class="notification-badge" style="display:none;">0</span>
             </button>
-            {% endif %}
         </div>
         
         <div class="d-flex align-items-center gap-2">
@@ -364,7 +362,7 @@ HTML_TEMPLATE = """
         <div class="row">
             <div class="col-md-4 border-end border-warning">
                 <div class="d-flex gap-1 mb-2">
-                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইউজার ইনবক্স</button>
+                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইনবক্স</button>
                     <button class="btn btn-sm btn-pink w-50" onclick="switchChatTab('group')">গ্রুপ চ্যাট</button>
                 </div>
                 <div id="chatUserList" class="list-group list-group-flush bg-transparent" style="max-height: 380px; overflow-y: auto;"></div>
@@ -579,15 +577,20 @@ function loadRecords() {
                 displayIndex = idx + 1;
             }
             
+            // ইউজাররা শুধু সার্চ করে দেখতে পারবে কিন্তু ডিটেলস (Customer details modal বা সম্পুর্ণ বিবরণ) দেখতে পারবে না
+            let nameCell = isAdmin ? 
+                `<span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span>` : 
+                `<span>${row[1]}</span>`;
+
             let actionTd = isAdmin ? `
                 <td>
                     <button class="btn btn-warning btn-sm me-1" onclick="openEditRecordModal(${row[0]})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-danger btn-sm" onclick="deleteRecord(${row[0]})"><i class="fa-solid fa-trash"></i></button>
-                ` : '';
+                </td>` : '';
 
             html += `<tr>
                 <td><strong>${displayIndex}</strong></td>
-                <td><span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span></td>
+                <td>${nameCell}</td>
                 <td>${row[2] || '-'}</td>
                 <td><span class="badge bg-warning text-dark">${row[3]}</span></td>
                 <td>${row[4] || '-'}</td>
@@ -801,7 +804,7 @@ function openNotificationModal() {
         data.notifications.forEach(n => {
             let actionBtn = '';
             if(n.type === 'message') {
-                actionBtn = `<button class="btn btn-sm btn-gold float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openMessengerModal(); selectUserChat('${n.sender}', '${n.sender_name}')">মেসেজের উত্তর দিন</button>`;
+                actionBtn = `<button class="btn btn-sm btn-gold float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openMessengerModal(); selectUserChat('${n.sender}', '${n.sender_name}')">উত্তর দিন</button>`;
             } else if(n.type === 'request') {
                 actionBtn = `<button class="btn btn-sm btn-success float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openAccountRequestsModal();">অনুমোদন প্যানেল</button>`;
             }
@@ -939,7 +942,6 @@ function switchChatTab(type) {
         currentChatTarget = 'BTCL_GLOBAL_GROUP';
         document.getElementById('activeChatTitle').innerText = 'অফিসিয়াল গ্রুপ চ্যাট';
         
-        // ইউজার হলে গ্রুপে মেসেজ লেখার বক্স হাইড থাকবে, শুধুমাত্র এডমিনদের জন্য দেখাবে
         fetch('/api/check_admin_role')
         .then(res => res.json())
         .then(isAdmin => {
@@ -965,7 +967,7 @@ function switchChatTab(type) {
                 let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger float-end">${u.unread}</span>` : '';
                 html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-secondary mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} ${badgeHtml}</button>`;
             });
-            listContainer.innerHTML = html || '<p class="text-muted small p-2">কোনো ইউজার নেই</p>';
+            listContainer.innerHTML = html || '<p class="text-muted small p-2">কোনো ইনবক্স নেই</p>';
         });
     }
 }
@@ -1013,11 +1015,17 @@ function loadMessages() {
             let bubbleClass = m.is_mine ? 'msg-outgoing' : 'msg-incoming';
             let senderName = m.is_mine ? 'আপনি' : m.sender;
             let fileHtml = m.file_url ? `<a href="${m.file_url}" target="_blank"><img src="${m.file_url}" class="chat-file-preview"></a>` : '';
+            let defaultAvatar = 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/circle-user.svg';
+            let profilePic = m.profile_pic ? m.profile_pic : defaultAvatar;
+
             html += `<div class="message-bubble ${bubbleClass}">
-                <div style="font-size: 11px; font-weight: bold; opacity: 0.8;">${senderName}</div>
-                <div>${m.message || ''}</div>
-                ${fileHtml}
-                <div style="font-size: 9px; text-align: right; opacity: 0.7;">${m.timestamp}</div>
+                <img src="${profilePic}" class="msg-avatar">
+                <div>
+                    <div style="font-size: 11px; font-weight: bold; opacity: 0.8;">${senderName}</div>
+                    <div>${m.message || ''}</div>
+                    ${fileHtml}
+                    <div style="font-size: 9px; text-align: right; opacity: 0.7;">${m.timestamp}</div>
+                </div>
             </div>`;
         });
         box.innerHTML = html || '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই।</p>';
@@ -1183,6 +1191,9 @@ def api_search():
 
 @app.route('/api/get_record/<int:rec_id>')
 def get_record(rec_id):
+    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
+        return jsonify({'success': False, 'message': 'সাধারণ ইউজারদের বিস্তারিত দেখার অনুমতি নেই!'})
+        
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM phone_records WHERE id = ?", (rec_id,))
@@ -1361,11 +1372,18 @@ def check_admin_role():
 def chat_users():
     if 'user' not in session:
         return jsonify({'users': []})
-    current_uname = session['user']['username']
+    current_user = session['user']
+    current_uname = current_user['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted = 0", (current_uname,))
     
+    if current_user['role'] in ['admin', 'main_admin']:
+        # এডমিনদের জন্য সকল ইউজার যাদের মেসেজ আছে বা চ্যাট করা যাবে
+        cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted = 0", (current_uname,))
+    else:
+        # সাধারণ ইউজারদের জন্য শুধুমাত্র এডমিনদের লিস্ট দেখাবে যাদের সাথে তারা কথা বলতে পারবে
+        cursor.execute("SELECT username, name FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", ())
+        
     users = []
     for r in cursor.fetchall():
         uname = r[0]
@@ -1401,15 +1419,22 @@ def get_messages():
     cursor = conn.cursor()
     
     if is_group:
-        cursor.execute("SELECT sender, receiver, message, file_url, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
+        cursor.execute("""
+            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic 
+            FROM messages m 
+            LEFT JOIN users u ON m.sender = u.username 
+            WHERE m.is_group = 1 ORDER BY m.id ASC
+        """)
     else:
         cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_read = 0", (target, current_uname))
         conn.commit()
         
         cursor.execute("""
-            SELECT sender, receiver, message, file_url, timestamp FROM messages 
-            WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))
-            ORDER BY id ASC
+            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic 
+            FROM messages m 
+            LEFT JOIN users u ON m.sender = u.username 
+            WHERE m.is_group = 0 AND ((m.sender = ? AND m.receiver = ?) OR (m.sender = ? AND m.receiver = ?))
+            ORDER BY m.id ASC
         """, (current_uname, target, target, current_uname))
         
     messages = []
@@ -1420,6 +1445,7 @@ def get_messages():
             'message': r[2],
             'file_url': r[3],
             'timestamp': r[4],
+            'profile_pic': r[5],
             'is_mine': (r[0] == current_uname)
         })
     conn.close()
@@ -1436,7 +1462,6 @@ def send_message():
     is_group = int(request.form.get('is_group', 0))
     message = request.form.get('message', '')
     
-    # ইউজার যদি গ্রুপে মেসেজ পাঠাতে চায় এবং সে যদি এডমিন না হয়, তবে ব্লক করে দেব
     if is_group == 1 and current_user['role'] not in ['admin', 'main_admin']:
         return jsonify({'success': False, 'message': 'সাধারণ ইউজাররা গ্রুপে মেসেজ পাঠাতে পারবেন না!'})
     
@@ -1462,7 +1487,8 @@ def global_status():
     if 'user' not in session:
         return jsonify({'unread_msg_count': 0, 'pending_requests_count': 0, 'latest_group_msg': None})
     
-    current_uname = session['user']['username']
+    current_user = session['user']
+    current_uname = current_user['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     
@@ -1492,7 +1518,8 @@ def get_notifications():
     if 'user' not in session:
         return jsonify({'notifications': []})
     
-    current_uname = session['user']['username']
+    current_user = session['user']
+    current_uname = current_user['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     notifications = []
@@ -1507,6 +1534,7 @@ def get_notifications():
                 'time': r[3]
             })
             
+    # সকল এডমিন বা ইউজারদের কাছে তাদের ইনবক্সের আনরিড মেসেজের নোটিফিকেশন যাবে
     cursor.execute("""
         SELECT m.sender, u.name, m.message, m.timestamp FROM messages m 
         JOIN users u ON m.sender = u.username
