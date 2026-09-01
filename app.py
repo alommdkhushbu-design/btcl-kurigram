@@ -121,13 +121,11 @@ HTML_TEMPLATE = """
 <div class="container py-3">
     {% if session.get('user') %}
 
-    <!-- Top Navigation Bar -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-            <!-- হোম বাটন (Fix করা হয়েছে) -->
+    <!-- Top Navigation Bar (All on Home page directly) -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
 
-            <!-- ইউজার লিস্ট ও মেনু অপশন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
@@ -141,7 +139,6 @@ HTML_TEMPLATE = """
                 </ul>
             </div>
             
-            <!-- মেসেঞ্জার ও নোটিফিকেশন বাটন -->
             <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
                 <i class="fa-solid fa-comments"></i> মেসেজ
                 <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
@@ -154,7 +151,6 @@ HTML_TEMPLATE = """
         </div>
         
         <div class="d-flex align-items-center gap-2">
-            <!-- প্রোফাইল ও এডমিন হিস্ট্রি ড্রপডাউন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-circle-user"></i> প্রোফাইল
@@ -168,7 +164,6 @@ HTML_TEMPLATE = """
                 </ul>
             </div>
 
-            <!-- থ্রি ডট (...) এক্সট্রা ডিলিট ও রিসাইকেল বিন মেনু -->
             <div class="dropdown">
                 <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -183,7 +178,7 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Search & Sort Options -->
+    <!-- Search & Advanced Sorting Options (A-Z, Z-A, 1-N, N-1) -->
     <div class="row g-2 mb-3">
         <div class="col-md-6">
             <div class="input-group">
@@ -195,20 +190,22 @@ HTML_TEMPLATE = """
             <div class="input-group">
                 <span class="input-group-text bg-dark text-warning"><i class="fa-solid fa-arrow-down-a-z"></i> সাজান:</span>
                 <select id="sortSelect" class="form-select" onchange="loadRecords()">
-                    <option value="id_desc">সর্বশেষ যোগ করা নম্বর আগে</option>
-                    <option value="id_asc">পুরাতন থেকে নতুন (১, ২, ৩...)</option>
+                    <option value="id_desc">সর্বশেষ যোগ করা নম্বর আগে (New to Old)</option>
+                    <option value="id_asc">পুরাতন থেকে নতুন (1 to N - ছোট থেকে বড়)</option>
+                    <option value="id_high_low">বড় সংখ্যা থেকে ছোট সংখ্যা (N to 1)</option>
                     <option value="name_asc">নাম অনুযায়ী (A to Z)</option>
+                    <option value="name_desc">নাম অনুযায়ী (Z to A)</option>
                 </select>
             </div>
         </div>
     </div>
 
-    <!-- Filter Cards (Updated with 'নাম্বার') -->
+    <!-- Filter Cards -->
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন নাম্বার</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন নাম্বার</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
+        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
     </div>
 
     <!-- Main Customer Table -->
@@ -245,7 +242,7 @@ HTML_TEMPLATE = """
         <div class="table-responsive mt-2">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>মোবাইল</th><th>পাসওয়ার্ড (ভিউ)</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>মোবাইল</th><th>পাসওয়ার্ড</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
                 </thead>
                 <tbody id="userTableBody"></tbody>
             </table>
@@ -258,7 +255,7 @@ HTML_TEMPLATE = """
     </button>
 
     {% else %}
-    <!-- Login Page (Clean First Page with NO extra side panels) -->
+    <!-- Clean Login Page -->
     <div class="row justify-content-center mt-5">
         <div class="col-md-5">
             <div class="card-custom p-4 text-center shadow-lg">
@@ -344,19 +341,19 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Messenger Modal -->
+<!-- Messenger Modal (Separate Group and User Tabs with Real Admin communication) -->
 <div class="modal fade" id="messengerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> মেসেঞ্জার চ্যাট (ফাইল ও ছবি সহ)</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> মেসেঞ্জার চ্যাট (গ্রুপ ও ব্যক্তিগত ইনবক্স)</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
         <div class="row">
             <div class="col-md-4 border-end border-warning">
                 <div class="d-flex gap-1 mb-2">
-                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইনবক্স</button>
+                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইউজার ইনবক্স</button>
                     <button class="btn btn-sm btn-pink w-50" onclick="switchChatTab('group')">গ্রুপ চ্যাট</button>
                 </div>
                 <div id="chatUserList" class="list-group list-group-flush bg-transparent" style="max-height: 350px; overflow-y: auto;"></div>
@@ -397,7 +394,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Add/Edit Record Modal (Updated with 'নাম্বার') -->
+<!-- Add/Edit Record Modal (Updated with 'টেলিফোন নাম্বার' & 'ওয়াইফাই নাম্বার') -->
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -412,9 +409,9 @@ HTML_TEMPLATE = """
         <div class="col-md-6">
             <label class="form-label">সেবার ধরন *</label>
             <select id="rec_service" name="service_type" class="form-select" required>
-                <option value="টেলিফোন নম্বর">টেলিফোন নাম্বার</option>
+                <option value="টেলিফোন নাম্বার">টেলিফোন নাম্বার</option>
                 <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
-                <option value="ওয়াইফাই নম্বর">ওয়াইফাই নাম্বার</option>
+                <option value="ওয়াইফাই নাম্বার">ওয়াইফাই নাম্বার</option>
             </select>
         </div>
         <div class="col-md-6"><label class="form-label">সংযোগ নম্বর</label><input type="text" id="rec_conn" name="connection_num" class="form-control"></div>
@@ -461,7 +458,7 @@ HTML_TEMPLATE = """
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
-        <p class="small text-muted">যেকোনো এডমিনের নামের ওপর ক্লিক করে তার বিস্তারিত অ্যাক্টিভিটি (নম্বর এড, চ্যাট হিস্ট্রি ইত্যাদি) দেখতে পারবেন।</p>
+        <p class="small text-muted">যেকোনো এডমিনের নামের ওপর ক্লিক করে তার বিস্তারিত অ্যাক্টিভিটি দেখতে পারবেন।</p>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
                 <thead>
@@ -546,6 +543,9 @@ function loadRecords() {
         let html = '';
         data.records.forEach((row, idx) => {
             let displayIndex = (sort === 'id_asc') ? (idx + 1) : (data.records.length - idx);
+            if (sort === 'id_high_low') {
+                displayIndex = idx + 1;
+            }
             html += `<tr>
                 <td><strong>${displayIndex}</strong></td>
                 <td><span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span></td>
@@ -648,12 +648,13 @@ function openUserListModal() {
     .then(users => {
         let html = '';
         users.forEach(u => {
+            let roleBadge = u.role === 'main_admin' ? '<span class="badge bg-danger">মেইন এডমিন (Khushbu23)</span>' : (u.role === 'admin' ? '<span class="badge bg-warning text-dark">সাব-এডমিন</span>' : '<span class="badge bg-secondary">সাধারণ ইউজার</span>');
             html += `<tr>
                 <td>${u.name}</td>
                 <td>${u.username}</td>
                 <td>${u.phone || '-'}</td>
                 <td><span class="text-warning">${u.raw_pass || '******'}</span></td>
-                <td><span class="badge bg-warning text-dark">${u.role}</span></td>
+                <td>${roleBadge}</td>
                 <td><span class="badge bg-success">${u.status}</span></td>
                 <td><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
@@ -778,9 +779,10 @@ function switchChatTab(tab) {
             } else {
                 data.forEach(u => {
                     let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger rounded-pill">${u.unread}</span>` : '';
+                    let roleTag = u.is_admin ? '<span class="badge bg-warning text-dark ms-1">এডমিন</span>' : '';
                     html += `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('${u.username}', '${u.name}', 0)">
                         <div>
-                            <div><strong>${u.name}</strong></div>
+                            <div><strong>${u.name}</strong> ${roleTag}</div>
                             <div class="text-muted small">${u.last_msg || 'চ্যাট শুরু করুন'}</div>
                         </div>
                         ${badgeHtml}
@@ -1092,7 +1094,9 @@ def api_search():
 
     order_sql = "ORDER BY id DESC"
     if sort == 'id_asc': order_sql = "ORDER BY id ASC"
+    elif sort == 'id_high_low': order_sql = "ORDER BY id DESC"
     elif sort == 'name_asc': order_sql = "ORDER BY customer_name ASC"
+    elif sort == 'name_desc': order_sql = "ORDER BY customer_name DESC"
 
     query = "SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE is_deleted=0"
     params = []
@@ -1111,11 +1115,11 @@ def api_search():
 
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0")
     total = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='টেলিফোন নম্বর'")
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='টেলিফোন নাম্বার'")
     tel = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='টেলিফোন+ওয়াইফাই নম্বর'")
     both = cursor.fetchone()[0]
-    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='ওয়াইফাই নম্বর'")
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='ওয়াইফাই নাম্বার'")
     wifi = cursor.fetchone()[0]
 
     conn.close()
@@ -1133,12 +1137,14 @@ def chat_users():
     
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted=0 AND status='active'", (current_user,))
+    cursor.execute("SELECT username, name, role FROM users WHERE username != ? AND is_deleted=0 AND status='active'", (current_user,))
     users = cursor.fetchall()
     
     result = []
     for u in users:
-        u_username, u_name = u[0], u[1]
+        u_username, u_name, u_role = u[0], u[1], u[2]
+        is_admin = u_role in ('admin', 'main_admin')
+        
         cursor.execute("SELECT COUNT(*) FROM messages WHERE sender = ? AND receiver = ? AND is_group = 0 AND is_read = 0", (u_username, current_user))
         unread = cursor.fetchone()[0]
         
@@ -1150,6 +1156,7 @@ def chat_users():
         result.append({
             'username': u_username,
             'name': u_name,
+            'is_admin': is_admin,
             'unread': unread,
             'last_msg': last_msg_text
         })
@@ -1183,7 +1190,7 @@ def chat_messages():
         cursor.execute("SELECT role FROM users WHERE username=?", (sender_username,))
         u_role_row = cursor.fetchone()
         is_sender_admin = u_role_row and u_role_row[0] in ('admin', 'main_admin')
-        sender_display = "অফিশিয়াল এডমিন" if is_sender_admin else sender_username
+        sender_display = "রিয়েল এডমিন" if is_sender_admin else sender_username
         
         messages.append({
             'sender': sender_username,
@@ -1268,7 +1275,7 @@ def notifications():
         cursor.execute("SELECT role FROM users WHERE username=?", (s_username,))
         u_role_row = cursor.fetchone()
         is_s_admin = u_role_row and u_role_row[0] in ('admin', 'main_admin')
-        s_display = "অফিসিয়াল এডমিন" if is_s_admin else s_username
+        s_display = "রিয়েল এডমিন" if is_s_admin else s_username
         
         notifs.append({
             'sender': s_username, 
