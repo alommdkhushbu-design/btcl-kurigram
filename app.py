@@ -70,7 +70,7 @@ def init_db():
     if not cursor.fetchone():
         hashed_pw = generate_password_hash("01751947523")
         cursor.execute('''INSERT INTO users (name, username, email, phone, password, raw_pass, role, status) 
-                          VALUES (?, ?, ?, ?, ?, ?, 'main_admin', 'active')''',
+                         VALUES (?, ?, ?, ?, ?, ?, 'main_admin', 'active')''',
                        ('Md Khushbu Alom', MAIN_ADMIN_USERNAME, 'admin@btcl.com', '01751947523', hashed_pw, '01751947523'))
 
     conn.commit()
@@ -84,7 +84,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL, কুড়িগ্রাম - Smart Control Desk & Messenger</title>
+    <title>BTCL, কুড়িগ্রাম - Smart Control Desk & Messenger</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -103,10 +103,10 @@ HTML_TEMPLATE = """
         .dropdown-item { color: #ffe6f2; }
         .dropdown-item:hover { background-color: #ff66b2; color: #000; }
         .notification-badge { position: absolute; top: -5px; right: -5px; font-size: 11px; padding: 3px 7px; border-radius: 50%; background: #ff1493; color: white; font-weight: bold; }
-        .chat-box { height: 380px; overflow-y: auto; background: #15030d; padding: 15px; border-radius: 8px; border: 1px solid #ff66b2; }
+        .chat-box { height: 380px; overflow-y: auto; background: #15030d; padding: 15px; border-radius: 8px; border: 1px solid #ff66b2; display: flex; flex-direction: column; }
         .message-bubble { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 75%; word-break: break-word; }
         .msg-incoming { background: #3b0d26; color: #fff; align-self: flex-start; }
-        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; margin-left: auto; }
+        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; }
         .clickable-name { color: #ffd700; cursor: pointer; text-decoration: underline; }
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
         .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
@@ -116,7 +116,7 @@ HTML_TEMPLATE = """
 <body>
 
 <div class="gold-pink-header text-center py-2">
-    <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
+    <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
     <small>Smart Management Portal & Messenger</small>
 </div>
 
@@ -133,7 +133,9 @@ HTML_TEMPLATE = """
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
                     <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার ও এডমিন তালিকা</a></li>
+                    {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
                     <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
+                    {% endif %}
                     {% if session.get('user').get('username') == 'Khushbu23' %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট</a></li>
                     {% endif %}
@@ -194,10 +196,10 @@ HTML_TEMPLATE = """
                 <span class="input-group-text bg-dark text-warning"><i class="fa-solid fa-arrow-down-a-z"></i> সাজান:</span>
                 <select id="sortSelect" class="form-select" onchange="loadRecords()">
                     <option value="id_desc">সর্বশেষ যোগ করা নম্বর আগে (New to Old)</option>
-                    <option value="id_asc">পুরাতন থেকে নতুন (1 to N - ছোট থেকে বড়)</option>
-                    <option value="id_high_low">বড় সংখ্যা থেকে ছোট সংখ্যা (N to 1)</option>
-                    <option value="name_asc">নাম অনুযায়ী (A to Z)</option>
-                    <option value="name_desc">নাম অনুযায়ী (Z to A)</option>
+                    <option value="id_asc">পুরাতন থেকে নতুন (1 to N - ছোট থেকে বড়)</option>
+                    <option value="id_high_low">বড় সংখ্যা থেকে ছোট সংখ্যা (N to 1)</option>
+                    <option value="name_asc">নাম অনুযায়ী (A to Z)</option>
+                    <option value="name_desc">নাম অনুযায়ী (Z to A)</option>
                 </select>
             </div>
         </div>
@@ -207,8 +209,8 @@ HTML_TEMPLATE = """
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন নাম্বার</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
+        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
     </div>
     {% endif %}
 
@@ -221,7 +223,7 @@ HTML_TEMPLATE = """
             <table class="table table-dark table-striped align-middle mt-2">
                 <thead>
                     <tr>
-                        <th>সিরিয়াল</th>
+                        <th>সিরিয়াল</th>
                         <th>গ্রাহকের নাম</th>
                         <th>মোবাইল</th>
                         <th>সেবার ধরন</th>
@@ -246,7 +248,7 @@ HTML_TEMPLATE = """
         <div class="table-responsive mt-2">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>পাসওয়ার্ড</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>পাসওয়ার্ড</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
                 </thead>
                 <tbody id="userTableBody"></tbody>
             </table>
@@ -266,7 +268,7 @@ HTML_TEMPLATE = """
                 <h4 class="text-warning mb-3"><i class="fa-solid fa-lock"></i> লগইন করুন</h4>
                 <form action="/login" method="POST">
                     <div class="mb-3 text-start"><label class="form-label">ইউজারনেম / জিমেইল / মোবাইল</label><input type="text" name="username" class="form-control" required></div>
-                    <div class="mb-3 text-start"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
+                    <div class="mb-3 text-start"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
                     <button type="submit" class="btn btn-gold w-100 py-2">প্রবেশ করুন</button>
                 </form>
                 <div class="mt-3">
@@ -314,7 +316,7 @@ HTML_TEMPLATE = """
       <div class="modal-body">
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
-                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>পাসওয়ার্ড</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
+                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>পাসওয়ার্ড</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
                 <tbody id="requestTableBody"></tbody>
             </table>
         </div>
@@ -335,7 +337,7 @@ HTML_TEMPLATE = """
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">জিমেইল (Gmail) *</label><input type="email" name="email" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">মোবাইল নম্বর</label><input type="text" name="phone" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
         <button type="submit" class="btn btn-gold w-100 py-2">রিকোয়েস্ট পাঠান</button>
       </form>
     </div>
@@ -360,7 +362,7 @@ HTML_TEMPLATE = """
             </div>
             <div class="col-md-8 d-flex flex-column">
                 <div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-warning">চ্যাট নির্বাচন করুন</div>
-                <div id="chatMessages" class="chat-box d-flex flex-column mb-2">
+                <div id="chatMessages" class="chat-box mb-2">
                     <p class="text-muted text-center m-auto">মেসেজ দেখতে বা পাঠাতে বামপাশ থেকে ইউজার বা গ্রুপ সিলেক্ট করুন।</p>
                 </div>
                 <form id="chatForm" onsubmit="sendMessage(event)" class="input-group" style="display:none;">
@@ -408,8 +410,8 @@ HTML_TEMPLATE = """
             <label class="form-label">সেবার ধরন *</label>
             <select id="rec_service" name="service_type" class="form-select" required>
                 <option value="টেলিফোন নাম্বার">টেলিফোন নাম্বার</option>
-                <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
-                <option value="ওয়াইফাই নাম্বার">ওয়াইফাই নাম্বার</option>
+                <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
+                <option value="ওয়াইফাই নাম্বার">ওয়াইফাই নাম্বার</option>
             </select>
         </div>
         <div class="col-md-6"><label class="form-label">সংযোগ নম্বর</label><input type="text" id="rec_conn" name="connection_num" class="form-control"></div>
@@ -433,7 +435,7 @@ HTML_TEMPLATE = """
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">জিমেইল</label><input type="email" name="email" class="form-control"></div>
         <div class="mb-2"><label class="form-label">মোবাইল</label><input type="text" name="phone" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
+        <div class="mb-2"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
         <div class="mb-3">
             <label class="form-label">রোল</label>
             <select name="role" class="form-select">
@@ -457,7 +459,7 @@ HTML_TEMPLATE = """
       <form action="/api/update_user_credentials" method="POST" class="modal-body">
         <input type="hidden" id="edit_user_id" name="user_id">
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" id="edit_username" name="username" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="text" id="edit_password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড দিন" required></div>
+        <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="text" id="edit_password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড দিন" required></div>
         <button type="submit" class="btn btn-gold w-100 py-2">পরিবর্তন সেভ করুন</button>
       </form>
     </div>
@@ -475,7 +477,7 @@ HTML_TEMPLATE = """
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সক্রিয় সময়</th><th>ইউজার যোগ</th><th>নম্বর যোগ</th></tr>
+                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সক্রিয় সময়</th><th>ইউজার যোগ</th><th>নম্বর যোগ</th></tr>
                 </thead>
                 <tbody id="adminHistoryTableBody"></tbody>
             </table>
@@ -497,7 +499,7 @@ HTML_TEMPLATE = """
         <div class="mb-2"><label class="form-label">আপনার নাম</label><input type="text" name="name" class="form-control" value="{{ session.get('user',{}).get('name') }}" required></div>
         <div class="mb-2"><label class="form-label">জিমেইল</label><input type="email" name="email" class="form-control" value="{{ session.get('user',{}).get('email', '') }}"></div>
         <div class="mb-2"><label class="form-label">মোবাইল নম্বর</label><input type="text" name="phone" class="form-control" value="{{ session.get('user',{}).get('phone') }}"></div>
-        <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড"></div>
+        <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড"></div>
         <button type="submit" class="btn btn-gold w-100 py-2">সেভ করুন</button>
       </form>
     </div>
@@ -529,6 +531,7 @@ let activeServiceFilter = '';
 let currentChatTarget = '';
 let currentChatIsGroup = 0;
 let currentChatTabType = 'users';
+let chatInterval = null;
 
 function showHome() {
     document.getElementById('recordsSection').style.display = 'block';
@@ -565,7 +568,7 @@ function loadRecords() {
                 <td>
                     <button class="btn btn-warning btn-sm me-1" onclick="openEditRecordModal(${row[0]})"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn btn-danger btn-sm" onclick="deleteRecord(${row[0]})"><i class="fa-solid fa-trash"></i></button>
-                </td>` : '';
+                ` : '';
 
             html += `<tr>
                 <td><strong>${displayIndex}</strong></td>
@@ -578,38 +581,133 @@ function loadRecords() {
                 ${actionTd}
             </tr>`;
         });
-        if(document.getElementById('recordsTableBody')) document.getElementById('recordsTableBody').innerHTML = html;
+        if(document.getElementById('recordsTableBody')) {
+            document.getElementById('recordsTableBody').innerHTML = html;
+        }
         
-        if(document.getElementById('countTotal')) document.getElementById('countTotal').innerText = data.counts.total;
-        if(document.getElementById('countTel')) document.getElementById('countTel').innerText = data.counts.tel;
-        if(document.getElementById('countBoth')) document.getElementById('countBoth').innerText = data.counts.both;
-        if(document.getElementById('countWifi')) document.getElementById('countWifi').innerText = data.counts.wifi;
-    });
-}
-
-function openCustomerDetails(id) {
-    fetch(`/api/get_record?id=${id}`)
-    .then(res => res.json())
-    .then(data => {
-        let html = `
-            <p><strong>গ্রাহকের নাম:</strong> <span class="text-warning">${data.customer_name}</span></p>
-            <p><strong>মোবাইল নম্বর:</strong> ${data.mobile || '-'}</p>
-            <p><strong>সেবার ধরন:</strong> ${data.service_type}</p>
-            <p><strong>সংযোগ নম্বর:</strong> ${data.connection_num || '-'}</p>
-            <p><strong>ঠিকানা:</strong> ${data.address || '-'}</p>
-            <p><strong>নোট:</strong> ${data.note || '-'}</p>
-            <p><strong>যুক্ত করেছেন:</strong> <span class="badge bg-info text-dark">${data.added_by}</span></p>
-        `;
-        document.getElementById('customerDetailsBody').innerHTML = html;
-        new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
-    });
+        if(data.counts) {
+            if(document.getElementById('countTotal')) document.getElementById('countTotal').innerText = data.counts.total;
+            if(document.getElementById('countTel')) document.getElementById('countTel').innerText = data.counts.tel;
+            if(document.getElementById('countBoth')) document.getElementById('countBoth').innerText = data.counts.both;
+            if(document.getElementById('countWifi')) document.getElementById('countWifi').innerText = data.counts.wifi;
+        }
+    })
+    .catch(err => console.error('Error loading records:', err));
 }
 
 function openAddRecordModal() {
     document.getElementById('recordForm').reset();
     document.getElementById('rec_id').value = '';
-    document.getElementById('recordModalTitle').innerText = 'নতুন নম্বর যোগ করুন';
+    document.getElementById('recordModalTitle').innerText = 'গ্রাহক নম্বর যোগ করুন';
     new bootstrap.Modal(document.getElementById('recordModal')).show();
+}
+
+function openEditRecordModal(id) {
+    fetch(`/api/get_record/${id}`)
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            let r = data.record;
+            document.getElementById('rec_id').value = r.id;
+            document.getElementById('rec_name').value = r.customer_name;
+            document.getElementById('rec_mobile').value = r.mobile || '';
+            document.getElementById('rec_service').value = r.service_type;
+            document.getElementById('rec_conn').value = r.connection_num || '';
+            document.getElementById('rec_address').value = r.address || '';
+            document.getElementById('rec_note').value = r.note || '';
+            document.getElementById('recordModalTitle').innerText = 'গ্রাহক নম্বর পরিবর্তন করুন';
+            new bootstrap.Modal(document.getElementById('recordModal')).show();
+        }
+    });
+}
+
+function saveRecord(e) {
+    e.preventDefault();
+    let formData = new FormData(document.getElementById('recordForm'));
+    fetch('/api/save_record', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
+            loadRecords();
+        } else {
+            alert(data.message || 'সংরক্ষণ করতে সমস্যা হয়েছে!');
+        }
+    });
+}
+
+function deleteRecord(id) {
+    if(confirm('আপনি কি নিশ্চিত এই নম্বরটি ডিলিট করতে চান?')) {
+        let secPass = prompt('নিরাপত্তা পাসওয়ার্ড দিন:');
+        if(!secPass) return;
+        fetch(`/api/delete_record/${id}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({security_password: secPass})
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                loadRecords();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+
+function openCustomerDetails(id) {
+    fetch(`/api/get_record/${id}`)
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            let r = data.record;
+            let html = `
+                <p><strong>গ্রাহকের নাম:</strong> ${r.customer_name}</p>
+                <p><strong>মোবাইল:</strong> ${r.mobile || '-'}</p>
+                <p><strong>সেবার ধরন:</strong> ${r.service_type}</p>
+                <p><strong>সংযোগ নম্বর:</strong> ${r.connection_num || '-'}</p>
+                <p><strong>ঠিকানা:</strong> ${r.address || '-'}</p>
+                <p><strong>নোট:</strong> ${r.note || '-'}</p>
+                <p><strong>যুক্ত করেছেন:</strong> ${r.added_by}</p>
+                <p><strong>যুক্ত করার সময়:</strong> ${r.created_at}</p>
+            `;
+            document.getElementById('customerDetailsBody').innerHTML = html;
+            new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
+        }
+    });
+}
+
+function openUserListModal() {
+    document.getElementById('recordsSection').style.display = 'none';
+    document.getElementById('userListSection').style.display = 'block';
+    
+    fetch('/api/get_users')
+    .then(res => res.json())
+    .then(data => {
+        let html = '';
+        data.users.forEach(u => {
+            let actionBtn = '';
+            if(data.is_main_admin && u.username !== 'Khushbu23') {
+                actionBtn = `<button class="btn btn-warning btn-sm me-1" onclick="openEditUserCredentials(${u.id}, '${u.username}')"><i class="fa-solid fa-pen"></i></button>
+                             <button class="btn btn-danger btn-sm" onclick="deleteUserAccount(${u.id})"><i class="fa-solid fa-trash"></i></button>`;
+            }
+            html += `<tr>
+                <td>${u.name}</td>
+                <td>${u.username}</td>
+                <td>${u.email || '-'}</td>
+                <td>${u.phone || '-'}</td>
+                <td>${u.raw_pass || '***'}</td>
+                <td><span class="badge bg-secondary">${u.role}</span></td>
+                <td><span class="badge bg-${u.status === 'active' ? 'success' : 'warning'}">${u.status}</span></td>
+                <td>${actionBtn}</td>
+            </tr>`;
+        });
+        document.getElementById('userTableBody').innerHTML = html;
+    });
 }
 
 function openCreateUserModal() {
@@ -617,501 +715,470 @@ function openCreateUserModal() {
 }
 
 function openCreateAdminModal() {
-    openCreateUserModal();
+    new bootstrap.Modal(document.getElementById('createUserModal')).show();
 }
 
-function openAccountRequestsModal() {
-    new bootstrap.Modal(document.getElementById('accountRequestsModal')).show();
-    fetch('/api/account_requests')
-    .then(res => res.json())
-    .then(data => {
-        let html = '';
-        if(data.length === 0) {
-            html = '<tr><td colspan="7" class="text-center text-muted">কোনো রিকোয়েস্ট নেই।</td></tr>';
-        } else {
-            data.forEach(u => {
-                html += `<tr>
-                    <td>${u.name}</td>
-                    <td>${u.username}</td>
-                    <td>${u.email || '-'}</td>
-                    <td>${u.phone || '-'}</td>
-                    <td><span class="text-warning">${u.raw_pass || '-'}</span></td>
-                    <td>${u.created_at}</td>
-                    <td>
-                        <button class="btn btn-success btn-sm me-1" onclick="approveUser(${u.id})">গ্রহণ</button>
-                        <button class="btn btn-danger btn-sm" onclick="rejectUser(${u.id})">বাতিল</button>
-                    </td>
-                </tr>`;
-            });
-        }
-        document.getElementById('requestTableBody').innerHTML = html;
-    });
-}
-
-function approveUser(id) {
-    fetch(`/api/approve_user?id=${id}`).then(() => {
-        openAccountRequestsModal();
-        checkNotifications();
-    });
-}
-
-function rejectUser(id) {
-    fetch(`/api/reject_user?id=${id}`).then(() => {
-        openAccountRequestsModal();
-        checkNotifications();
-    });
-}
-
-function openRegisterModal() {
-    new bootstrap.Modal(document.getElementById('registerModal')).show();
-}
-
-function openUserListModal() {
-    document.getElementById('recordsSection').style.display = 'none';
-    document.getElementById('userListSection').style.display = 'block';
-    
-    fetch('/api/users_list')
-    .then(res => res.json())
-    .then(data => {
-        let users = data.users;
-        let isMainAdmin = data.is_main_admin;
-        let html = '';
-        users.forEach(u => {
-            let roleBadge = u.role === 'main_admin' ? '<span class="badge bg-danger">মেইন এডমিন (Khushbu23)</span>' : (u.role === 'admin' ? '<span class="badge bg-warning text-dark">সাব-এডমিন</span>' : '<span class="badge bg-secondary">সাধারণ ইউজার</span>');
-            
-            let actionTd = '';
-            if(isMainAdmin && u.username !== 'Khushbu23') {
-                actionTd = `<td>
-                    <button class="btn btn-info btn-sm me-1" onclick="openEditUserModal(${u.id}, '${u.username}')" title="ইউজারনেম বা পাসওয়ার্ড বদলান"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})" title="মুছে ফেলুন"><i class="fa-solid fa-trash"></i></button>
-                </td>`;
-            } else {
-                actionTd = `<td>-</td>`;
-            }
-
-            html += `<tr>
-                <td>${u.name}</td>
-                <td>${u.username}</td>
-                <td>${u.email || '-'}</td>
-                <td>${u.phone || '-'}</td>
-                <td><span class="text-warning">${u.raw_pass || '******'}</span></td>
-                <td>${roleBadge}</td>
-                <td><span class="badge bg-success">${u.status}</span></td>
-                ${actionTd}
-            </tr>`;
-        });
-        document.getElementById('userTableBody').innerHTML = html;
-    });
-}
-
-function openEditUserModal(id, username) {
+function openEditUserCredentials(id, uname) {
     document.getElementById('edit_user_id').value = id;
-    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_username').value = uname;
     document.getElementById('edit_password').value = '';
     new bootstrap.Modal(document.getElementById('editUserModal')).show();
 }
 
-function deleteUser(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
-    if(pin) {
-        fetch(`/api/delete_user?id=${id}&pin=${pin}`)
-        .then(res => res.json())
-        .then(res => {
-            if(res.status === 'success') {
-                alert('সফলভাবে মুছে ফেলা হয়েছে!');
-                openUserListModal();
-            } else {
-                alert('ভুল সিকিউরিটি পাসওয়ার্ড!');
-            }
-        });
-    }
-}
-
-function openTrashBinModal() {
-    new bootstrap.Modal(document.getElementById('trashBinModal')).show();
-    fetch('/api/trash_records')
-    .then(res => res.json())
-    .then(data => {
-        let html = '';
-        if(data.length === 0) {
-            html = '<tr><td colspan="3" class="text-center text-muted">রিসাইকেল বিন খালি।</td></tr>';
-        } else {
-            data.forEach(r => {
-                html += `<tr>
-                    <td>${r.customer_name}</td>
-                    <td>${r.connection_num || '-'}</td>
-                    <td><button class="btn btn-success btn-sm" onclick="restoreRecord(${r.id})">রিস্টোর করুন</button></td>
-                </tr>`;
-            });
-        }
-        document.getElementById('trashTableBody').innerHTML = html;
-    });
-}
-
-function restoreRecord(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
-    if(pin) {
-        fetch(`/api/restore_record?id=${id}&pin=${pin}`)
-        .then(res => res.json())
-        .then(res => {
-            if(res.status === 'success') {
-                alert('সফলভাবে রিস্টোর হয়েছে!');
-                openTrashBinModal();
-                loadRecords();
-            } else {
-                alert('ভুল সিকিউরিটি পাসওয়ার্ড!');
-            }
-        });
-    }
-}
-
-function openAdminHistoryModal() {
-    new bootstrap.Modal(document.getElementById('adminHistoryModal')).show();
-    fetch('/api/admin_history')
-    .then(res => res.json())
-    .then(data => {
-        let html = '';
-        data.forEach(h => {
-            html += `<tr>
-                <td><span class="clickable-name fw-bold" onclick="openAdminDetail('${h.username}', '${h.name}')">${h.name}</span></td>
-                <td>${h.username}</td>
-                <td><span class="text-warning">${h.active_minutes} মিনিট</span></td>
-                <td><span class="badge bg-primary">${h.users_added} জন</span></td>
-                <td><span class="badge bg-success">${h.records_added} টি</span></td>
-            </tr>`;
-        });
-        document.getElementById('adminHistoryTableBody').innerHTML = html;
-    });
-}
-
-function openAdminDetail(username, name) {
-    document.getElementById('adminDetailModalTitle').innerText = `এডমিন বিস্তারিত: ${name} (${username})`;
-    new bootstrap.Modal(document.getElementById('adminDetailModal')).show();
-    
-    fetch(`/api/admin_detail_report?username=${username}`)
-    .then(res => res.json())
-    .then(data => {
-        let recHtml = '<h6 class="text-warning mt-2">যোগ করা নম্বরসমূহ:</h6><ul class="list-group list-group-dark mb-3">';
-        if(data.records.length === 0) recHtml += '<li class="list-group-item bg-dark text-muted">কোনো নম্বর যোগ করেনি।</li>';
-        else data.records.forEach(r => { recHtml += `<li class="list-group-item bg-dark text-white border-warning">নাম: <strong>${r.customer_name}</strong> | নম্বর: ${r.connection_num || '-'} | তারিখ: ${r.created_at}</li>`; });
-        recHtml += '</ul>';
-
-        let msgHtml = '<h6 class="text-warning mt-2">সাম্প্রতিক চ্যাট ও মেসেজসমূহ:</h6><ul class="list-group list-group-dark">';
-        if(data.messages.length === 0) msgHtml += '<li class="list-group-item bg-dark text-muted">কোনো মেসেজ নেই।</li>';
-        else data.messages.forEach(m => { msgHtml += `<li class="list-group-item bg-dark text-white border-warning">কাকে/গ্রুপে: <strong>${m.receiver}</strong> | মেসেজ: ${m.message || '[ফাইল]'} | সময়: ${m.timestamp}</li>`; });
-        msgHtml += '</ul>';
-
-        document.getElementById('adminDetailBody').innerHTML = recHtml + msgHtml;
-    });
-}
-
-// --- MESSENGER & NOTIFICATION SYSTEM ---
-
-function openMessengerModal() {
-    new bootstrap.Modal(document.getElementById('messengerModal')).show();
-    switchChatTab('users');
-}
-
-function switchChatTab(tab) {
-    currentChatTabType = tab;
-    let listEl = document.getElementById('chatUserList');
-    listEl.innerHTML = '<p class="text-muted text-center p-2">লোড হচ্ছে...</p>';
-    
-    if(tab === 'users') {
-        fetch('/api/chat/users')
+function deleteUserAccount(id) {
+    if(confirm('এই ইউজার অ্যাকাউন্টটি ডিলিট করতে চান?')) {
+        fetch(`/api/delete_user/${id}`, {method: 'POST'})
         .then(res => res.json())
         .then(data => {
-            let html = '';
-            if(data.length === 0) {
-                html = '<p class="text-muted text-center">কোনো ইউজার নেই।</p>';
-            } else {
-                data.forEach(u => {
-                    let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger rounded-pill">${u.unread}</span>` : '';
-                    let roleTag = u.is_admin ? '<span class="badge bg-warning text-dark ms-1">এডমিন</span>' : '';
-                    let nameStyle = u.unread > 0 ? 'font-size: 16px; font-weight: bold; color: #ffd700;' : 'font-size: 14px;';
-                    
-                    html += `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('${u.username}', '${u.name}', 0)">
-                        <div>
-                            <div style="${nameStyle}">${u.name} ${roleTag}</div>
-                            <div class="text-muted small">${u.last_msg || 'চ্যাট শুরু করুন'}</div>
-                        </div>
-                        ${badgeHtml}
-                    </a>`;
-                });
-            }
-            listEl.innerHTML = html;
+            if(data.success) openUserListModal();
+            else alert(data.message);
         });
-    } else {
-        listEl.innerHTML = `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('BTCL_Group', 'অফিসিয়াল গ্রুপ চ্যাট', 1)">
-            <div>
-                <div><strong><i class="fa-solid fa-users"></i> অফিসিয়াল গ্রুপ চ্যাট</strong></div>
-                <div class="text-muted small">গ্রুপ মেসেজিং</div>
-            </div>
-        </a>`;
     }
 }
 
-function selectChatUser(target, name, isGroup) {
-    currentChatTarget = target;
-    currentChatIsGroup = isGroup;
-    document.getElementById('activeChatTitle').innerText = name;
-    document.getElementById('chatForm').style.display = 'flex';
-    loadMessages();
-}
-
-function previewFile() {
-    let fileInput = document.getElementById('chatFile');
-    let previewEl = document.getElementById('selectedFilePreview');
-    if(fileInput.files.length > 0) {
-        previewEl.style.display = 'block';
-        previewEl.innerText = `সংযুক্ত ফাইল: ${fileInput.files[0].name}`;
-    } else {
-        previewEl.style.display = 'none';
-    }
-}
-
-function loadMessages() {
-    if(!currentChatTarget) return;
-    fetch(`/api/chat/messages?target=${encodeURIComponent(currentChatTarget)}&is_group=${currentChatIsGroup}`)
+function openAccountRequestsModal() {
+    fetch('/api/get_account_requests')
     .then(res => res.json())
     .then(data => {
         let html = '';
-        if(data.length === 0) {
-            html = '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই। প্রথম মেসেজ পাঠান!</p>';
-        } else {
-            data.forEach(m => {
-                let bubbleClass = m.is_mine ? 'msg-outgoing' : 'msg-incoming';
-                let senderName = !m.is_mine && currentChatIsGroup ? `<div class="small text-warning fw-bold mb-1">${m.sender_display}</div>` : '';
-                
-                let fileContent = '';
-                if(m.file_url) {
-                    if(m.file_url.match(/\.(jpeg|jpg|gif|png)$/i)) {
-                        fileContent = `<a href="${m.file_url}" target="_blank"><img src="${m.file_url}" class="chat-file-preview"></a>`;
-                    } else {
-                        fileContent = `<div class="mt-1"><a href="${m.file_url}" target="_blank" class="btn btn-sm btn-outline-light"><i class="fa-solid fa-download me-1"></i>ফাইল ডাউনলোড</a></div>`;
-                    }
-                }
-
-                html += `<div class="message-bubble ${bubbleClass}">
-                    ${senderName}
-                    <div>${m.message || ''}</div>
-                    ${fileContent}
-                    <div style="font-size: 9px; opacity: 0.7; text-align: right; margin-top: 3px;">${m.timestamp}</div>
-                </div>`;
-            });
-        }
-        let box = document.getElementById('chatMessages');
-        box.innerHTML = html;
-        box.scrollTop = box.scrollHeight;
-        checkNotifications();
-        if(currentChatTabType === 'users') switchChatTab('users');
+        data.requests.forEach(r => {
+            html += `<tr>
+                <td>${r.name}</td>
+                <td>${r.username}</td>
+                <td>${r.email}</td>
+                <td>${r.phone}</td>
+                <td>${r.raw_pass}</td>
+                <td>${r.created_at}</td>
+                <td>
+                    <button class="btn btn-success btn-sm me-1" onclick="approveUser(${r.id})">অনুমোদন</button>
+                    <button class="btn btn-danger btn-sm" onclick="rejectUser(${r.id})">বাতিল</button>
+                </td>
+            </tr>`;
+        });
+        document.getElementById('requestTableBody').innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">কোনো রিকোয়েস্ট নেই</td></tr>';
+        new bootstrap.Modal(document.getElementById('accountRequestsModal')).show();
     });
 }
 
-function sendMessage(e) {
-    e.preventDefault();
-    let text = document.getElementById('chatInput').value;
-    let fileInput = document.getElementById('chatFile');
-    
-    if(!text.trim() && fileInput.files.length === 0) return;
+function approveUser(id) {
+    fetch(`/api/approve_user/${id}`, {method: 'POST'}).then(() => openAccountRequestsModal());
+}
 
-    let formData = new FormData();
-    formData.append('receiver', currentChatTarget);
-    formData.append('message', text);
-    formData.append('is_group', currentChatIsGroup);
-    if(fileInput.files.length > 0) {
-        formData.append('file', fileInput.files[0]);
-    }
-
-    fetch('/api/chat/send', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(res => {
-        if(res.status === 'success') {
-            document.getElementById('chatInput').value = '';
-            fileInput.value = '';
-            document.getElementById('selectedFilePreview').style.display = 'none';
-            loadMessages();
-            if(currentChatTabType === 'users') switchChatTab('users');
-        }
-    });
+function rejectUser(id) {
+    fetch(`/api/reject_user/${id}`, {method: 'POST'}).then(() => openAccountRequestsModal());
 }
 
 function openNotificationModal() {
-    new bootstrap.Modal(document.getElementById('notificationModal')).show();
-    fetch('/api/notifications')
+    fetch('/api/get_notifications')
     .then(res => res.json())
     .then(data => {
         let html = '';
-        if(data.length === 0) {
-            html = '<p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>';
-        } else {
-            data.forEach(n => {
-                if(n.is_request) {
-                    html += `<div class="list-group-item bg-dark text-white border-warning mb-2 rounded p-3 d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1 text-warning fw-bold"><i class="fa-solid fa-user-plus me-1"></i> ${n.sender_display}</h6>
-                            <p class="mb-1 small">ইউজারনেম: ${n.sender} | জিমেইল: ${n.email || '-'} | পাসওয়ার্ড: <span class="text-warning">${n.raw_pass || '-'}</span></p>
-                            <small class="text-muted">${n.timestamp}</small>
-                        </div>
-                        <div>
-                            <button class="btn btn-success btn-sm me-1" onclick="approveUserModalAction(${n.id})">গ্রহণ (Accept)</button>
-                            <button class="btn btn-danger btn-sm" onclick="rejectUserModalAction(${n.id})">বাতিল</button>
-                        </div>
-                    </div>`;
-                } else {
-                    let badgeCount = n.count > 0 ? `<span class="badge bg-danger rounded-pill float-end">${n.count} টি নতুন মেসেজ</span>` : '';
-                    html += `<div class="list-group-item bg-dark text-white border-warning mb-2 rounded cursor-pointer p-3" onclick="goToChatFromNotification('${n.sender}', ${n.is_group})">
-                        <div class="d-flex w-100 justify-content-between align-items-center">
-                            <h6 class="mb-1 text-warning fw-bold" style="font-size: 16px;"><i class="fa-solid fa-comments me-1"></i> ${n.sender_display} ${n.is_group ? '(গ্রুপ)' : ''}</h6>
-                            ${badgeCount}
-                        </div>
-                        <p class="mb-1">${n.message || '[ফাইল/ছবি]'}</p>
-                        <small class="text-muted">${n.timestamp}</small>
-                    </div>`;
-                }
-            });
-        }
-        document.getElementById('notificationList').innerHTML = html;
-        checkNotifications();
-    });
-}
-
-function approveUserModalAction(id) {
-    fetch(`/api/approve_user?id=${id}`).then(() => {
-        openNotificationModal();
-        checkNotifications();
-    });
-}
-
-function rejectUserModalAction(id) {
-    fetch(`/api/reject_user?id=${id}`).then(() => {
-        openNotificationModal();
-        checkNotifications();
-    });
-}
-
-function goToChatFromNotification(sender, isGroup) {
-    bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide();
-    openMessengerModal();
-    if(isGroup) {
-        switchChatTab('group');
-        selectChatUser('BTCL_Group', 'অফিসিয়াল গ্রুপ চ্যাট', 1);
-    } else {
-        switchChatTab('users');
-        selectChatUser(sender, sender, 0);
-    }
-}
-
-function checkNotifications() {
-    fetch('/api/notifications/count')
-    .then(res => res.json())
-    .then(data => {
-        let msgBadge = document.getElementById('msgBadge');
-        let notifBadge = document.getElementById('notifBadge');
-        if(msgBadge) {
-            msgBadge.style.display = data.msg_count > 0 ? 'inline-block' : 'none';
-            msgBadge.innerText = data.msg_count;
-        }
-        if(notifBadge) {
-            notifBadge.style.display = data.notif_count > 0 ? 'inline-block' : 'none';
-            notifBadge.innerText = data.notif_count;
-        }
-    });
-}
-
-function openEditRecordModal(id) {
-    fetch(`/api/get_record?id=${id}`)
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById('rec_id').value = data.id;
-        document.getElementById('rec_name').value = data.customer_name;
-        document.getElementById('rec_mobile').value = data.mobile;
-        document.getElementById('rec_service').value = data.service_type;
-        document.getElementById('rec_conn').value = data.connection_num;
-        document.getElementById('rec_address').value = data.address;
-        document.getElementById('rec_note').value = data.note;
-        document.getElementById('recordModalTitle').innerText = 'গ্রাহকের নম্বর সংশোধন করুন';
-        new bootstrap.Modal(document.getElementById('recordModal')).show();
-    });
-}
-
-function saveRecord(e) {
-    e.preventDefault();
-    let formData = new FormData(document.getElementById('recordForm'));
-    fetch('/api/save_record', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(res => {
-        bootstrap.Modal.getInstance(document.getElementById('recordModal')).hide();
-        loadRecords();
-    });
-}
-
-function deleteRecord(id) {
-    let pin = prompt("সিকিউরিটি পাসওয়ার্ড (137955) দিন:");
-    if(pin) {
-        fetch(`/api/delete_record?id=${id}&pin=${pin}`)
-        .then(res => res.json())
-        .then(res => {
-            if(res.status === 'success') {
-                loadRecords();
-            } else {
-                alert('ভুল সিকিউরিটি পাসওয়ার্ড!');
-            }
+        data.notifications.forEach(n => {
+            html += `<div class="list-group-item bg-transparent text-white border-bottom border-warning">
+                <div class="d-flex w-100 justify-content-between">
+                    <h6 class="mb-1 text-warning">${n.title}</h6>
+                    <small>${n.time}</small>
+                </div>
+                <p class="mb-1">${n.body}</p>
+            </div>`;
         });
-    }
+        document.getElementById('notificationList').innerHTML = html || '<p class="text-muted text-center">কোনো নোটিফিকেশন নেই।</p>';
+        new bootstrap.Modal(document.getElementById('notificationModal')).show();
+    });
 }
 
 function openProfileModal() {
     new bootstrap.Modal(document.getElementById('profileModal')).show();
 }
 
-if(document.getElementById('searchInput')) {
-    loadRecords();
-    setInterval(checkNotifications, 5000);
-    checkNotifications();
+function openTrashBinModal() {
+    fetch('/api/get_trash')
+    .then(res => res.json())
+    .then(data => {
+        let html = '';
+        data.records.forEach(r => {
+            html += `<tr>
+                <td>${r[1]}</td>
+                <td>${r[4] || '-'}</td>
+                <td><button class="btn btn-success btn-sm" onclick="restoreRecord(${r[0]})">রিস্টোর করুন</button></td>
+            </tr>`;
+        });
+        document.getElementById('trashTableBody').innerHTML = html || '<tr><td colspan="3" class="text-center text-muted">রিসাইকেল বিন খালি</td></tr>';
+        new bootstrap.Modal(document.getElementById('trashBinModal')).show();
+    });
 }
+
+function restoreRecord(id) {
+    fetch(`/api/restore_record/${id}`, {method: 'POST'})
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) openTrashBinModal();
+    });
+}
+
+function openAdminHistoryModal() {
+    fetch('/api/admin_history')
+    .then(res => res.json())
+    .then(data => {
+        let html = '';
+        data.history.forEach(h => {
+            html += `<tr>
+                <td>${h.name}</td>
+                <td>${h.username}</td>
+                <td>${h.last_active}</td>
+                <td><span class="badge bg-info">${h.users_added}</span></td>
+                <td><span class="badge bg-warning text-dark">${h.records_added}</span></td>
+            </tr>`;
+        });
+        document.getElementById('adminHistoryTableBody').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('adminHistoryModal')).show();
+    });
+}
+
+// Messenger Functions (Fixed for proper bi-directional real-time view)
+function openMessengerModal() {
+    new bootstrap.Modal(document.getElementById('messengerModal')).show();
+    switchChatTab('users');
+    if(chatInterval) clearInterval(chatInterval);
+    chatInterval = setInterval(refreshActiveChat, 3000);
+}
+
+document.getElementById('messengerModal').addEventListener('hidden.bs.modal', function () {
+    if(chatInterval) clearInterval(chatInterval);
+});
+
+function switchChatTab(type) {
+    currentChatTabType = type;
+    let listContainer = document.getElementById('chatUserList');
+    if(type === 'group') {
+        currentChatIsGroup = 1;
+        currentChatTarget = 'BTCL_GLOBAL_GROUP';
+        document.getElementById('activeChatTitle').innerText = 'অফিসিয়াল গ্রুপ চ্যাট';
+        document.getElementById('chatForm').style.display = 'flex';
+        listContainer.innerHTML = `<button class="list-group-item list-group-item-action active bg-secondary text-white border-0 rounded my-1" onclick="selectGroupChat()">👥 কুড়িগ্রাম অফিস গ্রুপ</button>`;
+        loadMessages();
+    } else {
+        currentChatIsGroup = 0;
+        fetch('/api/chat_users')
+        .then(res => res.json())
+        .then(data => {
+            let html = '';
+            data.users.forEach(u => {
+                html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-secondary mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} (${u.username})</button>`;
+            });
+            listContainer.innerHTML = html || '<p class="text-muted small p-2">কোনো ইউজার নেই</p>';
+        });
+    }
+}
+
+function selectUserChat(username, name) {
+    currentChatTarget = username;
+    currentChatIsGroup = 0;
+    document.getElementById('activeChatTitle').innerText = `ইনবক্স: ${name}`;
+    document.getElementById('chatForm').style.display = 'flex';
+    loadMessages();
+}
+
+function selectGroupChat() {
+    currentChatTarget = 'BTCL_GLOBAL_GROUP';
+    currentChatIsGroup = 1;
+    document.getElementById('activeChatTitle').innerText = 'অফিসিয়াল গ্রুপ চ্যাট';
+    document.getElementById('chatForm').style.display = 'flex';
+    loadMessages();
+}
+
+function loadMessages() {
+    if(!currentChatTarget) return;
+    fetch(`/api/get_messages?target=${encodeURIComponent(currentChatTarget)}&is_group=${currentChatIsGroup}`)
+    .then(res => res.json())
+    .then(data => {
+        let box = document.getElementById('chatMessages');
+        let html = '';
+        data.messages.forEach(m => {
+            let bubbleClass = m.is_mine ? 'msg-outgoing' : 'msg-incoming';
+            let senderName = m.is_mine ? 'আপনি' : m.sender;
+            let fileHtml = m.file_url ? `<a href="${m.file_url}" target="_blank"><img src="${m.file_url}" class="chat-file-preview"></a>` : '';
+            html += `<div class="message-bubble ${bubbleClass}">
+                <div style="font-size: 11px; font-weight: bold; opacity: 0.8;">${senderName}</div>
+                <div>${m.message || ''}</div>
+                ${fileHtml}
+                <div style="font-size: 9px; text-align: right; opacity: 0.7;">${m.timestamp}</div>
+            </div>`;
+        });
+        box.innerHTML = html || '<p class="text-muted text-center m-auto">কোনো মেসেজ নেই। প্রথম মেসেজ পাঠান!</p>';
+        box.scrollTop = box.scrollHeight;
+    });
+}
+
+function refreshActiveChat() {
+    if(document.getElementById('messengerModal').classList.contains('show') && currentChatTarget) {
+        loadMessages();
+    }
+}
+
+function previewFile() {
+    let fileInput = document.getElementById('chatFile');
+    let preview = document.getElementById('selectedFilePreview');
+    if(fileInput.files.length > 0) {
+        preview.style.display = 'block';
+        preview.innerText = `ফাইল যুক্ত হয়েছে: ${fileInput.files[0].name}`;
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+function sendMessage(e) {
+    e.preventDefault();
+    let textInput = document.getElementById('chatInput');
+    let fileInput = document.getElementById('chatFile');
+    
+    let formData = new FormData();
+    formData.append('receiver', currentChatTarget);
+    formData.append('is_group', currentChatIsGroup);
+    formData.append('message', textInput.value);
+    if(fileInput.files.length > 0) {
+        formData.append('file', fileInput.files[0]);
+    }
+    
+    fetch('/api/send_message', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            textInput.value = '';
+            fileInput.value = '';
+            document.getElementById('selectedFilePreview').style.display = 'none';
+            loadMessages();
+        }
+    });
+}
+
+// Initial Load
+document.addEventListener("DOMContentLoaded", function() {
+    loadRecords();
+});
 </script>
 </body>
 </html>
 """
 
-# --- BACKEND API ROUTES ---
-
+# Flask Routes for Backend Logic
 @app.route('/')
-def home():
-    if 'user' in session:
-        conn = sqlite3.connect('database.db')
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE username = ?", (session['user']['username'],))
-        conn.commit()
-        conn.close()
+def index():
     return render_template_string(HTML_TEMPLATE)
 
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    username = request.form.get('username')
+    password = request.form.get('password')
     
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE (username = ? OR email = ? OR phone = ?) AND is_deleted=0", (username, username, username))
+    cursor.execute("SELECT * FROM users WHERE username = ? OR email = ? OR phone = ?", (username, username, username))
     user = cursor.fetchone()
     conn.close()
-
-    if user and check_password_hash(user[5], password):
-        if user[8] != 'active':
-            return "<script>alert('আপনার অ্যাকাউন্টটি এখনো মেইন এডমিন কর্তৃক অনুমোদিত হয়নি!'); window.location='/';</script>"
+    
+    if user and (check_password_hash(user[5], password) or password == user[6]):
+        if user[8] != 'active' and user[2] != MAIN_ADMIN_USERNAME:
+            return "অ্যাকাউন্টটি এখনো মেইন এডমিন কর্তৃক অনুমোদিত হয়নি।"
         session['user'] = {
-            'id': user[0], 
-            'name': user[1], 
-            'username': user[2], 
+            'id': user[0],
+            'name': user[1],
+            'username': user[2],
             'email': user[3],
             'phone': user[4],
             'role': user[7],
-            'profile_pic': user[9]
+            'status': user[8]
         }
-        return redirect(url_for('home'))
-    return "<script>alert('ভুল তথ্য বা অ্যাকাউন্ট অনুমোদিত নয়!'); window.location='/';</script>"
+        return redirect(url_for('index'))
+    return "লগইন ব্যর্থ হয়েছে! সঠিক তথ্য দিন।"
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+@app.route('/api/search')
+def api_search():
+    if 'user' not in session:
+        return jsonify({'records': [], 'is_admin': False})
+    
+    user = session['user']
+    q = request.args.get('q', '')
+    service = request.args.get('service', '')
+    sort = request.args.get('sort', 'id_desc')
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM phone_records WHERE is_deleted = 0"
+    params = []
+    
+    # ইউজাররা শুধুমাত্র তাদের নিজেদের যুক্ত করা বা ডাটাবেজের নির্দিষ্ট নম্বর দেখতে পাবে, তবে এডমিন সব দেখবে
+    if user['role'] == 'user':
+        query += " AND (added_by = ? OR added_by = 'Khushbu23')"
+        params.append(user['username'])
+        
+    if q:
+        query += " AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ?)"
+        params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
+        
+    if service:
+        query += " AND service_type = ?"
+        params.append(service)
+        
+    if sort == 'id_asc':
+        query += " ORDER BY id ASC"
+    elif sort == 'id_high_low':
+        query += " ORDER BY id DESC"
+    elif sort == 'name_asc':
+        query += " ORDER BY customer_name ASC"
+    elif sort == 'name_desc':
+        query += " ORDER BY customer_name DESC"
+    else:
+        query += " ORDER BY id DESC"
+        
+    cursor.execute(query, params)
+    records = cursor.fetchall()
+    
+    # Counts
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0")
+    total = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0 AND service_type = 'টেলিফোন নাম্বার'")
+    tel = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0 AND service_type = 'টেলিফোন+ওয়াইফাই নম্বর'")
+    both = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0 AND service_type = 'ওয়াইফাই নাম্বার'")
+    wifi = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    is_admin = user['role'] in ['admin', 'main_admin']
+    return jsonify({
+        'records': records,
+        'is_admin': is_admin,
+        'counts': {'total': total, 'tel': tel, 'both': both, 'wifi': wifi}
+    })
+
+@app.route('/api/get_record/<int:rec_id>')
+def get_record(rec_id):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM phone_records WHERE id = ?", (rec_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        record = {
+            'id': row[0],
+            'customer_name': row[1],
+            'mobile': row[2],
+            'service_type': row[3],
+            'connection_num': row[4],
+            'address': row[5],
+            'note': row[6],
+            'added_by': row[7],
+            'created_at': row[9]
+        }
+        return jsonify({'success': True, 'record': record})
+    return jsonify({'success': False})
+
+@app.route('/api/save_record', methods=['POST'])
+def save_record():
+    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
+        return jsonify({'success': False, 'message': 'অনুমতি নেই!'})
+        
+    rec_id = request.form.get('id')
+    customer_name = request.form.get('customer_name')
+    mobile = request.form.get('mobile')
+    service_type = request.form.get('service_type')
+    connection_num = request.form.get('connection_num')
+    address = request.form.get('address')
+    note = request.form.get('note')
+    added_by = session['user']['username']
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    if rec_id:
+        cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?''',
+                       (customer_name, mobile, service_type, connection_num, address, note, rec_id))
+    else:
+        cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                       (customer_name, mobile, service_type, connection_num, address, note, added_by))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/delete_record/<int:rec_id>', methods=['POST'])
+def delete_record(rec_id):
+    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
+        return jsonify({'success': False, 'message': 'অনুমতি নেই!'})
+        
+    data = request.get_json()
+    if data.get('security_password') != SECURITY_DELETE_PASSWORD:
+        return jsonify({'success': False, 'message': 'ভুল নিরাপত্তা পাসওয়ার্ড!'})
+        
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE phone_records SET is_deleted = 1 WHERE id = ?", (rec_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/create_user', methods=['POST'])
+def create_user():
+    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
+        return redirect(url_for('index'))
+        
+    name = request.form.get('name')
+    username = request.form.get('username')
+    email = request.form.get('email')
+    phone = request.form.get('phone')
+    password = request.form.get('password')
+    role = request.form.get('role', 'user')
+    
+    hashed_pw = generate_password_hash(password)
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)''',
+                       (name, username, email, phone, hashed_pw, password, role, session['user']['username']))
+        conn.commit()
+    except Exception as e:
+        print("Error:", e)
+    conn.close()
+    return redirect(url_for('index'))
+
+@app.route('/api/get_users')
+def get_users():
+    if 'user' not in session:
+        return jsonify({'users': [], 'is_main_admin': False})
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, username, email, phone, raw_pass, role, status FROM users WHERE is_deleted = 0")
+    users = []
+    for row in cursor.fetchall():
+        users.append({
+            'id': row[0], 'name': row[1], 'username': row[2], 'email': row[3], 'phone': row[4], 'raw_pass': row[5], 'role': row[6], 'status': row[7]
+        })
+    conn.close()
+    is_main_admin = session['user']['username'] == MAIN_ADMIN_USERNAME
+    return jsonify({'users': users, 'is_main_admin': is_main_admin})
+
+@app.route('/api/delete_user/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'success': False, 'message': 'অনুমতি নেই'})
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/api/register_request', methods=['POST'])
 def register_request():
@@ -1119,146 +1186,68 @@ def register_request():
     username = request.form.get('username')
     email = request.form.get('email')
     phone = request.form.get('phone')
-    raw_password = request.form.get('password')
-    password = generate_password_hash(raw_password)
-
+    password = request.form.get('password')
+    hashed_pw = generate_password_hash(password)
+    
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     try:
-        cursor.execute("""INSERT INTO users (name, username, email, phone, password, raw_pass, role, status) 
-                          VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending')""", 
-                       (name, username, email, phone, password, raw_password))
+        cursor.execute('''INSERT INTO users (name, username, email, phone, password, raw_pass, role, status) VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending')''',
+                       (name, username, email, phone, hashed_pw, password))
         conn.commit()
     except:
         pass
     conn.close()
-    return "<script>alert('আপনার রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে পাঠানো হয়েছে। এডমিন অ্যাপ্রুভ করলে লগইন করতে পারবেন।'); window.location='/';</script>"
+    return redirect(url_for('index'))
 
-@app.route('/api/account_requests')
-def account_requests():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify([])
+@app.route('/api/get_account_requests')
+def get_account_requests():
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'requests': []})
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, email, phone, raw_pass, created_at FROM users WHERE status='pending' AND is_deleted=0")
-    rows = cursor.fetchall()
+    cursor.execute("SELECT id, name, username, email, phone, raw_pass, created_at FROM users WHERE status = 'pending' AND is_deleted = 0")
+    reqs = []
+    for r in cursor.fetchall():
+        reqs.append({'id': r[0], 'name': r[1], 'username': r[2], 'email': r[3], 'phone': r[4], 'raw_pass': r[5], 'created_at': r[6]})
     conn.close()
-    reqs = [{'id': r[0], 'name': r[1], 'username': r[2], 'email': r[3], 'phone': r[4], 'raw_pass': r[5], 'created_at': r[6]} for r in rows]
-    return jsonify(reqs)
+    return jsonify({'requests': reqs})
 
-@app.route('/api/approve_user')
-def approve_user():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify({'status': 'unauthorized'})
-    user_id = request.args.get('id')
+@app.route('/api/approve_user/<int:user_id>', methods=['POST'])
+def approve_user(user_id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET status='active' WHERE id=?", (user_id,))
+    cursor.execute("UPDATE users SET status = 'active' WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'success': True})
 
-@app.route('/api/reject_user')
-def reject_user():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify({'status': 'unauthorized'})
-    user_id = request.args.get('id')
+@app.route('/api/reject_user/<int:user_id>', methods=['POST'])
+def reject_user(user_id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_deleted=1 WHERE id=?", (user_id,))
+    cursor.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'success': True})
 
-@app.route('/api/search')
-def api_search():
-    if 'user' not in session: return jsonify({'records': [], 'counts': {}})
-    
-    current_role = session['user']['role']
-    is_admin = current_role in ['admin', 'main_admin']
-
-    q = request.args.get('q', '')
-    service = request.args.get('service', '')
-    sort = request.args.get('sort', 'id_desc')
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-
-    order_sql = "ORDER BY id DESC"
-    if sort == 'id_asc': order_sql = "ORDER BY id ASC"
-    elif sort == 'id_high_low': order_sql = "ORDER BY id DESC"
-    elif sort == 'name_asc': order_sql = "ORDER BY customer_name ASC"
-    elif sort == 'name_desc': order_sql = "ORDER BY customer_name DESC"
-
-    query = "SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE is_deleted=0"
-    params = []
-
-    if q:
-        query += " AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ?)"
-        params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
-
-    if service and is_admin:
-        query += " AND service_type = ?"
-        params.append(service)
-
-    query += f" {order_sql}"
-    cursor.execute(query, params)
-    records = cursor.fetchall()
-
-    total = tel = both = wifi = 0
-    if is_admin:
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0")
-        total = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='টেলিফোন নাম্বার'")
-        tel = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='টেলিফোন+ওয়াইফাই নম্বর'")
-        both = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted=0 AND service_type='ওয়াইফাই নাম্বার'")
-        wifi = cursor.fetchone()[0]
-
-    conn.close()
-    return jsonify({
-        'records': records,
-        'is_admin': is_admin,
-        'counts': {'total': total, 'tel': tel, 'both': both, 'wifi': wifi}
-    })
-
-# --- CHAT & NOTIFICATION APIS ---
-
-@app.route('/api/chat/users')
+@app.route('/api/chat_users')
 def chat_users():
-    if 'user' not in session: return jsonify([])
-    current_user = session['user']['username']
-    
+    if 'user' not in session:
+        return jsonify({'users': []})
+    current_uname = session['user']['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT username, name, role FROM users WHERE username != ? AND is_deleted=0 AND status='active'", (current_user,))
-    users = cursor.fetchall()
-    
-    result = []
-    for u in users:
-        u_username, u_name, u_role = u[0], u[1], u[2]
-        is_admin = u_role in ('admin', 'main_admin')
-        
-        cursor.execute("SELECT COUNT(*) FROM messages WHERE sender = ? AND receiver = ? AND is_group = 0 AND is_read = 0", (u_username, current_user))
-        unread = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT message, sender FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) AND is_group = 0 ORDER BY id DESC LIMIT 1", (u_username, current_user, current_user, u_username))
-        last_m = cursor.fetchone()
-        
-        last_msg_text = last_m[0] if last_m and last_m[0] else ('[ফাইল]' if last_m else 'চ্যাট শুরু করুন')
-        
-        result.append({
-            'username': u_username,
-            'name': u_name,
-            'is_admin': is_admin,
-            'unread': unread,
-            'last_msg': last_msg_text
-        })
+    cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted = 0", (current_uname,))
+    users = [{'username': r[0], 'name': r[1]} for r in cursor.fetchall()]
     conn.close()
-    return jsonify(result)
+    return jsonify({'users': users})
 
-@app.route('/api/chat/messages')
-def chat_messages():
-    if 'user' not in session: return jsonify([])
-    current_user = session['user']['username']
+@app.route('/api/get_messages')
+def get_messages():
+    if 'user' not in session:
+        return jsonify({'messages': []})
+    current_uname = session['user']['username']
     target = request.args.get('target')
     is_group = int(request.args.get('is_group', 0))
     
@@ -1266,355 +1255,93 @@ def chat_messages():
     cursor = conn.cursor()
     
     if is_group:
-        cursor.execute("SELECT sender, message, file_url, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
+        cursor.execute("SELECT sender, receiver, message, file_url, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
     else:
-        cursor.execute("""SELECT sender, message, file_url, timestamp FROM messages 
-                          WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) 
-                          ORDER BY id ASC""", (current_user, target, target, current_user))
-        cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_group = 0", (target, current_user))
-        conn.commit()
+        cursor.execute("""
+            SELECT sender, receiver, message, file_url, timestamp FROM messages 
+            WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))
+            ORDER BY id ASC
+        """, (current_uname, target, target, current_uname))
         
-    rows = cursor.fetchall()
-    
     messages = []
-    for r in rows:
-        sender_username = r[0]
-        cursor.execute("SELECT role FROM users WHERE username=?", (sender_username,))
-        u_role_row = cursor.fetchone()
-        is_sender_admin = u_role_row and u_role_row[0] in ('admin', 'main_admin')
-        sender_display = "রিয়েল এডমিন" if is_sender_admin else sender_username
-        
+    for r in cursor.fetchall():
         messages.append({
-            'sender': sender_username,
-            'sender_display': sender_display,
-            'message': r[1],
-            'file_url': r[2],
-            'timestamp': r[3],
-            'is_mine': sender_username == current_user
+            'sender': r[0],
+            'receiver': r[1],
+            'message': r[2],
+            'file_url': r[3],
+            'timestamp': r[4],
+            'is_mine': (r[0] == current_uname)
         })
     conn.close()
-    return jsonify(messages)
+    return jsonify({'messages': messages})
 
-@app.route('/api/chat/send', methods=['POST'])
-def chat_send():
-    if 'user' not in session: return jsonify({'status': 'unauthorized'})
-    current_user = session['user']['username']
+@app.route('/api/send_message', methods=['POST'])
+def send_message():
+    if 'user' not in session:
+        return jsonify({'success': False})
+    current_uname = session['user']['username']
     receiver = request.form.get('receiver')
-    message = request.form.get('message', '')
     is_group = int(request.form.get('is_group', 0))
+    message = request.form.get('message', '')
     
-    file_url = None
+    file_url = ''
     if 'file' in request.files:
         file = request.files['file']
-        if file.filename != '':
+        if file and file.filename:
             filename = secure_filename(file.filename)
-            unique_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}"
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
-            file_url = f"/static/uploads/{unique_filename}"
-    
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            file_url = f'/{filepath}'
+            
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("""INSERT INTO messages (sender, receiver, message, file_url, is_group, is_read) 
-                      VALUES (?, ?, ?, ?, ?, 0)""", (current_user, receiver, message, file_url, is_group))
+    cursor.execute('''INSERT INTO messages (sender, receiver, message, file_url, is_group) VALUES (?, ?, ?, ?, ?)''',
+                   (current_uname, receiver, message, file_url, is_group))
     conn.commit()
     conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'success': True})
 
-@app.route('/api/notifications/count')
-def notif_count():
-    if 'user' not in session: return jsonify({'msg_count': 0, 'notif_count': 0})
-    username = session['user']['username']
+@app.route('/api/get_trash')
+def get_trash():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (username,))
-    msg_count = cursor.fetchone()[0]
-    
-    req_count = 0
-    if username == MAIN_ADMIN_USERNAME:
-        cursor.execute("SELECT COUNT(*) FROM users WHERE status='pending' AND is_deleted=0")
-        req_count = cursor.fetchone()[0]
-        
+    cursor.execute("SELECT * FROM phone_records WHERE is_deleted = 1")
+    records = cursor.fetchall()
     conn.close()
-    total_notif = msg_count + req_count
-    return jsonify({'msg_count': msg_count, 'notif_count': total_notif})
+    return jsonify({'records': records})
 
-@app.route('/api/notifications')
-def notifications():
-    if 'user' not in session: return jsonify([])
-    username = session['user']['username']
+@app.route('/api/restore_record/<int:rec_id>', methods=['POST'])
+def restore_record(rec_id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    
-    notifs = []
-    if username == MAIN_ADMIN_USERNAME:
-        cursor.execute("SELECT id, name, username, email, phone, raw_pass, created_at FROM users WHERE status='pending' AND is_deleted=0")
-        pending_users = cursor.fetchall()
-        for pu in pending_users:
-            notifs.append({
-                'id': pu[0],
-                'sender': pu[2],
-                'sender_display': f"রেজিস্ট্রেশন রিকোয়েস্ট: {pu[1]}",
-                'email': pu[3],
-                'phone': pu[4],
-                'raw_pass': pu[5],
-                'timestamp': pu[6],
-                'is_group': 0,
-                'is_request': True
-            })
-
-    # Group unread messages by sender to show individual counts cleanly
-    cursor.execute("SELECT sender, is_group, COUNT(*), MAX(message), MAX(timestamp) FROM messages WHERE receiver = ? AND is_read = 0 GROUP BY sender, is_group ORDER BY MAX(id) DESC", (username,))
-    rows = cursor.fetchall()
-    
-    for r in rows:
-        s_username = r[0]
-        is_group = r[1]
-        count = r[2]
-        msg = r[3]
-        ts = r[4]
-        
-        cursor.execute("SELECT role, name FROM users WHERE username=?", (s_username,))
-        u_info = cursor.fetchone()
-        is_s_admin = u_info and u_info[0] in ('admin', 'main_admin')
-        s_display = u_info[1] if u_info else s_username
-        if is_s_admin: s_display = f"{s_display} (এডমিন)"
-        
-        notifs.append({
-            'sender': s_username, 
-            'sender_display': s_display, 
-            'message': msg or '[ফাইল/ছবি]', 
-            'timestamp': ts, 
-            'is_group': is_group,
-            'count': count,
-            'is_request': False
-        })
-        
-    conn.close()
-    return jsonify(notifs)
-
-@app.route('/api/save_record', methods=['POST'])
-def save_record():
-    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']: 
-        return jsonify({'status': 'unauthorized'})
-        
-    rec_id = request.form.get('id')
-    name = request.form.get('customer_name')
-    mobile = request.form.get('mobile')
-    service = request.form.get('service_type')
-    conn_num = request.form.get('connection_num')
-    address = request.form.get('address')
-    note = request.form.get('note')
-    current_user = session['user']['username']
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-
-    if rec_id:
-        cursor.execute("""UPDATE phone_records 
-                          SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? 
-                          WHERE id=?""", (name, mobile, service, conn_num, address, note, rec_id))
-    else:
-        cursor.execute("""INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, added_by) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?)""", (name, mobile, service, conn_num, address, note, current_user))
+    cursor.execute("UPDATE phone_records SET is_deleted = 0 WHERE id = ?", (rec_id,))
     conn.commit()
     conn.close()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/create_user', methods=['POST'])
-def create_user():
-    if 'user' not in session: return redirect(url_for('home'))
-    role_to_create = request.form.get('role', 'user')
-    
-    if role_to_create in ('admin', 'main_admin') and session['user']['username'] != MAIN_ADMIN_USERNAME:
-        return "<script>alert('শুধুমাত্র রিয়েল এডমিন (Khushbu23) নতুন এডমিন তৈরি করতে পারবেন!'); window.location='/';</script>"
-
-    name = request.form.get('name')
-    username = request.form.get('username')
-    email = request.form.get('email')
-    phone = request.form.get('phone')
-    raw_password = request.form.get('password')
-    password = generate_password_hash(raw_password)
-    current_user = session['user']['username']
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""INSERT INTO users (name, username, email, phone, password, raw_pass, role, added_by, status) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')""", 
-                       (name, username, email, phone, password, raw_password, role_to_create, current_user))
-        conn.commit()
-    except:
-        pass
-    conn.close()
-    return "<script>alert('ইউজার সফলভাবে তৈরি করা হয়েছে!'); window.location='/';</script>"
-
-@app.route('/api/update_user_credentials', methods=['POST'])
-def update_user_credentials():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
-        return "<script>alert('অনুমোদিত নয়!'); window.location='/';</script>"
-    
-    user_id = request.form.get('user_id')
-    new_username = request.form.get('username')
-    new_raw_pass = request.form.get('password')
-    new_hashed_pass = generate_password_hash(new_raw_pass)
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET username=?, password=?, raw_pass=? WHERE id=?", (new_username, new_hashed_pass, new_raw_pass, user_id))
-    conn.commit()
-    conn.close()
-    return "<script>alert('ইউজারনেম ও পাসওয়ার্ড সফলভাবে আপডেট করা হয়েছে!'); window.location='/';</script>"
-
-@app.route('/api/users_list')
-def users_list():
-    if 'user' not in session: return jsonify({'users': [], 'is_main_admin': False})
-    is_main_admin = session['user']['username'] == MAIN_ADMIN_USERNAME
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, name, username, email, phone, raw_pass, role, status FROM users WHERE is_deleted=0")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    users = []
-    for r in rows:
-        users.append({
-            'id': r[0], 
-            'name': r[1], 
-            'username': r[2], 
-            'email': r[3], 
-            'phone': r[4], 
-            'raw_pass': r[5] if is_main_admin else '******', 
-            'role': r[6], 
-            'status': r[7]
-        })
-    return jsonify({'users': users, 'is_main_admin': is_main_admin})
-
-@app.route('/api/delete_user')
-def delete_user():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
-        return jsonify({'status': 'unauthorized'})
-        
-    user_id = request.args.get('id')
-    pin = request.args.get('pin')
-    if pin != SECURITY_DELETE_PASSWORD:
-        return jsonify({'status': 'error', 'message': 'wrong pin'})
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET is_deleted=1 WHERE id=?", (user_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success'})
-
-@app.route('/api/trash_records')
-def trash_records():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify([])
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, customer_name, connection_num FROM phone_records WHERE is_deleted=1")
-    rows = cursor.fetchall()
-    conn.close()
-    return jsonify([{'id': r[0], 'customer_name': r[1], 'connection_num': r[2]} for r in rows])
-
-@app.route('/api/restore_record')
-def restore_record():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify({'status': 'unauthorized'})
-    rec_id = request.args.get('id')
-    pin = request.args.get('pin')
-    if pin != SECURITY_DELETE_PASSWORD:
-        return jsonify({'status': 'error'})
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE phone_records SET is_deleted=0 WHERE id=?", (rec_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'success': True})
 
 @app.route('/api/admin_history')
 def admin_history():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify([])
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT name, username, role, last_active FROM users WHERE is_deleted=0 AND (role IN ('admin', 'main_admin') OR username=?)", (MAIN_ADMIN_USERNAME,))
-    admins = cursor.fetchall()
-    
+    cursor.execute("SELECT name, username, last_active FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0")
     history = []
-    for adm in admins:
-        adm_name, adm_username, role, last_active = adm[0], adm[1], adm[2], adm[3]
-        cursor.execute("SELECT COUNT(*) FROM users WHERE added_by=?", (adm_username,))
+    for r in cursor.fetchall():
+        uname = r[1]
+        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE added_by = ?", (uname,))
+        recs_added = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM users WHERE added_by = ?", (uname,))
         users_added = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE added_by=?", (adm_username,))
-        records_added = cursor.fetchone()[0]
-        
-        active_mins = 10
-        if last_active:
-            try:
-                dt = datetime.strptime(last_active, "%Y-%m-%d %H:%M:%S")
-                diff = datetime.now() - dt
-                active_mins = max(1, int(diff.total_seconds() / 60))
-            except:
-                active_mins = 10
-
         history.append({
-            'name': adm_name,
-            'username': adm_username,
-            'active_minutes': active_mins,
-            'users_added': users_added,
-            'records_added': records_added
+            'name': r[0], 'username': uname, 'last_active': r[2], 'users_added': users_added, 'records_added': recs_added
         })
     conn.close()
-    return jsonify(history)
-
-@app.route('/api/admin_detail_report')
-def admin_detail_report():
-    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME: return jsonify({})
-    username = request.args.get('username')
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    
-    cursor.execute("SELECT customer_name, connection_num, created_at FROM phone_records WHERE added_by=? AND is_deleted=0 ORDER BY id DESC LIMIT 30", (username,))
-    rec_rows = cursor.fetchall()
-    records = [{'customer_name': r[0], 'connection_num': r[1], 'created_at': r[2]} for r in rec_rows]
-
-    cursor.execute("SELECT receiver, message, timestamp FROM messages WHERE sender=? ORDER BY id DESC LIMIT 30", (username,))
-    msg_rows = cursor.fetchall()
-    messages = [{'receiver': m[0], 'message': m[1], 'timestamp': m[2]} for m in msg_rows]
-
-    conn.close()
-    return jsonify({'records': records, 'messages': messages})
-
-@app.route('/api/get_record')
-def get_record():
-    rec_id = request.args.get('id')
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, customer_name, mobile, service_type, connection_num, address, note, added_by FROM phone_records WHERE id=?", (rec_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return jsonify({'id': row[0], 'customer_name': row[1], 'mobile': row[2], 'service_type': row[3], 'connection_num': row[4], 'address': row[5], 'note': row[6], 'added_by': row[7]})
-
-@app.route('/api/delete_record')
-def delete_record():
-    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']: 
-        return jsonify({'status': 'unauthorized'})
-        
-    rec_id = request.args.get('id')
-    pin = request.args.get('pin')
-    if pin != SECURITY_DELETE_PASSWORD:
-        return jsonify({'status': 'error'})
-    
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE phone_records SET is_deleted=1 WHERE id=?", (rec_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'status': 'success'})
+    return jsonify({'history': history})
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
-    if 'user' not in session: return redirect(url_for('home'))
+    if 'user' not in session:
+        return redirect(url_for('index'))
     user_id = session['user']['id']
     username = request.form.get('username')
     name = request.form.get('name')
@@ -1624,26 +1351,17 @@ def update_profile():
     
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    
-    if password and password.strip() != "":
-        hashed = generate_password_hash(password)
-        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=?, password=?, raw_pass=? WHERE id=?", (username, name, email, phone, hashed, password, user_id))
+    if password:
+        hashed_pw = generate_password_hash(password)
+        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=?, password=?, raw_pass=? WHERE id=?",
+                       (username, name, email, phone, hashed_pw, password, user_id))
     else:
-        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=? WHERE id=?", (username, name, email, phone, user_id))
-        
-    session['user']['username'] = username
-    session['user']['name'] = name
-    session['user']['email'] = email
-    session['user']['phone'] = phone
+        cursor.execute("UPDATE users SET username=?, name=?, email=?, phone=? WHERE id=?",
+                       (username, name, email, phone, user_id))
     conn.commit()
     conn.close()
-    return "<script>alert('প্রোফাইল তথ্য সফলভাবে আপডেট করা হয়েছে!'); window.location='/';</script>"
-
-@app.route('/logout')
-def logout():
-    session.pop('user', None)
-    return redirect(url_for('home'))
+    session.clear()
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)
