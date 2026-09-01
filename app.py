@@ -107,7 +107,7 @@ HTML_TEMPLATE = """
         .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; margin-left: auto; }
         .clickable-name { color: #ffd700; cursor: pointer; text-decoration: underline; }
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
-        .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(255,102,178,0.5); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
+        .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
         .floating-add-btn:hover { transform: scale(1.1); color: #fff; }
     </style>
 </head>
@@ -124,10 +124,10 @@ HTML_TEMPLATE = """
     <!-- Top Navigation Bar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
-            <!-- হোম বাটন -->
+            <!-- হোম বাটন (Fix করা হয়েছে) -->
             <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
 
-            <!-- ইউজার লিস্ট ও অন্যান্য মেনু অপশন -->
+            <!-- ইউজার লিস্ট ও মেনু অপশন -->
             <div class="dropdown">
                 <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
@@ -203,12 +203,12 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Filter Cards -->
+    <!-- Filter Cards (Updated with 'নাম্বার') -->
     <div class="row g-2 mb-3">
         <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন সিরিয়াল</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন নম্বর')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন নাম্বার</div></div></div>
         <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই সিরিয়াল</div></div></div>
+        <div class="col" onclick="filterService('ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
     </div>
 
     <!-- Main Customer Table -->
@@ -252,17 +252,17 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
-    <!-- Floating Add Record Button -->
+    <!-- Floating Add Record Button (Bottom Right) -->
     <button class="floating-add-btn" onclick="openAddRecordModal()" title="নতুন নম্বর যোগ করুন">
         <i class="fa-solid fa-plus"></i>
     </button>
 
     {% else %}
-    <!-- Login Form -->
-    <div class="row justify-content-center mt-4">
+    <!-- Login Page (Clean First Page with NO extra side panels) -->
+    <div class="row justify-content-center mt-5">
         <div class="col-md-5">
-            <div class="card-custom p-4 text-center">
-                <h4 class="text-warning mb-3">লগইন করুন</h4>
+            <div class="card-custom p-4 text-center shadow-lg">
+                <h4 class="text-warning mb-3"><i class="fa-solid fa-lock"></i> লগইন করুন</h4>
                 <form action="/login" method="POST">
                     <div class="mb-3 text-start"><label class="form-label">ইউজারনেম / মোবাইল</label><input type="text" name="username" class="form-control" required></div>
                     <div class="mb-3 text-start"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
@@ -397,7 +397,7 @@ HTML_TEMPLATE = """
   </div>
 </div>
 
-<!-- Add/Edit Record Modal -->
+<!-- Add/Edit Record Modal (Updated with 'নাম্বার') -->
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
@@ -412,9 +412,9 @@ HTML_TEMPLATE = """
         <div class="col-md-6">
             <label class="form-label">সেবার ধরন *</label>
             <select id="rec_service" name="service_type" class="form-select" required>
-                <option value="টেলিফোন নম্বর">টেলিফোন নম্বর সিরিয়াল</option>
+                <option value="টেলিফোন নম্বর">টেলিফোন নাম্বার</option>
                 <option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই নম্বর</option>
-                <option value="ওয়াইফাই নম্বর">ওয়াইফাই নম্বর সিরিয়াল</option>
+                <option value="ওয়াইফাই নম্বর">ওয়াইফাই নাম্বার</option>
             </select>
         </div>
         <div class="col-md-6"><label class="form-label">সংযোগ নম্বর</label><input type="text" id="rec_conn" name="connection_num" class="form-control"></div>
@@ -524,6 +524,9 @@ let currentChatTabType = 'users';
 function showHome() {
     document.getElementById('recordsSection').style.display = 'block';
     document.getElementById('userListSection').style.display = 'none';
+    activeServiceFilter = '';
+    document.getElementById('currentFilterLabel').innerText = 'সকল নম্বর';
+    if(document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
     loadRecords();
 }
 
@@ -1420,12 +1423,10 @@ def admin_detail_report():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     
-    # Records added by this admin
     cursor.execute("SELECT customer_name, connection_num, created_at FROM phone_records WHERE added_by=? AND is_deleted=0 ORDER BY id DESC LIMIT 30", (username,))
     rec_rows = cursor.fetchall()
     records = [{'customer_name': r[0], 'connection_num': r[1], 'created_at': r[2]} for r in rec_rows]
 
-    # Messages sent by this admin
     cursor.execute("SELECT receiver, message, timestamp FROM messages WHERE sender=? ORDER BY id DESC LIMIT 30", (username,))
     msg_rows = cursor.fetchall()
     messages = [{'receiver': m[0], 'message': m[1], 'timestamp': m[2]} for m in msg_rows]
