@@ -111,6 +111,7 @@ HTML_TEMPLATE = """
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
         .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
         .floating-add-btn:hover { transform: scale(1.1); color: #fff; }
+        .announcement-banner { background: linear-gradient(45deg, #ff1493, #d4af37); color: #000; font-weight: bold; border-radius: 8px; padding: 12px; margin-bottom: 15px; animation: pulse 2s infinite; }
     </style>
 </head>
 <body>
@@ -122,6 +123,11 @@ HTML_TEMPLATE = """
 
 <div class="container py-3">
     {% if session.get('user') %}
+
+    <div id="latestGroupAnnouncement" class="announcement-banner text-center" style="display:none;">
+        <i class="fa-solid fa-bullhorn me-2"></i> <span id="announcementText"></span>
+        <button class="btn btn-dark btn-sm float-end py-0" onclick="openMessengerModal(); switchChatTab('group');">গ্রুপে দেখুন</button>
+    </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
@@ -137,7 +143,7 @@ HTML_TEMPLATE = """
                     <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
                     {% endif %}
                     {% if session.get('user').get('username') == 'Khushbu23' %}
-                    <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট</a></li>
+                    <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট <span id="reqMenuBadge" class="badge bg-danger ms-1" style="display:none;">0</span></a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -383,7 +389,7 @@ HTML_TEMPLATE = """
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন ও অ্যাকাউন্ট রিকোয়েস্ট</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন ও মেসেজ রিকোয়েস্ট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
@@ -532,6 +538,7 @@ let currentChatTarget = '';
 let currentChatIsGroup = 0;
 let currentChatTabType = 'users';
 let chatInterval = null;
+let globalPollInterval = null;
 
 function showHome() {
     document.getElementById('recordsSection').style.display = 'block';
@@ -761,11 +768,17 @@ function openAccountRequestsModal() {
 }
 
 function approveUser(id) {
-    fetch(`/api/approve_user/${id}`, {method: 'POST'}).then(() => openAccountRequestsModal());
+    fetch(`/api/approve_user/${id}`, {method: 'POST'}).then(() => {
+        openAccountRequestsModal();
+        checkGlobalNotifications();
+    });
 }
 
 function rejectUser(id) {
-    fetch(`/api/reject_user/${id}`, {method: 'POST'}).then(() => openAccountRequestsModal());
+    fetch(`/api/reject_user/${id}`, {method: 'POST'}).then(() => {
+        openAccountRequestsModal();
+        checkGlobalNotifications();
+    });
 }
 
 function openNotificationModal() {
@@ -774,15 +787,22 @@ function openNotificationModal() {
     .then(data => {
         let html = '';
         data.notifications.forEach(n => {
-            html += `<div class="list-group-item bg-transparent text-white border-bottom border-warning">
-                <div class="d-flex w-100 justify-content-between">
+            let actionBtn = '';
+            if(n.type === 'message') {
+                actionBtn = `<button class="btn btn-sm btn-gold float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openMessengerModal(); selectUserChat('${n.sender}', '${n.sender_name}')">মেসেজের উত্তর দিন</button>`;
+            } else if(n.type === 'request') {
+                actionBtn = `<button class="btn btn-sm btn-success float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openAccountRequestsModal();">অনুমোদন প্যানেল</button>`;
+            }
+            html += `<div class="list-group-item bg-transparent text-white border-bottom border-warning py-2">
+                <div class="d-flex w-100 justify-content-between align-items-center">
                     <h6 class="mb-1 text-warning">${n.title}</h6>
                     <small>${n.time}</small>
                 </div>
                 <p class="mb-1">${n.body}</p>
+                ${actionBtn}
             </div>`;
         });
-        document.getElementById('notificationList').innerHTML = html || '<p class="text-muted text-center">কোনো নোটিফিকেশন নেই।</p>';
+        document.getElementById('notificationList').innerHTML = html || '<p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>';
         new bootstrap.Modal(document.getElementById('notificationModal')).show();
     });
 }
@@ -835,7 +855,53 @@ function openAdminHistoryModal() {
     });
 }
 
-// Messenger Functions (Fixed for proper bi-directional real-time view)
+// Messenger & Global Notification Status Checker
+function checkGlobalNotifications() {
+    fetch('/api/global_status')
+    .then(res => res.json())
+    .then(data => {
+        // Unread messages count for messenger badge
+        let msgBadge = document.getElementById('msgBadge');
+        if(data.unread_msg_count > 0) {
+            msgBadge.style.display = 'block';
+            msgBadge.innerText = data.unread_msg_count;
+        } else {
+            msgBadge.style.display = 'none';
+        }
+
+        // Notification badge for Main Admin
+        let notifBadge = document.getElementById('notifBadge');
+        if(notifBadge) {
+            let totalNotif = data.pending_requests_count + data.unread_msg_count;
+            if(totalNotif > 0) {
+                notifBadge.style.display = 'block';
+                notifBadge.innerText = totalNotif;
+            } else {
+                notifBadge.style.display = 'none';
+            }
+        }
+
+        // Menu badge for Requests
+        let reqMenuBadge = document.getElementById('reqMenuBadge');
+        if(reqMenuBadge) {
+            if(data.pending_requests_count > 0) {
+                reqMenuBadge.style.display = 'inline';
+                reqMenuBadge.innerText = data.pending_requests_count;
+            } else {
+                reqMenuBadge.style.display = 'none';
+            }
+        }
+
+        // Latest group announcement banner for everyone upon login/refresh
+        let banner = document.getElementById('latestGroupAnnouncement');
+        let bannerText = document.getElementById('announcementText');
+        if(data.latest_group_msg && banner && bannerText) {
+            bannerText.innerHTML = `<strong>${data.latest_group_msg.sender}:</strong> ${data.latest_group_msg.message}`;
+            banner.style.display = 'block';
+        }
+    });
+}
+
 function openMessengerModal() {
     new bootstrap.Modal(document.getElementById('messengerModal')).show();
     switchChatTab('users');
@@ -845,6 +911,7 @@ function openMessengerModal() {
 
 document.getElementById('messengerModal').addEventListener('hidden.bs.modal', function () {
     if(chatInterval) clearInterval(chatInterval);
+    checkGlobalNotifications();
 });
 
 function switchChatTab(type) {
@@ -864,7 +931,8 @@ function switchChatTab(type) {
         .then(data => {
             let html = '';
             data.users.forEach(u => {
-                html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-secondary mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} (${u.username})</button>`;
+                let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger float-end">${u.unread}</span>` : '';
+                html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-secondary mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} ${badgeHtml}</button>`;
             });
             listContainer.innerHTML = html || '<p class="text-muted small p-2">কোনো ইউজার নেই</p>';
         });
@@ -876,7 +944,12 @@ function selectUserChat(username, name) {
     currentChatIsGroup = 0;
     document.getElementById('activeChatTitle').innerText = `ইনবক্স: ${name}`;
     document.getElementById('chatForm').style.display = 'flex';
-    loadMessages();
+    
+    // Mark messages from this user as read to decrement badge immediately
+    fetch(`/api/mark_read?sender=${username}`).then(() => {
+        loadMessages();
+        checkGlobalNotifications();
+    });
 }
 
 function selectGroupChat() {
@@ -914,6 +987,7 @@ function refreshActiveChat() {
     if(document.getElementById('messengerModal').classList.contains('show') && currentChatTarget) {
         loadMessages();
     }
+    checkGlobalNotifications();
 }
 
 function previewFile() {
@@ -951,13 +1025,16 @@ function sendMessage(e) {
             fileInput.value = '';
             document.getElementById('selectedFilePreview').style.display = 'none';
             loadMessages();
+            checkGlobalNotifications();
         }
     });
 }
 
-// Initial Load
+// Initial Load & Global Interval
 document.addEventListener("DOMContentLoaded", function() {
     loadRecords();
+    checkGlobalNotifications();
+    globalPollInterval = setInterval(checkGlobalNotifications, 4000);
 });
 </script>
 </body>
@@ -1016,7 +1093,6 @@ def api_search():
     query = "SELECT * FROM phone_records WHERE is_deleted = 0"
     params = []
     
-    # ইউজাররা শুধুমাত্র তাদের নিজেদের যুক্ত করা বা ডাটাবেজের নির্দিষ্ট নম্বর দেখতে পাবে, তবে এডমিন সব দেখবে
     if user['role'] == 'user':
         query += " AND (added_by = ? OR added_by = 'Khushbu23')"
         params.append(user['username'])
@@ -1043,7 +1119,6 @@ def api_search():
     cursor.execute(query, params)
     records = cursor.fetchall()
     
-    # Counts
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0")
     total = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0 AND service_type = 'টেলিফোন নাম্বার'")
@@ -1239,9 +1314,30 @@ def chat_users():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted = 0", (current_uname,))
-    users = [{'username': r[0], 'name': r[1]} for r in cursor.fetchall()]
+    
+    users = []
+    for r in cursor.fetchall():
+        uname = r[0]
+        # Count unread messages from this specific user
+        cursor.execute("SELECT COUNT(*) FROM messages WHERE sender = ? AND receiver = ? AND is_read = 0", (uname, current_uname))
+        unread = cursor.fetchone()[0]
+        users.append({'username': uname, 'name': r[1], 'unread': unread})
     conn.close()
     return jsonify({'users': users})
+
+@app.route('/api/mark_read')
+def mark_read():
+    if 'user' not in session:
+        return jsonify({'success': False})
+    current_uname = session['user']['username']
+    sender = request.args.get('sender')
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_read = 0", (sender, current_uname))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/api/get_messages')
 def get_messages():
@@ -1257,6 +1353,10 @@ def get_messages():
     if is_group:
         cursor.execute("SELECT sender, receiver, message, file_url, timestamp FROM messages WHERE is_group = 1 ORDER BY id ASC")
     else:
+        # Mark messages read when fetched for active chat
+        cursor.execute("UPDATE messages SET is_read = 1 WHERE sender = ? AND receiver = ? AND is_read = 0", (target, current_uname))
+        conn.commit()
+        
         cursor.execute("""
             SELECT sender, receiver, message, file_url, timestamp FROM messages 
             WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?))
@@ -1296,11 +1396,85 @@ def send_message():
             
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO messages (sender, receiver, message, file_url, is_group) VALUES (?, ?, ?, ?, ?)''',
+    cursor.execute('''INSERT INTO messages (sender, receiver, message, file_url, is_group, is_read) VALUES (?, ?, ?, ?, ?, 0)''',
                    (current_uname, receiver, message, file_url, is_group))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+@app.route('/api/global_status')
+def global_status():
+    if 'user' not in session:
+        return jsonify({'unread_msg_count': 0, 'pending_requests_count': 0, 'latest_group_msg': None})
+    
+    current_uname = session['user']['username']
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    
+    # Total unread direct messages for badge decrement
+    cursor.execute("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_group = 0 AND is_read = 0", (current_uname,))
+    unread_msg_count = cursor.fetchone()[0]
+    
+    # Pending requests count for Main Admin
+    pending_requests_count = 0
+    if current_uname == MAIN_ADMIN_USERNAME:
+        cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0")
+        pending_requests_count = cursor.fetchone()[0]
+        
+    # Latest group message for banner announcement
+    cursor.execute("SELECT sender, message, timestamp FROM messages WHERE is_group = 1 ORDER BY id DESC LIMIT 1")
+    g_msg = cursor.fetchone()
+    latest_group_msg = None
+    if g_msg:
+        latest_group_msg = {'sender': g_msg[0], 'message': g_msg[1], 'timestamp': g_msg[2]}
+        
+    conn.close()
+    return jsonify({
+        'unread_msg_count': unread_msg_count,
+        'pending_requests_count': pending_requests_count,
+        'latest_group_msg': latest_group_msg
+    })
+
+@app.route('/api/get_notifications')
+def get_notifications():
+    if 'user' not in session:
+        return jsonify({'notifications': []})
+    
+    current_uname = session['user']['username']
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    notifications = []
+    
+    # If main admin, include pending account requests
+    if current_uname == MAIN_ADMIN_USERNAME:
+        cursor.execute("SELECT id, name, username, created_at FROM users WHERE status = 'pending' AND is_deleted = 0")
+        for r in cursor.fetchall():
+            notifications.append({
+                'type': 'request',
+                'title': 'নতুন অ্যাকাউন্ট রেজিস্ট্রেশন রিকোয়েস্ট',
+                'body': f'{r[1]} ({r[2]}) অ্যাকাউন্ট অনুমোদনের অপেক্ষা করছে।',
+                'time': r[3]
+            })
+            
+    # Include unread direct messages
+    cursor.execute("""
+        SELECT m.sender, u.name, m.message, m.timestamp FROM messages m 
+        JOIN users u ON m.sender = u.username
+        WHERE m.receiver = ? AND m.is_group = 0 AND m.is_read = 0
+        ORDER BY m.id DESC
+    """, (current_uname,))
+    for r in cursor.fetchall():
+        notifications.append({
+            'type': 'message',
+            'title': f'নতুন মেসেজ: {r[1]} (@{r[0]})',
+            'body': r[2] or '[ফাইল সংযুক্ত]',
+            'time': r[3],
+            'sender': r[0],
+            'sender_name': r[1]
+        })
+        
+    conn.close()
+    return jsonify({'notifications': notifications})
 
 @app.route('/api/get_trash')
 def get_trash():
