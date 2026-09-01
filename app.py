@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_gold_pink_ultimate_2026")
+app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_green_vibrant_2026")
 
 MAIN_ADMIN_USERNAME = "Khushbu23"
 SECURITY_DELETE_PASSWORD = "137955"
@@ -88,37 +88,40 @@ HTML_TEMPLATE = """
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background: linear-gradient(135deg, #2b001e 0%, #4a1525 50%, #1f0010 100%); color: #ffe6f2; font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 70px; }
-        .gold-pink-header { background: linear-gradient(90deg, #d4af37 0%, #ff66b2 50%, #d4af37 100%); color: #1a000d; font-weight: bold; }
-        .card-custom { background: rgba(45, 10, 30, 0.95); border: 1px solid #d4af37; border-radius: 12px; }
-        .form-label { color: #ffd700; font-weight: bold; }
-        .form-control, .form-select { background-color: #1a0512; color: #fff; border: 1px solid #ff66b2; }
-        .btn-gold { background: linear-gradient(45deg, #d4af37, #f3e5ab); color: #000; font-weight: bold; border: none; }
-        .btn-pink { background: linear-gradient(45deg, #ff66b2, #ff1493); color: #fff; font-weight: bold; border: none; }
-        .stat-card { background: rgba(212, 175, 55, 0.15); border: 1px solid #d4af37; text-align: center; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.3s; }
-        .stat-card:hover { background: rgba(255, 102, 178, 0.3); transform: scale(1.02); }
-        .stat-number { font-size: 18px; font-weight: bold; color: #ffd700; }
-        .close-cross { font-size: 1.5rem; color: #ff66b2; cursor: pointer; }
-        .dropdown-menu-dark { background-color: #2b001e; border: 1px solid #d4af37; }
-        .dropdown-item { color: #ffe6f2; }
-        .dropdown-item:hover { background-color: #ff66b2; color: #000; }
-        .notification-badge { position: absolute; top: -5px; right: -5px; font-size: 11px; padding: 3px 7px; border-radius: 50%; background: #ff1493; color: white; font-weight: bold; }
-        .chat-box { height: 380px; overflow-y: auto; background: #15030d; padding: 15px; border-radius: 8px; border: 1px solid #ff66b2; display: flex; flex-direction: column; }
+        body { background: linear-gradient(135deg, #052e16 0%, #064e3b 50%, #022c22 100%); color: #ecfdf5; font-family: 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 70px; }
+        .green-vibrant-header { background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #059669 100%); color: #022c22; font-weight: bold; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+        .card-custom { background: rgba(6, 78, 59, 0.95); border: 1px solid #34d399; border-radius: 12px; box-shadow: 0 4px 20px rgba(52, 211, 153, 0.15); }
+        .form-label { color: #a7f3d0; font-weight: bold; }
+        .form-control, .form-select { background-color: #022c22; color: #fff; border: 1px solid #10b981; }
+        .form-control:focus, .form-select:focus { background-color: #022c22; color: #fff; border-color: #34d399; box-shadow: 0 0 10px rgba(52, 211, 153, 0.5); }
+        .btn-green-gold { background: linear-gradient(45deg, #10b981, #fbbf24); color: #000; font-weight: bold; border: none; }
+        .btn-green-gold:hover { background: linear-gradient(45deg, #059669, #f59e0b); color: #fff; }
+        .btn-emerald { background: linear-gradient(45deg, #34d399, #059669); color: #000; font-weight: bold; border: none; }
+        .btn-emerald:hover { color: #fff; }
+        .stat-card { background: rgba(16, 185, 129, 0.2); border: 1px solid #34d399; text-align: center; cursor: pointer; padding: 10px; border-radius: 10px; transition: 0.3s; }
+        .stat-card:hover { background: rgba(52, 211, 153, 0.4); transform: scale(1.02); }
+        .stat-number { font-size: 18px; font-weight: bold; color: #fde047; text-shadow: 0 0 8px rgba(253, 224, 71, 0.5); }
+        .close-cross { font-size: 1.5rem; color: #34d399; cursor: pointer; }
+        .dropdown-menu-dark { background-color: #064e3b; border: 1px solid #34d399; }
+        .dropdown-item { color: #ecfdf5; }
+        .dropdown-item:hover { background-color: #10b981; color: #000; font-weight: bold; }
+        .notification-badge { position: absolute; top: -5px; right: -5px; font-size: 11px; padding: 3px 7px; border-radius: 50%; background: #ef4444; color: white; font-weight: bold; box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); }
+        .chat-box { height: 380px; overflow-y: auto; background: #022c22; padding: 15px; border-radius: 8px; border: 1px solid #10b981; display: flex; flex-direction: column; }
         .message-bubble { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; max-width: 75%; word-break: break-word; display: flex; gap: 8px; align-items: flex-start; }
-        .msg-incoming { background: #3b0d26; color: #fff; align-self: flex-start; }
-        .msg-outgoing { background: #d4af37; color: #000; align-self: flex-end; flex-direction: row-reverse; }
-        .msg-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #ffd700; }
-        .clickable-name { color: #ffd700; cursor: pointer; text-decoration: underline; }
+        .msg-incoming { background: #064e3b; color: #fff; align-self: flex-start; border: 1px solid #34d399; }
+        .msg-outgoing { background: #10b981; color: #000; align-self: flex-end; flex-direction: row-reverse; font-weight: 500; }
+        .msg-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #fde047; }
+        .clickable-name { color: #fde047; cursor: pointer; text-decoration: underline; text-shadow: 0 0 5px rgba(253, 224, 71, 0.4); }
         .chat-file-preview { max-width: 150px; border-radius: 5px; margin-top: 5px; display: block; }
-        .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #d4af37, #ff66b2); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(255,102,178,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
+        .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #10b981, #fbbf24); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(16,185,129,0.7); border: none; z-index: 1000; cursor: pointer; transition: 0.3s; }
         .floating-add-btn:hover { transform: scale(1.1); color: #fff; }
-        .announcement-banner { background: linear-gradient(45deg, #ff1493, #d4af37); color: #000; font-weight: bold; border-radius: 8px; padding: 12px; margin-bottom: 15px; animation: pulse 2s infinite; }
-        .profile-avatar-preview { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #d4af37; object-fit: cover; margin-bottom: 10px; }
+        .announcement-banner { background: linear-gradient(45deg, #10b981, #f59e0b); color: #000; font-weight: bold; border-radius: 8px; padding: 12px; margin-bottom: 15px; box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); }
+        .profile-avatar-preview { width: 90px; height: 90px; border-radius: 50%; border: 2px solid #34d399; object-fit: cover; margin-bottom: 10px; box-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
     </style>
 </head>
 <body>
 
-<div class="gold-pink-header text-center py-2">
+<div class="green-vibrant-header text-center py-2">
     <h3 class="m-0"><i class="fa-solid fa-phone-volume"></i> BTCL, কুড়িগ্রাম</h3>
     <small>Smart Management Portal & Messenger</small>
 </div>
@@ -128,35 +131,35 @@ HTML_TEMPLATE = """
 
     <div id="latestGroupAnnouncement" class="announcement-banner text-center" style="display:none;">
         <i class="fa-solid fa-bullhorn me-2"></i> <span id="announcementText"></span>
-        <button class="btn btn-dark btn-sm float-end py-0" onclick="openMessengerModal(); switchChatTab('group');">গ্রুপে দেখুন</button>
+        <button class="btn btn-dark btn-sm float-end py-0 text-warning" onclick="openMessengerModal(); switchChatTab('group');">গ্রুপে দেখুন</button>
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <button class="btn btn-pink btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
+            <button class="btn btn-emerald btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
 
             {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
             <div class="dropdown">
-                <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <button class="btn btn-green-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
                     <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার ও এডমিন তালিকা</a></li>
                     <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার এড করা</a></li>
-                    {% if session.get('user').get('username') == 'Khushbu23' %}
-                    <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট <span id="reqMenuBadge" class="badge bg-danger ms-1" style="display:none;">0</span></a></li>
+                    
+                    {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
+                    <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট ও ডকুমেন্ট <span id="reqMenuBadge" class="badge bg-danger ms-1" style="display:none;">0</span></a></li>
                     {% endif %}
                 </ul>
             </div>
-            {% else %}
             {% endif %}
             
-            <button class="btn btn-outline-warning btn-sm position-relative" onclick="openMessengerModal()">
+            <button class="btn btn-outline-warning btn-sm position-relative fw-bold" onclick="openMessengerModal()">
                 <i class="fa-solid fa-comments"></i> মেসেঞ্জার
                 <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
             </button>
 
-            <button class="btn btn-outline-danger btn-sm position-relative" onclick="openNotificationModal()">
+            <button class="btn btn-outline-danger btn-sm position-relative fw-bold" onclick="openNotificationModal()">
                 <i class="fa-solid fa-bell"></i> নোটিফিকেশন
                 <span id="notifBadge" class="notification-badge" style="display:none;">0</span>
             </button>
@@ -164,19 +167,20 @@ HTML_TEMPLATE = """
         
         <div class="d-flex align-items-center gap-2">
             <div class="dropdown">
-                <button class="btn btn-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <button class="btn btn-green-gold btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-circle-user"></i> প্রোফাইল
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
                     <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-image me-2"></i>প্রোফাইল ছবি আপডেট</a></li>
-                    {% if session.get('user').get('username') == 'Khushbu23' %}
+                    
+                    {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
                     <li><a class="dropdown-item text-warning" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি (শুধুমাত্র মেইন এডমিন)</a></li>
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি ও অ্যাক্টিভিটি</a></li>
                     {% endif %}
                 </ul>
             </div>
 
-            {% if session.get('user').get('username') == 'Khushbu23' %}
+            {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
             <div class="dropdown">
                 <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                     <i class="fa-solid fa-ellipsis-vertical"></i>
@@ -187,7 +191,7 @@ HTML_TEMPLATE = """
             </div>
             {% endif %}
 
-            <a href="/logout" class="btn btn-danger btn-sm"><i class="fa-solid fa-right-from-bracket"></i> লগআউট</a>
+            <a href="/logout" class="btn btn-danger btn-sm fw-bold"><i class="fa-solid fa-right-from-bracket"></i> লগআউট</a>
         </div>
     </div>
 
@@ -195,7 +199,7 @@ HTML_TEMPLATE = """
         <div class="col-md-6">
             <div class="input-group">
                 <input type="text" id="searchInput" class="form-control" placeholder="নাম, মোবাইল বা সংযোগ নম্বর লিখে খুঁজুন..." oninput="loadRecords()">
-                <button class="btn btn-gold" onclick="loadRecords()"><i class="fa-solid fa-magnifying-glass"></i> খুঁজুন</button>
+                <button class="btn btn-green-gold" onclick="loadRecords()"><i class="fa-solid fa-magnifying-glass"></i> খুঁজুন</button>
             </div>
         </div>
         <div class="col-md-6">
@@ -214,15 +218,15 @@ HTML_TEMPLATE = """
 
     {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
     <div class="row g-2 mb-3">
-        <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold;">সকল নম্বর</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন নাম্বার</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold;">টেলিফোন+ওয়াইফাই</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold;">ওয়াইফাই নাম্বার</div></div></div>
+        <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:12px; font-weight:bold; color:#a7f3d0;">সকল নম্বর</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:12px; font-weight:bold; color:#a7f3d0;">টেলিফোন নাম্বার</div></div></div>
+        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:12px; font-weight:bold; color:#a7f3d0;">টেলিফোন+ওয়াইফাই</div></div></div>
+        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:12px; font-weight:bold; color:#a7f3d0;">ওয়াইফাই নাম্বার</div></div></div>
     </div>
     {% endif %}
 
     <div id="recordsSection" class="card-custom p-3 mb-4">
-        <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-success pb-2">
             <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-warning text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
@@ -248,7 +252,7 @@ HTML_TEMPLATE = """
     </div>
 
     <div id="userListSection" class="card-custom p-3 mb-4" style="display:none;">
-        <div class="d-flex justify-content-between align-items-center border-bottom border-warning pb-2">
+        <div class="d-flex justify-content-between align-items-center border-bottom border-success pb-2">
             <h5 class="text-warning mb-0"><i class="fa-solid fa-users"></i> রেজিস্টার্ড ইউজার ও এডমিন তালিকা</h5>
             <button class="btn btn-sm btn-outline-warning" onclick="showHome()">বন্ধ করুন</button>
         </div>
@@ -276,7 +280,7 @@ HTML_TEMPLATE = """
                 <form action="/login" method="POST">
                     <div class="mb-3 text-start"><label class="form-label">ইউজারনেম / জিমেইল / মোবাইল</label><input type="text" name="username" class="form-control" required></div>
                     <div class="mb-3 text-start"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
-                    <button type="submit" class="btn btn-gold w-100 py-2">প্রবেশ করুন</button>
+                    <button type="submit" class="btn btn-green-gold w-100 py-2">প্রবেশ করুন</button>
                 </form>
                 <div class="mt-3">
                     <button class="btn btn-outline-warning btn-sm" onclick="openRegisterModal()">নতুন অ্যাকাউন্ট রিকোয়েস্ট পাঠান</button>
@@ -290,7 +294,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="customerDetailsModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-id-card"></i> গ্রাহকের বিস্তারিত তথ্য</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -302,7 +306,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="adminDetailModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning" id="adminDetailModalTitle"><i class="fa-solid fa-user-shield"></i> এডমিন অ্যাক্টিভিটি রিপোর্ট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -316,8 +320,8 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="accountRequestsModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-check"></i> অ্যাকাউন্ট রেজিস্ট্রেশন রিকোয়েস্ট</h5>
+      <div class="modal-header border-success d-flex justify-content-between">
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-check"></i> অ্যাকাউন্ট রেজিস্ট্রেশন রিকোয়েস্ট ও ডকুমেন্ট (শুধুমাত্র রিয়েল এডমিন)</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
@@ -335,7 +339,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="registerModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> অ্যাকাউন্ট রেজিস্ট্রেশন ফরম</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -345,7 +349,7 @@ HTML_TEMPLATE = """
         <div class="mb-2"><label class="form-label">জিমেইল (Gmail) *</label><input type="email" name="email" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">মোবাইল নম্বর</label><input type="text" name="phone" class="form-control" required></div>
         <div class="mb-3"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
-        <button type="submit" class="btn btn-gold w-100 py-2">রিকোয়েস্ট পাঠান</button>
+        <button type="submit" class="btn btn-green-gold w-100 py-2">রিকোয়েস্ট পাঠান</button>
       </form>
     </div>
   </div>
@@ -354,21 +358,21 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="messengerModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-comments"></i> রিয়েল-টাইম মেসেঞ্জার (গ্রুপ ও ইনবক্স)</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
         <div class="row">
-            <div class="col-md-4 border-end border-warning">
+            <div class="col-md-4 border-end border-success">
                 <div class="d-flex gap-1 mb-2">
-                    <button class="btn btn-sm btn-gold w-50" onclick="switchChatTab('users')">ইনবক্স</button>
-                    <button class="btn btn-sm btn-pink w-50" onclick="switchChatTab('group')">গ্রুপ চ্যাট</button>
+                    <button class="btn btn-sm btn-green-gold w-50" onclick="switchChatTab('users')">ইনবক্স</button>
+                    <button class="btn btn-sm btn-emerald w-50" onclick="switchChatTab('group')">গ্রুপ চ্যাট</button>
                 </div>
                 <div id="chatUserList" class="list-group list-group-flush bg-transparent" style="max-height: 380px; overflow-y: auto;"></div>
             </div>
             <div class="col-md-8 d-flex flex-column">
-                <div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-warning">চ্যাট নির্বাচন করুন</div>
+                <div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-success">চ্যাট নির্বাচন করুন</div>
                 <div id="chatMessages" class="chat-box mb-2">
                     <p class="text-muted text-center m-auto">মেসেজ দেখতে বা পাঠাতে বামপাশ থেকে ইউজার বা গ্রুপ সিলেক্ট করুন।</p>
                 </div>
@@ -376,7 +380,7 @@ HTML_TEMPLATE = """
                     <input type="text" id="chatInput" class="form-control" placeholder="একটি মেসেজ লিখুন...">
                     <input type="file" id="chatFile" class="d-none" onchange="previewFile()">
                     <button type="button" class="btn btn-outline-warning" onclick="document.getElementById('chatFile').click()"><i class="fa-solid fa-paperclip"></i></button>
-                    <button type="submit" class="btn btn-gold"><i class="fa-solid fa-paper-plane"></i></button>
+                    <button type="submit" class="btn btn-green-gold"><i class="fa-solid fa-paper-plane"></i></button>
                 </form>
                 <div id="groupPermissionNotice" class="text-danger small text-center mt-1" style="display:none;">সাধারণ ইউজাররা গ্রুপে মেসেজ পাঠাতে পারবেন না, কেবল দেখতে পারবেন।</div>
                 <div id="selectedFilePreview" class="small text-warning mt-1" style="display:none;"></div>
@@ -390,7 +394,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="notificationModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন ও মেসেজ রিকোয়েস্ট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -406,7 +410,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="recordModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning" id="recordModalTitle">গ্রাহক নম্বর যোগ করুন</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -425,7 +429,7 @@ HTML_TEMPLATE = """
         <div class="col-md-6"><label class="form-label">সংযোগ নম্বর</label><input type="text" id="rec_conn" name="connection_num" class="form-control"></div>
         <div class="col-md-6"><label class="form-label">ঠিকানা</label><input type="text" id="rec_address" name="address" class="form-control"></div>
         <div class="col-md-6"><label class="form-label">নোট</label><input type="text" id="rec_note" name="note" class="form-control"></div>
-        <div class="col-12 text-end"><button type="submit" class="btn btn-gold px-4">সেভ করুন</button></div>
+        <div class="col-12 text-end"><button type="submit" class="btn btn-green-gold px-4">সেভ করুন</button></div>
       </form>
     </div>
   </div>
@@ -434,7 +438,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="createUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> ইউজার বা এডমিন তৈরি করুন</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -451,7 +455,7 @@ HTML_TEMPLATE = """
                 <option value="admin">সাব-এডমিন</option>
             </select>
         </div>
-        <button type="submit" class="btn btn-gold w-100 py-2">তৈরি করুন</button>
+        <button type="submit" class="btn btn-green-gold w-100 py-2">তৈরি করুন</button>
       </form>
     </div>
   </div>
@@ -460,7 +464,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="editUserModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-user-pen"></i> ইউজার/এডমিন তথ্য পরিবর্তন</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -468,7 +472,7 @@ HTML_TEMPLATE = """
         <input type="hidden" id="edit_user_id" name="user_id">
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" id="edit_username" name="username" class="form-control" required></div>
         <div class="mb-3"><label class="form-label">নতুন পাসওয়ার্ড</label><input type="text" id="edit_password" name="password" class="form-control" placeholder="নতুন পাসওয়ার্ড দিন" required></div>
-        <button type="submit" class="btn btn-gold w-100 py-2">পরিবর্তন সেভ করুন</button>
+        <button type="submit" class="btn btn-green-gold w-100 py-2">পরিবর্তন সেভ করুন</button>
       </form>
     </div>
   </div>
@@ -477,7 +481,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="adminHistoryModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন হিস্ট্রি ও সার্বিক পরিসংখ্যান</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -498,7 +502,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="profileModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom text-center">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-warning"><i class="fa-solid fa-user-gear"></i> প্রোফাইল ছবি আপডেট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -512,7 +516,7 @@ HTML_TEMPLATE = """
             <label class="form-label">আপনার নতুন প্রোফাইল ছবি সিলেক্ট করুন</label>
             <input type="file" name="profile_pic" class="form-control" accept="image/*" required onchange="previewAvatar(event)">
         </div>
-        <button type="submit" class="btn btn-gold w-100 py-2">ছবি আপডেট করুন</button>
+        <button type="submit" class="btn btn-green-gold w-100 py-2">ছবি আপডেট করুন</button>
       </form>
     </div>
   </div>
@@ -521,7 +525,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="trashBinModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
-      <div class="modal-header border-warning d-flex justify-content-between">
+      <div class="modal-header border-success d-flex justify-content-between">
         <h5 class="modal-title text-danger"><i class="fa-solid fa-trash-arrow-up"></i> রিসাইকেল বিন (রিস্টোর অপশন)</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
@@ -577,7 +581,6 @@ function loadRecords() {
                 displayIndex = idx + 1;
             }
             
-            // ইউজাররা শুধু সার্চ করে দেখতে পারবে কিন্তু ডিটেলস (Customer details modal বা সম্পুর্ণ বিবরণ) দেখতে পারবে না
             let nameCell = isAdmin ? 
                 `<span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span>` : 
                 `<span>${row[1]}</span>`;
@@ -595,7 +598,7 @@ function loadRecords() {
                 <td><span class="badge bg-warning text-dark">${row[3]}</span></td>
                 <td>${row[4] || '-'}</td>
                 <td>${row[5] || '-'}</td>
-                <td><span class="badge bg-info text-dark">${row[7] || 'Khushbu23'}</span></td>
+                <td><span class="badge bg-success text-dark">${row[7] || 'Khushbu23'}</span></td>
                 ${actionTd}
             </tr>`;
         });
@@ -804,11 +807,11 @@ function openNotificationModal() {
         data.notifications.forEach(n => {
             let actionBtn = '';
             if(n.type === 'message') {
-                actionBtn = `<button class="btn btn-sm btn-gold float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openMessengerModal(); selectUserChat('${n.sender}', '${n.sender_name}')">উত্তর দিন</button>`;
+                actionBtn = `<button class="btn btn-sm btn-green-gold float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openMessengerModal(); selectUserChat('${n.sender}', '${n.sender_name}')">উত্তর দিন</button>`;
             } else if(n.type === 'request') {
                 actionBtn = `<button class="btn btn-sm btn-success float-end" onclick="bootstrap.Modal.getInstance(document.getElementById('notificationModal')).hide(); openAccountRequestsModal();">অনুমোদন প্যানেল</button>`;
             }
-            html += `<div class="list-group-item bg-transparent text-white border-bottom border-warning py-2">
+            html += `<div class="list-group-item bg-transparent text-white border-bottom border-success py-2">
                 <div class="d-flex w-100 justify-content-between align-items-center">
                     <h6 class="mb-1 text-warning">${n.title}</h6>
                     <small>${n.time}</small>
@@ -879,7 +882,6 @@ function openAdminHistoryModal() {
     });
 }
 
-// Messenger & Global Notification Status Checker
 function checkGlobalNotifications() {
     fetch('/api/global_status')
     .then(res => res.json())
@@ -954,7 +956,7 @@ function switchChatTab(type) {
             }
         });
 
-        listContainer.innerHTML = `<button class="list-group-item list-group-item-action active bg-secondary text-white border-0 rounded my-1" onclick="selectGroupChat()">👥 কুড়িগ্রাম অফিস গ্রুপ</button>`;
+        listContainer.innerHTML = `<button class="list-group-item list-group-item-action active bg-success text-white border-0 rounded my-1" onclick="selectGroupChat()">👥 কুড়িগ্রাম অফিস গ্রুপ</button>`;
         loadMessages();
     } else {
         currentChatIsGroup = 0;
@@ -965,7 +967,7 @@ function switchChatTab(type) {
             let html = '';
             data.users.forEach(u => {
                 let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger float-end">${u.unread}</span>` : '';
-                html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-secondary mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} ${badgeHtml}</button>`;
+                html += `<button class="list-group-item list-group-item-action text-white bg-transparent border-bottom border-success mb-1" onclick="selectUserChat('${u.username}', '${u.name}')">👤 ${u.name} ${badgeHtml}</button>`;
             });
             listContainer.innerHTML = html || '<p class="text-muted small p-2">কোনো ইনবক্স নেই</p>';
         });
@@ -1013,7 +1015,7 @@ function loadMessages() {
         let html = '';
         data.messages.forEach(m => {
             let bubbleClass = m.is_mine ? 'msg-outgoing' : 'msg-incoming';
-            let senderName = m.is_mine ? 'আপনি' : m.sender;
+            let senderName = m.is_mine ? 'আপনি' : m.sender_display;
             let fileHtml = m.file_url ? `<a href="${m.file_url}" target="_blank"><img src="${m.file_url}" class="chat-file-preview"></a>` : '';
             let defaultAvatar = 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/circle-user.svg';
             let profilePic = m.profile_pic ? m.profile_pic : defaultAvatar;
@@ -1021,10 +1023,10 @@ function loadMessages() {
             html += `<div class="message-bubble ${bubbleClass}">
                 <img src="${profilePic}" class="msg-avatar">
                 <div>
-                    <div style="font-size: 11px; font-weight: bold; opacity: 0.8;">${senderName}</div>
+                    <div style="font-size: 11px; font-weight: bold; opacity: 0.9;">${senderName}</div>
                     <div>${m.message || ''}</div>
                     ${fileHtml}
-                    <div style="font-size: 9px; text-align: right; opacity: 0.7;">${m.timestamp}</div>
+                    <div style="font-size: 9px; text-align: right; opacity: 0.8;">${m.timestamp}</div>
                 </div>
             </div>`;
         });
@@ -1332,6 +1334,7 @@ def register_request():
 
 @app.route('/api/get_account_requests')
 def get_account_requests():
+    # শুধুমাত্র রিয়েল/মেইন এডমিন দেখতে পাবে
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
         return jsonify({'requests': []})
     conn = sqlite3.connect('database.db')
@@ -1345,6 +1348,8 @@ def get_account_requests():
 
 @app.route('/api/approve_user/<int:user_id>', methods=['POST'])
 def approve_user(user_id):
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'success': False})
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET status = 'active' WHERE id = ?", (user_id,))
@@ -1354,6 +1359,8 @@ def approve_user(user_id):
 
 @app.route('/api/reject_user/<int:user_id>', methods=['POST'])
 def reject_user(user_id):
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'success': False})
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (user_id,))
@@ -1378,10 +1385,8 @@ def chat_users():
     cursor = conn.cursor()
     
     if current_user['role'] in ['admin', 'main_admin']:
-        # এডমিনদের জন্য সকল ইউজার যাদের মেসেজ আছে বা চ্যাট করা যাবে
         cursor.execute("SELECT username, name FROM users WHERE username != ? AND is_deleted = 0", (current_uname,))
     else:
-        # সাধারণ ইউজারদের জন্য শুধুমাত্র এডমিনদের লিস্ট দেখাবে যাদের সাথে তারা কথা বলতে পারবে
         cursor.execute("SELECT username, name FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", ())
         
     users = []
@@ -1411,7 +1416,10 @@ def mark_read():
 def get_messages():
     if 'user' not in session:
         return jsonify({'messages': []})
-    current_uname = session['user']['username']
+    
+    current_user = session['user']
+    current_uname = current_user['username']
+    is_current_admin = current_user['role'] in ['admin', 'main_admin']
     target = request.args.get('target')
     is_group = int(request.args.get('is_group', 0))
     
@@ -1420,7 +1428,7 @@ def get_messages():
     
     if is_group:
         cursor.execute("""
-            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic 
+            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic, u.role, u.name 
             FROM messages m 
             LEFT JOIN users u ON m.sender = u.username 
             WHERE m.is_group = 1 ORDER BY m.id ASC
@@ -1430,7 +1438,7 @@ def get_messages():
         conn.commit()
         
         cursor.execute("""
-            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic 
+            SELECT m.sender, m.receiver, m.message, m.file_url, m.timestamp, u.profile_pic, u.role, u.name 
             FROM messages m 
             LEFT JOIN users u ON m.sender = u.username 
             WHERE m.is_group = 0 AND ((m.sender = ? AND m.receiver = ?) OR (m.sender = ? AND m.receiver = ?))
@@ -1439,14 +1447,43 @@ def get_messages():
         
     messages = []
     for r in cursor.fetchall():
+        sender_username = r[0]
+        sender_role = r[6]
+        sender_name_db = r[7]
+        profile_pic = r[5]
+        
+        # ডিসপ্লে নেম লজিক:
+        # ১. যদি বর্তমান ইউজার সাধারণ ইউজার (user) হন এবং মেসেজটি কোনো এডমিন (বা মেইন এডমিন) পাঠিয়ে থাকেন,
+        #    তবে তার নামের জায়গায় শুধু "এডমিন" দেখাবে।
+        # ২. যদি বর্তমান ইউজার এডমিন হন এবং অন্য এডমিনদের সাথে চ্যাট করেন, তবে তাদের নাম দেখা যাবে।
+        # ৩. মেইন এডমিন (Khushbu23) নিজের পরিচয় দেখতে পাবেন।
+        if not is_current_admin:
+            if sender_username == current_uname:
+                sender_display = 'আপনি'
+            elif sender_role in ['admin', 'main_admin']:
+                sender_display = 'এডমিন'
+            else:
+                sender_display = sender_name_db or sender_username
+        else:
+            # এডমিন প্যানেলের জন্য লজিক
+            if sender_username == current_uname:
+                sender_display = 'আপনি'
+            elif sender_username == MAIN_ADMIN_USERNAME:
+                sender_display = f"রিয়েল এডমিন ({sender_name_db})"
+            elif sender_role in ['admin', 'main_admin']:
+                sender_display = f"এডমিন ({sender_name_db})"
+            else:
+                sender_display = sender_name_db or sender_username
+
         messages.append({
-            'sender': r[0],
+            'sender': sender_username,
             'receiver': r[1],
             'message': r[2],
             'file_url': r[3],
             'timestamp': r[4],
-            'profile_pic': r[5],
-            'is_mine': (r[0] == current_uname)
+            'profile_pic': profile_pic,
+            'sender_display': sender_display,
+            'is_mine': (sender_username == current_uname)
         })
     conn.close()
     return jsonify({'messages': messages})
@@ -1496,6 +1533,7 @@ def global_status():
     unread_msg_count = cursor.fetchone()[0]
     
     pending_requests_count = 0
+    # শুধুমাত্র রিয়েল এডমিন দেখতে পাবে পেন্ডিং রিকোয়েস্ট সংখ্যা
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0")
         pending_requests_count = cursor.fetchone()[0]
@@ -1524,6 +1562,7 @@ def get_notifications():
     cursor = conn.cursor()
     notifications = []
     
+    # শুধুমাত্র রিয়েল এডমিনের কাছেই অ্যাকাউন্ট রেজিস্ট্রেশন রিকোয়েস্ট নোটিফিকেশন যাবে
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT id, name, username, created_at FROM users WHERE status = 'pending' AND is_deleted = 0")
         for r in cursor.fetchall():
@@ -1534,7 +1573,6 @@ def get_notifications():
                 'time': r[3]
             })
             
-    # সকল এডমিন বা ইউজারদের কাছে তাদের ইনবক্সের আনরিড মেসেজের নোটিফিকেশন যাবে
     cursor.execute("""
         SELECT m.sender, u.name, m.message, m.timestamp FROM messages m 
         JOIN users u ON m.sender = u.username
