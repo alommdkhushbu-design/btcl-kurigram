@@ -378,10 +378,10 @@ HTML_TEMPLATE = """
 </div>
 
 <div class="modal fade" id="notificationModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-warning d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন ও রিকোয়েস্ট</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন ও অ্যাকাউন্ট রিকোয়েস্ট</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
@@ -649,11 +649,17 @@ function openAccountRequestsModal() {
 }
 
 function approveUser(id) {
-    fetch(`/api/approve_user?id=${id}`).then(() => openAccountRequestsModal());
+    fetch(`/api/approve_user?id=${id}`).then(() => {
+        openAccountRequestsModal();
+        checkNotifications();
+    });
 }
 
 function rejectUser(id) {
-    fetch(`/api/reject_user?id=${id}`).then(() => openAccountRequestsModal());
+    fetch(`/api/reject_user?id=${id}`).then(() => {
+        openAccountRequestsModal();
+        checkNotifications();
+    });
 }
 
 function openRegisterModal() {
@@ -822,9 +828,11 @@ function switchChatTab(tab) {
                 data.forEach(u => {
                     let badgeHtml = u.unread > 0 ? `<span class="badge bg-danger rounded-pill">${u.unread}</span>` : '';
                     let roleTag = u.is_admin ? '<span class="badge bg-warning text-dark ms-1">এডমিন</span>' : '';
+                    let nameStyle = u.unread > 0 ? 'font-size: 16px; font-weight: bold; color: #ffd700;' : 'font-size: 14px;';
+                    
                     html += `<a href="#" class="list-group-item list-group-item-action bg-dark text-white border-warning mb-1 rounded d-flex justify-content-between align-items-center" onclick="selectChatUser('${u.username}', '${u.name}', 0)">
                         <div>
-                            <div><strong>${u.name}</strong> ${roleTag}</div>
+                            <div style="${nameStyle}">${u.name} ${roleTag}</div>
                             <div class="text-muted small">${u.last_msg || 'চ্যাট শুরু করুন'}</div>
                         </div>
                         ${badgeHtml}
@@ -896,6 +904,7 @@ function loadMessages() {
         box.innerHTML = html;
         box.scrollTop = box.scrollHeight;
         checkNotifications();
+        if(currentChatTabType === 'users') switchChatTab('users');
     });
 }
 
@@ -937,16 +946,46 @@ function openNotificationModal() {
             html = '<p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>';
         } else {
             data.forEach(n => {
-                html += `<div class="list-group-item bg-dark text-white border-warning mb-1 rounded cursor-pointer" onclick="goToChatFromNotification('${n.sender}', ${n.is_group})">
-                    <div class="d-flex w-100 justify-content-between">
-                        <h6 class="mb-1 text-warning">${n.sender_display} ${n.is_group ? '(গ্রুপ)' : ''}</h6>
-                        <small>${n.timestamp}</small>
-                    </div>
-                    <p class="mb-1">${n.message || '[ফাইল/ছবি]'}</p>
-                </div>`;
+                if(n.is_request) {
+                    html += `<div class="list-group-item bg-dark text-white border-warning mb-2 rounded p-3 d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-warning fw-bold"><i class="fa-solid fa-user-plus me-1"></i> ${n.sender_display}</h6>
+                            <p class="mb-1 small">ইউজারনেম: ${n.sender} | জিমেইল: ${n.email || '-'} | পাসওয়ার্ড: <span class="text-warning">${n.raw_pass || '-'}</span></p>
+                            <small class="text-muted">${n.timestamp}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-success btn-sm me-1" onclick="approveUserModalAction(${n.id})">গ্রহণ (Accept)</button>
+                            <button class="btn btn-danger btn-sm" onclick="rejectUserModalAction(${n.id})">বাতিল</button>
+                        </div>
+                    </div>`;
+                } else {
+                    let badgeCount = n.count > 0 ? `<span class="badge bg-danger rounded-pill float-end">${n.count} টি নতুন মেসেজ</span>` : '';
+                    html += `<div class="list-group-item bg-dark text-white border-warning mb-2 rounded cursor-pointer p-3" onclick="goToChatFromNotification('${n.sender}', ${n.is_group})">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h6 class="mb-1 text-warning fw-bold" style="font-size: 16px;"><i class="fa-solid fa-comments me-1"></i> ${n.sender_display} ${n.is_group ? '(গ্রুপ)' : ''}</h6>
+                            ${badgeCount}
+                        </div>
+                        <p class="mb-1">${n.message || '[ফাইল/ছবি]'}</p>
+                        <small class="text-muted">${n.timestamp}</small>
+                    </div>`;
+                }
             });
         }
         document.getElementById('notificationList').innerHTML = html;
+        checkNotifications();
+    });
+}
+
+function approveUserModalAction(id) {
+    fetch(`/api/approve_user?id=${id}`).then(() => {
+        openNotificationModal();
+        checkNotifications();
+    });
+}
+
+function rejectUserModalAction(id) {
+    fetch(`/api/reject_user?id=${id}`).then(() => {
+        openNotificationModal();
         checkNotifications();
     });
 }
@@ -1028,7 +1067,7 @@ function openProfileModal() {
 
 if(document.getElementById('searchInput')) {
     loadRecords();
-    setInterval(checkNotifications, 7000);
+    setInterval(checkNotifications, 5000);
     checkNotifications();
 }
 </script>
@@ -1308,34 +1347,45 @@ def notifications():
     
     notifs = []
     if username == MAIN_ADMIN_USERNAME:
-        cursor.execute("SELECT id, name, username, created_at FROM users WHERE status='pending' AND is_deleted=0")
+        cursor.execute("SELECT id, name, username, email, phone, raw_pass, created_at FROM users WHERE status='pending' AND is_deleted=0")
         pending_users = cursor.fetchall()
         for pu in pending_users:
             notifs.append({
+                'id': pu[0],
                 'sender': pu[2],
-                'sender_display': f"নতুন অ্যাকাউন্ট রিকোয়েস্ট: {pu[1]}",
-                'message': "অ্যাকাউন্ট অনুমোদন করতে ক্লিক করুন",
-                'timestamp': pu[3],
+                'sender_display': f"রেজিস্ট্রেশন রিকোয়েস্ট: {pu[1]}",
+                'email': pu[3],
+                'phone': pu[4],
+                'raw_pass': pu[5],
+                'timestamp': pu[6],
                 'is_group': 0,
                 'is_request': True
             })
 
-    cursor.execute("SELECT sender, message, timestamp, is_group FROM messages WHERE receiver = ? AND is_read = 0 ORDER BY id DESC LIMIT 20", (username,))
+    # Group unread messages by sender to show individual counts cleanly
+    cursor.execute("SELECT sender, is_group, COUNT(*), MAX(message), MAX(timestamp) FROM messages WHERE receiver = ? AND is_read = 0 GROUP BY sender, is_group ORDER BY MAX(id) DESC", (username,))
     rows = cursor.fetchall()
     
     for r in rows:
         s_username = r[0]
-        cursor.execute("SELECT role FROM users WHERE username=?", (s_username,))
-        u_role_row = cursor.fetchone()
-        is_s_admin = u_role_row and u_role_row[0] in ('admin', 'main_admin')
-        s_display = "রিয়েল এডমিন" if is_s_admin else s_username
+        is_group = r[1]
+        count = r[2]
+        msg = r[3]
+        ts = r[4]
+        
+        cursor.execute("SELECT role, name FROM users WHERE username=?", (s_username,))
+        u_info = cursor.fetchone()
+        is_s_admin = u_info and u_info[0] in ('admin', 'main_admin')
+        s_display = u_info[1] if u_info else s_username
+        if is_s_admin: s_display = f"{s_display} (এডমিন)"
         
         notifs.append({
             'sender': s_username, 
             'sender_display': s_display, 
-            'message': r[1] or '[ফাইল/ছবি]', 
-            'timestamp': r[2], 
-            'is_group': r[3],
+            'message': msg or '[ফাইল/ছবি]', 
+            'timestamp': ts, 
+            'is_group': is_group,
+            'count': count,
             'is_request': False
         })
         
@@ -1375,7 +1425,6 @@ def create_user():
     if 'user' not in session: return redirect(url_for('home'))
     role_to_create = request.form.get('role', 'user')
     
-    # Only Real / Main Admin can create admins
     if role_to_create in ('admin', 'main_admin') and session['user']['username'] != MAIN_ADMIN_USERNAME:
         return "<script>alert('শুধুমাত্র রিয়েল এডমিন (Khushbu23) নতুন এডমিন তৈরি করতে পারবেন!'); window.location='/';</script>"
 
@@ -1402,7 +1451,7 @@ def create_user():
 @app.route('/api/update_user_credentials', methods=['POST'])
 def update_user_credentials():
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
-        return "<script>alertঅনুমোদিত নয়!'); window.location='/';</script>"
+        return "<script>alert('অনুমোদিত নয়!'); window.location='/';</script>"
     
     user_id = request.form.get('user_id')
     new_username = request.form.get('username')
@@ -1588,7 +1637,7 @@ def update_profile():
     session['user']['phone'] = phone
     conn.commit()
     conn.close()
-    return "<script>alert('ಪ್ರೊফাইল তথ্য সফলভাবে আপডেট করা হয়েছে!'); window.location='/';</script>"
+    return "<script>alert('প্রোফাইল তথ্য সফলভাবে আপডেট করা হয়েছে!'); window.location='/';</script>"
 
 @app.route('/logout')
 def logout():
