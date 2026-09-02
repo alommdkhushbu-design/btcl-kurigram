@@ -9,7 +9,6 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_green_vibrant_pro_2026")
 
 MAIN_ADMIN_USERNAME = "Khushbu23"
-SECURITY_DELETE_PASSWORD = "137955"
 UPLOAD_FOLDER = 'static/uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -177,21 +176,11 @@ HTML_TEMPLATE = """
                     <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-image me-2"></i>প্রোফাইল ছবি আপডেট</a></li>
                     
                     {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
-                    <li><a class="dropdown-item text-warning" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি রিপোর্ট</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি রিপোর্ট</a></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="openTrashBinModal()"><i class="fa-solid fa-trash-arrow-up me-2"></i>রিসাইকেল বিন / রিস্টোর</a></li>
                     {% endif %}
                 </ul>
             </div>
-
-            {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
-            <div class="dropdown">
-                <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                    <li><a class="dropdown-item text-danger" href="#" onclick="openTrashBinModal()"><i class="fa-solid fa-trash-arrow-up me-2"></i>রিসাইকেল বিন / রিস্টোর</a></li>
-                </ul>
-            </div>
-            {% endif %}
 
             <a href="/logout" class="btn btn-danger btn-sm fw-bold"><i class="fa-solid fa-right-from-bracket"></i> লগআউট</a>
         </div>
@@ -333,9 +322,28 @@ HTML_TEMPLATE = """
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সর্বশেষ অ্যাক্টিভ সময়</th><th>মোট নম্বর যোগ</th></tr>
+                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সর্বশেষ অ্যাক্টিভ সময়</th><th>মোট নম্বর যোগ</th><th>তৈরি করা ইউজার</th></tr>
                 </thead>
                 <tbody id="adminHistoryTableBody"></tbody>
+            </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="adminCreatedUsersModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-success d-flex justify-content-between">
+        <h5 class="modal-title text-warning" id="adminCreatedUsersTitle"><i class="fa-solid fa-users"></i> এডমিন কর্তৃক তৈরি ইউজার তালিকা</h5>
+        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle">
+                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>রোল</th><th>স্ট্যাটাস</th></tr></thead>
+                <tbody id="adminCreatedUsersTableBody"></tbody>
             </table>
         </div>
       </div>
@@ -639,7 +647,7 @@ function openUserListModal() {
         tbody.innerHTML = '';
         data.forEach(user => {
             let deleteBtn = '';
-            // এখানে রিয়েল এডমিন আইডি (Khushbu23) অথবা main_admin হলে ডিলিট বাটন পুরোপুরি লুকিয়ে রাখা হয়েছে যাতে কেউ ভুল করেও মুছতে না পারে
+            // রিয়েল এডমিন আইডি (Khushbu23) হলে ডিলিট অপশন থাকবে না
             if (user.username !== '{{ MAIN_ADMIN_USERNAME }}' && user.role !== 'main_admin') {
                 deleteBtn = `<button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})"><i class="fa-solid fa-trash"></i> ডিলিট</button>`;
             } else {
@@ -670,6 +678,10 @@ function deleteUser(userId) {
             }
         });
     }
+}
+
+function openCreateUserModal() {
+    new bootstrap.Modal(document.getElementById('createUserModal')).show();
 }
 
 function openAddRecordModal() {
@@ -847,12 +859,34 @@ function openAdminHistoryModal() {
         data.forEach(h => {
             tbody.innerHTML += `<tr>
                 <td>${h.name}</td>
-                <td>${h.username}</td>
+                <td class="clickable-name" onclick="openAdminCreatedUsers('${h.username}', '${h.name}')">${h.username}</td>
                 <td>${h.last_active}</td>
                 <td><span class="badge bg-success">${h.total_added} জন</span></td>
+                <td><span class="badge bg-warning text-dark">${h.created_users_count} জন</span></td>
             </tr>`;
         });
         new bootstrap.Modal(document.getElementById('adminHistoryModal')).show();
+    });
+}
+
+function openAdminCreatedUsers(username, adminName) {
+    document.getElementById('adminCreatedUsersTitle').innerText = `${adminName} (@${username}) কর্তৃক তৈরি ইউজার তালিকা`;
+    fetch(`/api/admin_created_users/${username}`).then(res => res.json()).then(data => {
+        let tbody = document.getElementById('adminCreatedUsersTableBody');
+        tbody.innerHTML = '';
+        if(data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">এই এডমিন কোনো ইউজার তৈরি করেননি।</td></tr>`;
+        } else {
+            data.forEach(u => {
+                tbody.innerHTML += `<tr>
+                    <td>${u.name}</td>
+                    <td>${u.username}</td>
+                    <td><span class="badge bg-warning text-dark">${u.role}</span></td>
+                    <td><span class="badge bg-success">${u.status}</span></td>
+                </tr>`;
+            });
+        }
+        new bootstrap.Modal(document.getElementById('adminCreatedUsersModal')).show();
     });
 }
 
@@ -1126,11 +1160,12 @@ def create_user():
     password = generate_password_hash(request.form.get('password'))
     raw_pass = request.form.get('password')
     role = request.form.get('role', 'user')
+    added_by = session['user']['username']
     
     conn = get_db_connection()
     try:
         conn.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)",
-                     (name, username, email, phone, password, raw_pass, role, MAIN_ADMIN_USERNAME))
+                     (name, username, email, phone, password, raw_pass, role, added_by))
         conn.commit()
     except Exception as e:
         print(e)
@@ -1148,8 +1183,8 @@ def register_request():
     
     conn = get_db_connection()
     try:
-        conn.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status) VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending')",
-                     (name, username, email, phone, password, raw_pass))
+        conn.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending', ?)",
+                     (name, username, email, phone, password, raw_pass, 'Self Registration'))
         conn.commit()
     except Exception as e:
         print(e)
@@ -1307,10 +1342,21 @@ def admin_history():
     for a in admins:
         a_dict = dict(a)
         total = conn.execute("SELECT COUNT(*) FROM phone_records WHERE added_by = ?", (a['username'],)).fetchone()[0]
+        created_count = conn.execute("SELECT COUNT(*) FROM users WHERE added_by = ? AND is_deleted = 0", (a['username'],)).fetchone()[0]
         a_dict['total_added'] = total
+        a_dict['created_users_count'] = created_count
         result.append(a_dict)
     conn.close()
     return jsonify(result)
+
+@app.route('/api/admin_created_users/<username>')
+def admin_created_users(username):
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify([])
+    conn = get_db_connection()
+    users = conn.execute("SELECT name, username, role, status FROM users WHERE added_by = ? AND is_deleted = 0", (username,)).fetchall()
+    conn.close()
+    return jsonify([dict(u) for u in users])
 
 @app.route('/api/trash_records')
 def trash_records():
