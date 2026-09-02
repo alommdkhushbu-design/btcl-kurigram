@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_green_vibrant_2026")
+app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_green_vibrant_pro_2026")
 
 MAIN_ADMIN_USERNAME = "Khushbu23"
 SECURITY_DELETE_PASSWORD = "137955"
@@ -46,6 +46,7 @@ def init_db():
             connection_num TEXT,
             address TEXT,
             note TEXT,
+            record_image TEXT DEFAULT '',
             added_by TEXT DEFAULT 'Khushbu23',
             is_deleted INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -174,8 +175,7 @@ HTML_TEMPLATE = """
                     <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-image me-2"></i>প্রোফাইল ছবি আপডেট</a></li>
                     
                     {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
-                    <li><a class="dropdown-item text-warning" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন তৈরি (শুধুমাত্র মেইন এডমিন)</a></li>
-                    <li><a class="dropdown-item text-warning" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি ও অ্যাক্টিভিটি</a></li>
+                    <li><a class="dropdown-item text-warning" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি (অ্যাক্টিভিটি রিপোর্ট)</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -307,7 +307,7 @@ HTML_TEMPLATE = """
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning" id="adminDetailModalTitle"><i class="fa-solid fa-user-shield"></i> এডমিন অ্যাক্টিভিটি রিপোর্ট</h5>
+        <h5 class="modal-title text-warning" id="adminDetailModalTitle"><i class="fa-solid fa-user-shield"></i> এডমিন ডিটেইলড অ্যাক্টিভিটি</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body" id="adminDetailBody">
@@ -429,6 +429,20 @@ HTML_TEMPLATE = """
         <div class="col-md-6"><label class="form-label">সংযোগ নম্বর</label><input type="text" id="rec_conn" name="connection_num" class="form-control"></div>
         <div class="col-md-6"><label class="form-label">ঠিকানা</label><input type="text" id="rec_address" name="address" class="form-control"></div>
         <div class="col-md-6"><label class="form-label">নোট</label><input type="text" id="rec_note" name="note" class="form-control"></div>
+        
+        <div class="col-12 border border-success p-3 rounded bg-dark">
+            <label class="form-label text-warning mb-2"><i class="fa-solid fa-camera"></i> গ্রাহক বা ডকুমেন্টের ছবি যুক্ত করুন:</label>
+            <div class="d-flex gap-2 flex-wrap mb-2">
+                <button type="button" class="btn btn-outline-warning btn-sm" onclick="document.getElementById('cameraInput').click()"><i class="fa-solid fa-camera-retro me-1"></i> সরাসরি ক্যামেরা ব্যবহার করুন</button>
+                <button type="button" class="btn btn-outline-emerald btn-sm" onclick="document.getElementById('galleryInput').click()"><i class="fa-solid fa-image me-1"></i> গ্যালারি থেকে ছবি সিলেক্ট করুন</button>
+            </div>
+            <input type="file" id="cameraInput" name="record_image_camera" accept="image/*" capture="environment" class="d-none" onchange="previewRecordImage(this)">
+            <input type="file" id="galleryInput" name="record_image_gallery" accept="image/*" class="d-none" onchange="previewRecordImage(this)">
+            <div id="imagePreviewContainer" class="mt-2" style="display:none;">
+                <img id="recImagePreview" src="" style="max-height: 120px; border-radius: 5px; border: 1px solid #34d399;">
+            </div>
+        </div>
+
         <div class="col-12 text-end"><button type="submit" class="btn btn-green-gold px-4">সেভ করুন</button></div>
       </form>
     </div>
@@ -439,22 +453,16 @@ HTML_TEMPLATE = """
   <div class="modal-dialog">
     <div class="modal-content card-custom">
       <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> ইউজার বা এডমিন তৈরি করুন</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> ইউজার তৈরি করুন</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <form action="/api/create_user" method="POST" class="modal-body">
+        <input type="hidden" name="role" value="user">
         <div class="mb-2"><label class="form-label">নাম</label><input type="text" name="name" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">জিমেইল</label><input type="email" name="email" class="form-control"></div>
         <div class="mb-2"><label class="form-label">মোবাইল</label><input type="text" name="phone" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
-        <div class="mb-3">
-            <label class="form-label">রোল</label>
-            <select name="role" class="form-select">
-                <option value="user">সাধারণ ইউজার</option>
-                <option value="admin">সাব-এডমিন</option>
-            </select>
-        </div>
+        <div class="mb-3"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
         <button type="submit" class="btn btn-green-gold w-100 py-2">তৈরি করুন</button>
       </form>
     </div>
@@ -482,14 +490,15 @@ HTML_TEMPLATE = """
   <div class="modal-dialog modal-lg">
     <div class="modal-content card-custom">
       <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন হিস্ট্রি ও সার্বিক পরিসংখ্যান</h5>
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-clock-rotate-left"></i> এডমিন হিস্ট্রি ও অ্যাক্টিভিটি (রিয়েল এডমিন প্যানেল)</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
+        <p class="small text-warning mb-2">যেকোনো এডমিনের নামের ওপর ক্লিক করে তাদের বিস্তারিত কাজ, তারিখ, সময় ও মিনিটভিত্তিক অ্যাক্টিভিটি দেখুন:</p>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
                 <thead>
-                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সক্রিয় সময়</th><th>ইউজার যোগ</th><th>নম্বর যোগ</th></tr>
+                    <tr><th>এডমিন নাম</th><th>ইউজারনেম</th><th>সর্বশেষ অ্যাক্টিভ সময়</th><th>মোট ইউজার যোগ</th><th>মোট নম্বর যোগ</th></tr>
                 </thead>
                 <tbody id="adminHistoryTableBody"></tbody>
             </table>
@@ -581,14 +590,13 @@ function loadRecords() {
                 displayIndex = idx + 1;
             }
             
-            let nameCell = isAdmin ? 
-                `<span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span>` : 
-                `<span>${row[1]}</span>`;
+            // নামের ওপর ক্লিক করলেই সব ডিটেলস দেখা যাবে (সবার জন্য কার্যকর)
+            let nameCell = `<span class="clickable-name" onclick="openCustomerDetails(${row[0]})">${row[1]}</span>`;
 
             let actionTd = isAdmin ? `
                 <td>
-                    <button class="btn btn-warning btn-sm me-1" onclick="openEditRecordModal(${row[0]})"><i class="fa-solid fa-pen"></i></button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteRecord(${row[0]})"><i class="fa-solid fa-trash"></i></button>
+                    <button class="btn btn-warning btn-sm me-1" onclick="openEditRecordModal(${row[0]})" title="এডিট করুন"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteRecord(${row[0]})" title="ডিলিট করুন"><i class="fa-solid fa-trash"></i></button>
                 </td>` : '';
 
             html += `<tr>
@@ -598,7 +606,7 @@ function loadRecords() {
                 <td><span class="badge bg-warning text-dark">${row[3]}</span></td>
                 <td>${row[4] || '-'}</td>
                 <td>${row[5] || '-'}</td>
-                <td><span class="badge bg-success text-dark">${row[7] || 'Khushbu23'}</span></td>
+                <td><span class="badge bg-success text-dark">${row[8] || 'Khushbu23'}</span></td>
                 ${actionTd}
             </tr>`;
         });
@@ -619,8 +627,20 @@ function loadRecords() {
 function openAddRecordModal() {
     document.getElementById('recordForm').reset();
     document.getElementById('rec_id').value = '';
+    document.getElementById('imagePreviewContainer').style.display = 'none';
     document.getElementById('recordModalTitle').innerText = 'গ্রাহক নম্বর যোগ করুন';
     new bootstrap.Modal(document.getElementById('recordModal')).show();
+}
+
+function previewRecordImage(input) {
+    if (input.files && input.files[0]) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('recImagePreview').src = e.target.result;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
 }
 
 function openEditRecordModal(id) {
@@ -636,6 +656,14 @@ function openEditRecordModal(id) {
             document.getElementById('rec_conn').value = r.connection_num || '';
             document.getElementById('rec_address').value = r.address || '';
             document.getElementById('rec_note').value = r.note || '';
+            
+            if(r.record_image) {
+                document.getElementById('recImagePreview').src = r.record_image;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+            } else {
+                document.getElementById('imagePreviewContainer').style.display = 'none';
+            }
+            
             document.getElementById('recordModalTitle').innerText = 'গ্রাহক নম্বর পরিবর্তন করুন';
             new bootstrap.Modal(document.getElementById('recordModal')).show();
         }
@@ -686,6 +714,7 @@ function openCustomerDetails(id) {
     .then(data => {
         if(data.success) {
             let r = data.record;
+            let imgHtml = r.record_image ? `<div class="mt-3 text-center"><p class="text-warning mb-1">যুক্ত করা ছবি / ডকুমেন্ট:</p><a href="${r.record_image}" target="_blank"><img src="${r.record_image}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid #34d399;"></a></div>` : '';
             let html = `
                 <p><strong>গ্রাহকের নাম:</strong> ${r.customer_name}</p>
                 <p><strong>মোবাইল:</strong> ${r.mobile || '-'}</p>
@@ -694,7 +723,8 @@ function openCustomerDetails(id) {
                 <p><strong>ঠিকানা:</strong> ${r.address || '-'}</p>
                 <p><strong>নোট:</strong> ${r.note || '-'}</p>
                 <p><strong>যুক্ত করেছেন:</strong> ${r.added_by}</p>
-                <p><strong>যুক্ত করার সময়:</strong> ${r.created_at}</p>
+                <p><strong>তারিখ ও সময়:</strong> ${r.created_at}</p>
+                ${imgHtml}
             `;
             document.getElementById('customerDetailsBody').innerHTML = html;
             new bootstrap.Modal(document.getElementById('customerDetailsModal')).show();
@@ -732,10 +762,6 @@ function openUserListModal() {
 }
 
 function openCreateUserModal() {
-    new bootstrap.Modal(document.getElementById('createUserModal')).show();
-}
-
-function openCreateAdminModal() {
     new bootstrap.Modal(document.getElementById('createUserModal')).show();
 }
 
@@ -863,22 +889,47 @@ function restoreRecord(id) {
     });
 }
 
+// এডমিন হিস্ট্রি ও অ্যাক্টিভিটি রিপোর্ট (শুধুমাত্র রিয়েল এডমিন দেখতে পাবে)
 function openAdminHistoryModal() {
     fetch('/api/admin_history')
     .then(res => res.json())
     .then(data => {
         let html = '';
         data.history.forEach(h => {
+            // এডমিন নামের ওপর ক্লিক করলেই তার সুনির্দিষ্ট অ্যাক্টিভিটি ও ডিটেইলস পপআপে দেখাবে
             html += `<tr>
-                <td>${h.name}</td>
+                <td><span class="clickable-name" onclick="openAdminDetail('${h.username}', '${h.name}')">${h.name}</span></td>
                 <td>${h.username}</td>
-                <td>${h.last_active}</td>
+                <td><span class="badge bg-dark text-warning">${h.last_active}</span></td>
                 <td><span class="badge bg-info">${h.users_added}</span></td>
                 <td><span class="badge bg-warning text-dark">${h.records_added}</span></td>
             </tr>`;
         });
         document.getElementById('adminHistoryTableBody').innerHTML = html;
         new bootstrap.Modal(document.getElementById('adminHistoryModal')).show();
+    });
+}
+
+// সুনির্দিষ্ট এডমিনের ডিটেইলড অ্যাক্টিভিটি (তারিখ, সময় ও মিনিটসহ)
+function openAdminDetail(username, name) {
+    fetch(`/api/admin_detail/${username}`)
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('adminDetailModalTitle').innerText = `এডমিন অ্যাক্টিভিটি: ${name} (@${username})`;
+        let html = `<h6 class="text-warning mb-2">এই এডমিন কর্তৃক এন্ট্রি করা সমস্ত রেকর্ড ও কাজের সময়তালিকা:</h6>`;
+        html += `<div class="table-responsive"><table class="table table-dark table-striped align-middle"><thead><tr><th>গ্রাহকের নাম</th><th>সেবার ধরন</th><th>সংযোগ নম্বর</th><th>তারিখ ও সময়</th></tr></thead><tbody>`;
+        
+        if(data.records.length > 0) {
+            data.records.forEach(r => {
+                html += `<tr><td>${r.customer_name}</td><td>${r.service_type}</td><td>${r.connection_num || '-'}</td><td>${r.created_at}</td></tr>`;
+            });
+        } else {
+            html += `<tr><td colspan="4" class="text-center text-muted">এই এডমিন এখনো কোনো নম্বর বা রেকর্ড যোগ করেননি।</td></tr>`;
+        }
+        html += `</tbody></table></div>`;
+        
+        document.getElementById('adminDetailBody').innerHTML = html;
+        new bootstrap.Modal(document.getElementById('adminDetailModal')).show();
     });
 }
 
@@ -1108,11 +1159,17 @@ def login():
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE username = ? OR email = ? OR phone = ?", (username, username, username))
     user = cursor.fetchone()
-    conn.close()
     
     if user and (check_password_hash(user[5], password) or password == user[6]):
         if user[8] != 'active' and user[2] != MAIN_ADMIN_USERNAME:
+            conn.close()
             return "অ্যাকাউন্টটি এখনো মেইন এডমিন কর্তৃক অনুমোদিত হয়নি।"
+        
+        # লগইন করার সাথে সাথে লাস্ট অ্যাক্টিভ টাইম আপডেট
+        cursor.execute("UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE id = ?", (user[0],))
+        conn.commit()
+        conn.close()
+        
         session['user'] = {
             'id': user[0],
             'name': user[1],
@@ -1124,6 +1181,7 @@ def login():
             'profile_pic': user[9]
         }
         return redirect(url_for('index'))
+    conn.close()
     return "লগইন ব্যর্থ হয়েছে! সঠিক তথ্য দিন।"
 
 @app.route('/logout')
@@ -1193,8 +1251,8 @@ def api_search():
 
 @app.route('/api/get_record/<int:rec_id>')
 def get_record(rec_id):
-    if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
-        return jsonify({'success': False, 'message': 'সাধারণ ইউজারদের বিস্তারিত দেখার অনুমতি নেই!'})
+    if 'user' not in session:
+        return jsonify({'success': False, 'message': 'অনুমতি নেই!'})
         
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -1211,8 +1269,9 @@ def get_record(rec_id):
             'connection_num': row[4],
             'address': row[5],
             'note': row[6],
-            'added_by': row[7],
-            'created_at': row[9]
+            'record_image': row[7],
+            'added_by': row[8],
+            'created_at': row[10]
         }
         return jsonify({'success': True, 'record': record})
     return jsonify({'success': False})
@@ -1231,15 +1290,36 @@ def save_record():
     note = request.form.get('note')
     added_by = session['user']['username']
     
+    record_image = ''
+    # ক্যামেরা অথবা গ্যালারি থেকে আপলোড করা ফাইল হ্যান্ডেল করা
+    file = None
+    if 'record_image_camera' in request.files and request.files['record_image_camera'].filename:
+        file = request.files['record_image_camera']
+    elif 'record_image_gallery' in request.files and request.files['record_image_gallery'].filename:
+        file = request.files['record_image_gallery']
+        
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+        record_image = f'/{filepath}'
+        
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     
+    # এডমিনের লাস্ট অ্যাক্টিভিটি আপডেট করা
+    cursor.execute("UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE username = ?", (added_by,))
+    
     if rec_id:
-        cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?''',
-                       (customer_name, mobile, service_type, connection_num, address, note, rec_id))
+        if record_image:
+            cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=?, record_image=? WHERE id=?''',
+                           (customer_name, mobile, service_type, connection_num, address, note, record_image, rec_id))
+        else:
+            cursor.execute('''UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?''',
+                           (customer_name, mobile, service_type, connection_num, address, note, rec_id))
     else:
-        cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, added_by) VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                       (customer_name, mobile, service_type, connection_num, address, note, added_by))
+        cursor.execute('''INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, record_image, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                       (customer_name, mobile, service_type, connection_num, address, note, record_image, added_by))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -1270,7 +1350,8 @@ def create_user():
     email = request.form.get('email')
     phone = request.form.get('phone')
     password = request.form.get('password')
-    role = request.form.get('role', 'user')
+    # সাব-এডমিন বা সাধারণ ইউজাররা কোনো নতুন এডমিন অ্যাড করতে পারবেন না, কেবল সাধারণ ইউজার তৈরি করতে পারবেন
+    role = 'user'
     
     hashed_pw = generate_password_hash(password)
     
@@ -1334,7 +1415,6 @@ def register_request():
 
 @app.route('/api/get_account_requests')
 def get_account_requests():
-    # শুধুমাত্র রিয়েল/মেইন এডমিন দেখতে পাবে
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
         return jsonify({'requests': []})
     conn = sqlite3.connect('database.db')
@@ -1452,11 +1532,6 @@ def get_messages():
         sender_name_db = r[7]
         profile_pic = r[5]
         
-        # ডিসপ্লে নেম লজিক:
-        # ১. যদি বর্তমান ইউজার সাধারণ ইউজার (user) হন এবং মেসেজটি কোনো এডমিন (বা মেইন এডমিন) পাঠিয়ে থাকেন,
-        #    তবে তার নামের জায়গায় শুধু "এডমিন" দেখাবে।
-        # ২. যদি বর্তমান ইউজার এডমিন হন এবং অন্য এডমিনদের সাথে চ্যাট করেন, তবে তাদের নাম দেখা যাবে।
-        # ৩. মেইন এডমিন (Khushbu23) নিজের পরিচয় দেখতে পাবেন।
         if not is_current_admin:
             if sender_username == current_uname:
                 sender_display = 'আপনি'
@@ -1465,7 +1540,6 @@ def get_messages():
             else:
                 sender_display = sender_name_db or sender_username
         else:
-            # এডমিন প্যানেলের জন্য লজিক
             if sender_username == current_uname:
                 sender_display = 'আপনি'
             elif sender_username == MAIN_ADMIN_USERNAME:
@@ -1533,7 +1607,6 @@ def global_status():
     unread_msg_count = cursor.fetchone()[0]
     
     pending_requests_count = 0
-    # শুধুমাত্র রিয়েল এডমিন দেখতে পাবে পেন্ডিং রিকোয়েস্ট সংখ্যা
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0")
         pending_requests_count = cursor.fetchone()[0]
@@ -1562,7 +1635,6 @@ def get_notifications():
     cursor = conn.cursor()
     notifications = []
     
-    # শুধুমাত্র রিয়েল এডমিনের কাছেই অ্যাকাউন্ট রেজিস্ট্রেশন রিকোয়েস্ট নোটিফিকেশন যাবে
     if current_uname == MAIN_ADMIN_USERNAME:
         cursor.execute("SELECT id, name, username, created_at FROM users WHERE status = 'pending' AND is_deleted = 0")
         for r in cursor.fetchall():
@@ -1612,21 +1684,43 @@ def restore_record(rec_id):
 
 @app.route('/api/admin_history')
 def admin_history():
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'history': []})
+    
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT name, username, last_active FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0")
     history = []
     for r in cursor.fetchall():
         uname = r[1]
-        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE added_by = ?", (uname,))
+        cursor.execute("SELECT COUNT(*) FROM phone_records WHERE added_by = ? AND is_deleted = 0", (uname,))
         recs_added = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM users WHERE added_by = ?", (uname,))
+        cursor.execute("SELECT COUNT(*) FROM users WHERE added_by = ? AND is_deleted = 0", (uname,))
         users_added = cursor.fetchone()[0]
         history.append({
             'name': r[0], 'username': uname, 'last_active': r[2], 'users_added': users_added, 'records_added': recs_added
         })
     conn.close()
     return jsonify({'history': history})
+
+@app.route('/api/admin_detail/<username>')
+def admin_detail(username):
+    if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
+        return jsonify({'records': []})
+    
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT customer_name, service_type, connection_num, created_at FROM phone_records WHERE added_by = ? AND is_deleted = 0 ORDER BY id DESC", (username,))
+    records = []
+    for r in cursor.fetchall():
+        records.append({
+            'customer_name': r[0],
+            'service_type': r[1],
+            'connection_num': r[2],
+            'created_at': r[3]
+        })
+    conn.close()
+    return jsonify({'records': records})
 
 @app.route('/update_profile_pic', methods=['POST'])
 def update_profile_pic():
