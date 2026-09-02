@@ -1,4 +1,5 @@
-import os, sqlite3
+import os
+import sqlite3
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -15,16 +16,23 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 DB_PATH = os.path.join(BASE_DIR, 'database.db')
 
 def db_exec(query, params=(), fetchone=False, fetchall=False, commit=False):
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    cur.execute(query, params)
-    res = None
-    if fetchone: res = cur.fetchone()
-    elif fetchall: res = cur.fetchall()
-    if commit: conn.commit()
-    conn.close()
-    return res
+    try:
+        conn = sqlite3.connect(DB_PATH, timeout=30.0)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(query, params)
+        res = None
+        if fetchone:
+            res = cur.fetchone()
+        elif fetchall:
+            res = cur.fetchall()
+        if commit:
+            conn.commit()
+        conn.close()
+        return res
+    except Exception as e:
+        print(f"Database Error: {e} | Query: {query}")
+        return None
 
 def init_db():
     db_exec('''CREATE TABLE IF NOT EXISTS users (
@@ -45,7 +53,8 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, receiver TEXT, message TEXT, file_url TEXT,
         is_group INTEGER DEFAULT 0, is_read INTEGER DEFAULT 0, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''', commit=True)
 
-    if not db_exec("SELECT * FROM users WHERE username = ?", (MAIN_ADMIN_USERNAME,), fetchone=True):
+    admin_check = db_exec("SELECT * FROM users WHERE username = ?", (MAIN_ADMIN_USERNAME,), fetchone=True)
+    if not admin_check:
         db_exec("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status) VALUES (?, ?, ?, ?, ?, ?, 'main_admin', 'active')",
                 ('Md Khushbu Alom', MAIN_ADMIN_USERNAME, 'admin@btcl.com', '01751947523', generate_password_hash("01751947523"), '01751947523'), commit=True)
 
@@ -205,7 +214,7 @@ function loadRecords() {
     let s = document.getElementById('searchInput').value, sort = document.getElementById('sortSelect').value;
     fetch(`/api/records?search=${encodeURIComponent(s)}&sort=${sort}&service=${encodeURIComponent(currentFilter)}`).then(r => r.json()).then(d => {
         let tb = document.getElementById('recordsTableBody'); tb.innerHTML = '';
-        if(d.length === 0) { tb.innerHTML = `<tr><td colspan="8" class="text-center text-muted">রেকর্ড নেই</td></tr>`; return; }
+        if(!d || d.length === 0) { tb.innerHTML = `<tr><td colspan="8" class="text-center text-muted">রেকর্ড নেই</td></tr>`; return; }
         d.forEach((r, i) => {
             tb.innerHTML += `<tr><td>${i+1}</td><td class="clickable-name" onclick="openCustomerDetails(${r.id})">${r.customer_name}</td><td>${r.mobile||''}</td><td><span class="badge bg-success">${r.service_type}</span></td><td>${r.connection_num||''}</td><td>${r.address||''}</td><td><small class="text-warning">${r.added_by}</small></td>{% if session.get('user').get('role') in ['admin', 'main_admin'] %}<td><button class="btn btn-sm btn-outline-danger" onclick="deleteRecord(${r.id})"><i class="fa-solid fa-trash"></i></button></td>{% endif %}</tr>`;
         });
@@ -289,7 +298,7 @@ function openTrashBinModal() {
 function restoreRecord(id) { fetch(`/api/restore_record/${id}`, {method:'POST'}).then(r=>r.json()).then(d=>{if(d.success) openTrashBinModal();}); }
 function pollData() {
     fetch('/api/notifications_count').then(r=>r.json()).then(d=>{
-        let mb = document.getElementById('msgBadge'); mb.innerText = d.messages; mb.style.display = d.messages>0?'block':'none';
+        let mb = document.getElementById('msgBadge'); if(mb){ mb.innerText = d.messages; mb.style.display = d.messages>0?'block':'none'; }
         let rb = document.getElementById('reqMenuBadge'); if(rb){ rb.innerText = d.requests; rb.style.display = d.requests>0?'inline-block':'none'; }
     });
 }
@@ -303,8 +312,10 @@ def index(): return render_template_string(HTML_TEMPLATE)
 
 @app.route('/login', methods=['POST'])
 def login():
-    u = db_exec("SELECT * FROM users WHERE (username = ? OR email = ?) AND is_deleted = 0", (request.form.get('username'), request.form.get('username')), fetchone=True)
-    if u and check_password_hash(u['password'], request.form.get('password')):
+    username = request.form.get('username')
+    password = request.form.get('password')
+    u = db_exec("SELECT * FROM users WHERE (username = ? OR email = ?) AND is_deleted = 0", (username, username), fetchone=True)
+    if u and check_password_hash(u['password'], password):
         if u['status'] != 'active': return "অ্যাকাউন্ট অনুমোদিত নয়!", 403
         session['user'] = dict(u)
         return redirect(url_for('index'))
@@ -315,30 +326,43 @@ def logout(): session.clear(); return redirect(url_for('index'))
 
 @app.route('/api/ping')
 def ping():
-    if 'user' in session: db_exec("UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE username = ?", (session['user']['username'],), commit=True)
+    if 'user' in session:
+        db_exec("UPDATE users SET last_active = CURRENT_TIMESTAMP WHERE username = ?", (session['user']['username'],), commit=True)
     return jsonify({"status": "alive"})
 
 @app.route('/api/stats')
 def api_stats():
+    t_res = db_exec("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0", fetchone=True)
+    tel_res = db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'টেলিফোন নাম্বার' AND is_deleted = 0", fetchone=True)
+    both_res = db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'টেলিফোন+ওয়াইফাই নম্বর' AND is_deleted = 0", fetchone=True)
+    wifi_res = db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'ওয়াইফাই নাম্বার' AND is_deleted = 0", fetchone=True)
+    
     return jsonify({
-        "total": db_exec("SELECT COUNT(*) FROM phone_records WHERE is_deleted = 0", fetchone=True)[0],
-        "tel": db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'টেলিফোন নাম্বার' AND is_deleted = 0", fetchone=True)[0],
-        "both": db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'টেলিফোন+ওয়াইফাই নম্বর' AND is_deleted = 0", fetchone=True)[0],
-        "wifi": db_exec("SELECT COUNT(*) FROM phone_records WHERE service_type = 'ওয়াইফাই নাম্বার' AND is_deleted = 0", fetchone=True)[0]
+        "total": t_res[0] if t_res else 0,
+        "tel": tel_res[0] if tel_res else 0,
+        "both": both_res[0] if both_res else 0,
+        "wifi": wifi_res[0] if wifi_res else 0
     })
 
 @app.route('/api/admin_count')
-def api_admin_count(): return jsonify({"count": db_exec("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", fetchone=True)[0]})
+def api_admin_count():
+    res = db_exec("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", fetchone=True)
+    return jsonify({"count": res[0] if res else 0})
 
 @app.route('/api/records')
 def api_records():
     search, sort, service = request.args.get('search', ''), request.args.get('sort', 'id_desc'), request.args.get('service', '')
     q = "SELECT * FROM phone_records WHERE is_deleted = 0"
     p = []
-    if search: q += " AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ?)"; p.extend([f"%{search}%"]*3)
-    if service: q += " AND service_type = ?"; p.append(service)
+    if search:
+        q += " AND (customer_name LIKE ? OR mobile LIKE ? OR connection_num LIKE ?)"
+        p.extend([f"%{search}%"]*3)
+    if service:
+        q += " AND service_type = ?"
+        p.append(service)
     q += " ORDER BY id " + ("ASC" if sort == 'id_asc' else "DESC")
-    return jsonify([dict(r) for r in db_exec(q, p, fetchall=True)])
+    rows = db_exec(q, p, fetchall=True)
+    return jsonify([dict(r) for r in rows] if rows else [])
 
 @app.route('/api/save_record', methods=['POST'])
 def save_record():
@@ -365,7 +389,10 @@ def record_details(id):
     return jsonify(dict(r) if r else {})
 
 @app.route('/api/users')
-def api_users(): return jsonify([dict(u) for u in db_exec("SELECT id, name, username, email, role, status FROM users WHERE is_deleted = 0", fetchall=True)]) if 'user' in session else jsonify([])
+def api_users():
+    if 'user' not in session: return jsonify([])
+    rows = db_exec("SELECT id, name, username, email, role, status FROM users WHERE is_deleted = 0", fetchall=True)
+    return jsonify([dict(u) for u in rows] if rows else [])
 
 @app.route('/api/delete_user/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
@@ -387,7 +414,10 @@ def register_request():
     return redirect(url_for('index'))
 
 @app.route('/api/account_requests')
-def account_requests(): return jsonify([dict(r) for r in db_exec("SELECT id, name, username, email FROM users WHERE status = 'pending' AND is_deleted = 0", fetchall=True)]) if session.get('user', {}).get('username') == MAIN_ADMIN_USERNAME else jsonify([])
+def account_requests():
+    if session.get('user', {}).get('username') != MAIN_ADMIN_USERNAME: return jsonify([])
+    rows = db_exec("SELECT id, name, username, email FROM users WHERE status = 'pending' AND is_deleted = 0", fetchall=True)
+    return jsonify([dict(r) for r in rows] if rows else [])
 
 @app.route('/api/approve_user/<int:id>', methods=['POST'])
 def approve_user(id):
@@ -400,23 +430,27 @@ def chat_users():
     if 'user' not in session: return jsonify([])
     now = datetime.now()
     res = []
-    for u in db_exec("SELECT username, name, last_active FROM users WHERE is_deleted = 0 AND status = 'active'", fetchall=True):
-        ud = dict(u)
-        online = False
-        try:
-            if u['last_active'] and (now - datetime.strptime(u['last_active'], '%Y-%m-%d %H:%M:%S')).total_seconds() < 30: online = True
-        except: pass
-        ud['is_online'] = online
-        res.append(ud)
+    rows = db_exec("SELECT username, name, last_active FROM users WHERE is_deleted = 0 AND status = 'active'", fetchall=True)
+    if rows:
+        for u in rows:
+            ud = dict(u)
+            online = False
+            try:
+                if u['last_active'] and (now - datetime.strptime(u['last_active'], '%Y-%m-%d %H:%M:%S')).total_seconds() < 30: online = True
+            except: pass
+            ud['is_online'] = online
+            res.append(ud)
     return jsonify(res)
 
 @app.route('/api/get_messages')
 def get_messages():
     if 'user' not in session: return jsonify([])
     g, t, un = int(request.args.get('is_group', 0)), request.args.get('target'), session['user']['username']
-    if g: rows = db_exec("SELECT sender, receiver, message, timestamp FROM messages WHERE is_group = 1 ORDER BY timestamp ASC", fetchall=True)
-    else: rows = db_exec("SELECT sender, receiver, message, timestamp FROM messages WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) ORDER BY timestamp ASC", (un, t, t, un), fetchall=True)
-    return jsonify([{'sender': r[0], 'receiver': r[1], 'message': r[2], 'timestamp': r[3]} for r in rows])
+    if g:
+        rows = db_exec("SELECT sender, receiver, message, timestamp FROM messages WHERE is_group = 1 ORDER BY timestamp ASC", fetchall=True)
+    else:
+        rows = db_exec("SELECT sender, receiver, message, timestamp FROM messages WHERE is_group = 0 AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) ORDER BY timestamp ASC", (un, t, t, un), fetchall=True)
+    return jsonify([{'sender': r[0], 'receiver': r[1], 'message': r[2], 'timestamp': r[3]} for r in rows] if rows else [])
 
 @app.route('/api/send_message', methods=['POST'])
 def send_message():
@@ -429,9 +463,12 @@ def send_message():
 def notifications_count():
     if 'user' not in session: return jsonify({'messages': 0, 'requests': 0})
     un = session['user']['username']
-    mc = db_exec("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (un,), fetchone=True)[0]
-    rc = db_exec("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0", fetchone=True)[0] if un == MAIN_ADMIN_USERNAME else 0
-    return jsonify({'messages': mc, 'requests': rc})
+    mc_res = db_exec("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (un,), fetchone=True)
+    rc_res = db_exec("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0", fetchone=True) if un == MAIN_ADMIN_USERNAME else [0]
+    return jsonify({
+        'messages': mc_res[0] if mc_res else 0,
+        'requests': rc_res[0] if rc_res else 0
+    })
 
 @app.route('/update_profile_pic', methods=['POST'])
 def update_profile_pic():
@@ -441,21 +478,29 @@ def update_profile_pic():
         f.save(os.path.join(app.config['UPLOAD_FOLDER'], fn))
         pic = f"static/uploads/{fn}"
         db_exec("UPDATE users SET profile_pic = ? WHERE username = ?", (pic, session['user']['username']), commit=True)
-        session['user'] = dict(db_exec("SELECT * FROM users WHERE username = ?", (session['user']['username'],), fetchone=True))
+        updated_user = db_exec("SELECT * FROM users WHERE username = ?", (session['user']['username'],), fetchone=True)
+        if updated_user:
+            session['user'] = dict(updated_user)
     return redirect(url_for('index'))
 
 @app.route('/api/admin_history')
 def admin_history():
     if session.get('user', {}).get('username') != MAIN_ADMIN_USERNAME: return jsonify([])
     res = []
-    for a in db_exec("SELECT name, username, last_active FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", fetchall=True):
-        ad = dict(a)
-        ad['total_added'] = db_exec("SELECT COUNT(*) FROM phone_records WHERE added_by = ?", (a['username'],), fetchone=True)[0]
-        res.append(ad)
+    admins = db_exec("SELECT name, username, last_active FROM users WHERE role IN ('admin', 'main_admin') AND is_deleted = 0", fetchall=True)
+    if admins:
+        for a in admins:
+            ad = dict(a)
+            tot = db_exec("SELECT COUNT(*) FROM phone_records WHERE added_by = ?", (a['username'],), fetchone=True)
+            ad['total_added'] = tot[0] if tot else 0
+            res.append(ad)
     return jsonify(res)
 
 @app.route('/api/trash_records')
-def trash_records(): return jsonify([dict(r) for r in db_exec("SELECT id, customer_name FROM phone_records WHERE is_deleted = 1", fetchall=True)]) if session.get('user', {}).get('username') == MAIN_ADMIN_USERNAME else jsonify([])
+def trash_records():
+    if session.get('user', {}).get('username') != MAIN_ADMIN_USERNAME: return jsonify([])
+    rows = db_exec("SELECT id, customer_name FROM phone_records WHERE is_deleted = 1", fetchall=True)
+    return jsonify([dict(r) for r in rows] if rows else [])
 
 @app.route('/api/restore_record/<int:id>', methods=['POST'])
 def restore_record(id):
