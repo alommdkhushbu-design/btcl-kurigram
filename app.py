@@ -1,7 +1,7 @@
 import os
 import sqlite3
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for, send_from_directory
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -54,6 +54,16 @@ def init_db():
             added_by TEXT DEFAULT 'Khushbu23',
             is_deleted INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS activity_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor TEXT,
+            action_type TEXT,
+            details TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -143,10 +153,11 @@ HTML_TEMPLATE = """
                     <i class="fa-solid fa-bars"></i> মেনু অপশন
                 </button>
                 <ul class="dropdown-menu dropdown-menu-dark">
-                    <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার ও এডমিন তালিকা</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openUserListModal()"><i class="fa-solid fa-users me-2"></i>ইউজার ও এডমিন তালিকা (<span id="totalUsersCountMenu">0</span>)</a></li>
                     
                     {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
-                    <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>নতুন এডমিন/ইউজার এড করুন</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openCreateAdminModal()"><i class="fa-solid fa-user-shield me-2"></i>এডমিন আইডি তৈরি করুন</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openCreateUserModal()"><i class="fa-solid fa-user-plus me-2"></i>ইউজার আইডি তৈরি করুন</a></li>
                     <li><a class="dropdown-item text-warning" href="#" onclick="openAccountRequestsModal()"><i class="fa-solid fa-user-check me-2"></i>রেজিস্ট্রেশন রিকোয়েস্ট <span id="reqMenuBadge" class="badge bg-danger ms-1" style="display:none;">0</span></a></li>
                     {% endif %}
                 </ul>
@@ -176,7 +187,7 @@ HTML_TEMPLATE = """
                     <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i class="fa-solid fa-image me-2"></i>প্রোফাইল ছবি আপডেট</a></li>
                     
                     {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
-                    <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি রিপোর্ট</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="openAdminHistoryModal()"><i class="fa-solid fa-clock-rotate-left me-2"></i>এডমিন হিস্ট্রি ও অ্যাক্টিভিটি রিপোর্ট</a></li>
                     <li><a class="dropdown-item text-danger" href="#" onclick="openTrashBinModal()"><i class="fa-solid fa-trash-arrow-up me-2"></i>রিসাইকেল বিন / রিস্টোর</a></li>
                     {% endif %}
                 </ul>
@@ -333,17 +344,26 @@ HTML_TEMPLATE = """
 </div>
 
 <div class="modal fade" id="adminCreatedUsersModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content card-custom">
       <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning" id="adminCreatedUsersTitle"><i class="fa-solid fa-users"></i> এডমিন কর্তৃক তৈরি ইউজার তালিকা</h5>
+        <h5 class="modal-title text-warning" id="adminCreatedUsersTitle"><i class="fa-solid fa-users"></i> এডমিন হিস্ট্রি ও সময়ভিত্তিক লগ</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <div class="modal-body">
+        <h6 class="text-success mb-2"><i class="fa-solid fa-user-plus"></i> তৈরি করা অ্যাকাউন্টসমূহ:</h6>
+        <div class="table-responsive mb-4">
+            <table class="table table-dark table-striped align-middle">
+                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>রোল</th><th>স্ট্যাটাস</th><th>তৈরি করার তারিখ ও সময়</th></tr></thead>
+                <tbody id="adminCreatedUsersTableBody"></tbody>
+            </table>
+        </div>
+
+        <h6 class="text-warning mb-2"><i class="fa-solid fa-clock-rotate-left"></i> সকল অ্যাক্টিভিটি ও ডিলিট লগ (তারিখ ও সময়সহ):</h6>
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
-                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>রোল</th><th>স্ট্যাটাস</th></tr></thead>
-                <tbody id="adminCreatedUsersTableBody"></tbody>
+                <thead><tr><th>কাজের বিবরণ</th><th>তারিখ ও সময়</th></tr></thead>
+                <tbody id="adminActivityLogTableBody"></tbody>
             </table>
         </div>
       </div>
@@ -361,7 +381,7 @@ HTML_TEMPLATE = """
       <div class="modal-body">
         <div class="table-responsive">
             <table class="table table-dark table-striped align-middle">
-                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
+                <thead><tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>মোবাইল</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
                 <tbody id="requestTableBody"></tbody>
             </table>
         </div>
@@ -464,23 +484,17 @@ HTML_TEMPLATE = """
   <div class="modal-dialog">
     <div class="modal-content card-custom">
       <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-user-plus"></i> নতুন এডমিন বা ইউজার তৈরি</h5>
+        <h5 class="modal-title text-warning" id="createUserModalTitle"><i class="fa-solid fa-user-plus"></i> ইউজার আইডি তৈরি</h5>
         <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
       </div>
       <form action="/api/create_user" method="POST" class="modal-body">
+        <input type="hidden" id="target_role_input" name="role" value="user">
         <div class="mb-2"><label class="form-label">নাম</label><input type="text" name="name" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">ইউজারনেম</label><input type="text" name="username" class="form-control" required></div>
         <div class="mb-2"><label class="form-label">জিমেইল</label><input type="email" name="email" class="form-control"></div>
         <div class="mb-2"><label class="form-label">মোবাইল</label><input type="text" name="phone" class="form-control"></div>
-        <div class="mb-2"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
-        <div class="mb-3">
-            <label class="form-label">রোল নির্ধারণ করুন</label>
-            <select name="role" class="form-select">
-                <option value="user">সাধারণ ইউজার</option>
-                <option value="admin">এডমিন</option>
-            </select>
-        </div>
-        <button type="submit" class="btn btn-green-gold w-100 py-2">তৈরি করুন</button>
+        <div class="mb-3"><label class="form-label">পাসওয়ার্ড</label><input type="password" name="password" class="form-control" required></div>
+        <button type="submit" class="btn btn-green-gold w-100 py-2">আইডি তৈরি করুন</button>
       </form>
     </div>
   </div>
@@ -540,6 +554,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadStats();
     loadAdminCount();
     loadActiveCount();
+    loadUsersMenuCount();
     setInterval(updateActivity, 10000);
     setInterval(pollData, 4000);
     {% endif %}
@@ -564,6 +579,14 @@ function loadAdminCount() {
     fetch('/api/admin_count').then(res => res.json()).then(data => {
         if(document.getElementById('totalAdminCount')) {
             document.getElementById('totalAdminCount').innerText = data.count;
+        }
+    });
+}
+
+function loadUsersMenuCount() {
+    fetch('/api/users').then(res => res.json()).then(data => {
+        if(document.getElementById('totalUsersCountMenu')) {
+            document.getElementById('totalUsersCountMenu').innerText = data.length;
         }
     });
 }
@@ -647,7 +670,6 @@ function openUserListModal() {
         tbody.innerHTML = '';
         data.forEach(user => {
             let deleteBtn = '';
-            // রিয়েল এডমিন আইডি (Khushbu23) হলে ডিলিট অপশন থাকবে না
             if (user.username !== '{{ MAIN_ADMIN_USERNAME }}' && user.role !== 'main_admin') {
                 deleteBtn = `<button class="btn btn-danger btn-sm" onclick="deleteUser(${user.id})"><i class="fa-solid fa-trash"></i> ডিলিট</button>`;
             } else {
@@ -673,6 +695,7 @@ function deleteUser(userId) {
             if(data.success) {
                 openUserListModal();
                 loadAdminCount();
+                loadUsersMenuCount();
             } else {
                 alert(data.message || 'ডিলিট করা সম্ভব হয়নি!');
             }
@@ -681,6 +704,14 @@ function deleteUser(userId) {
 }
 
 function openCreateUserModal() {
+    document.getElementById('target_role_input').value = 'user';
+    document.getElementById('createUserModalTitle').innerHTML = `<i class="fa-solid fa-user-plus"></i> ইউজার আইডি তৈরি`;
+    new bootstrap.Modal(document.getElementById('createUserModal')).show();
+}
+
+function openCreateAdminModal() {
+    document.getElementById('target_role_input').value = 'admin';
+    document.getElementById('createUserModalTitle').innerHTML = `<i class="fa-solid fa-user-shield"></i> এডমিন আইডি তৈরি`;
     new bootstrap.Modal(document.getElementById('createUserModal')).show();
 }
 
@@ -870,22 +901,37 @@ function openAdminHistoryModal() {
 }
 
 function openAdminCreatedUsers(username, adminName) {
-    document.getElementById('adminCreatedUsersTitle').innerText = `${adminName} (@${username}) কর্তৃক তৈরি ইউজার তালিকা`;
+    document.getElementById('adminCreatedUsersTitle').innerText = `${adminName} (@${username}) এর হিস্ট্রি ও অ্যাক্টিভিটি লগ`;
     fetch(`/api/admin_created_users/${username}`).then(res => res.json()).then(data => {
         let tbody = document.getElementById('adminCreatedUsersTableBody');
         tbody.innerHTML = '';
-        if(data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">এই এডমিন কোনো ইউজার তৈরি করেননি।</td></tr>`;
+        if(data.users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">এই এডমিন কোনো অ্যাকাউন্ট তৈরি করেননি।</td></tr>`;
         } else {
-            data.forEach(u => {
+            data.users.forEach(u => {
                 tbody.innerHTML += `<tr>
                     <td>${u.name}</td>
                     <td>${u.username}</td>
                     <td><span class="badge bg-warning text-dark">${u.role}</span></td>
                     <td><span class="badge bg-success">${u.status}</span></td>
+                    <td><small class="text-info">${u.created_at}</small></td>
                 </tr>`;
             });
         }
+
+        let logTbody = document.getElementById('adminActivityLogTableBody');
+        logTbody.innerHTML = '';
+        if(data.logs.length === 0) {
+            logTbody.innerHTML = `<tr><td colspan="2" class="text-center text-muted">কোনো লগ পাওয়া যায়নি।</td></tr>`;
+        } else {
+            data.logs.forEach(l => {
+                logTbody.innerHTML += `<tr>
+                    <td>${l.details}</td>
+                    <td><small class="text-warning">${l.timestamp}</small></td>
+                </tr>`;
+            });
+        }
+
         new bootstrap.Modal(document.getElementById('adminCreatedUsersModal')).show();
     });
 }
@@ -917,7 +963,10 @@ function openAccountRequestsModal() {
 
 function approveUser(id) {
     fetch(`/api/approve_user/${id}`, {method: 'POST'}).then(res => res.json()).then(data => {
-        if(data.success) openAccountRequestsModal();
+        if(data.success) {
+            openAccountRequestsModal();
+            loadUsersMenuCount();
+        }
     });
 }
 
@@ -1089,16 +1138,11 @@ def save_record():
             
     conn = get_db_connection()
     cursor = conn.cursor()
-    if rec_id:
-        if image_url:
-            cursor.execute("UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=?, record_image=? WHERE id=?",
-                           (customer_name, mobile, service_type, connection_num, address, note, image_url, rec_id))
-        else:
-            cursor.execute("UPDATE phone_records SET customer_name=?, mobile=?, service_type=?, connection_num=?, address=?, note=? WHERE id=?",
-                           (customer_name, mobile, service_type, connection_num, address, note, rec_id))
-    else:
+    if not rec_id:
         cursor.execute("INSERT INTO phone_records (customer_name, mobile, service_type, connection_num, address, note, record_image, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                        (customer_name, mobile, service_type, connection_num, address, note, image_url, added_by))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (added_by, 'ADD_RECORD', f"গ্রাহক নম্বর যোগ করেছেন: {customer_name} ({service_type})"))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -1108,8 +1152,13 @@ def delete_record(id):
     if 'user' not in session or session['user']['role'] not in ['admin', 'main_admin']:
         return jsonify({'success': False}), 403
     conn = get_db_connection()
-    conn.execute("UPDATE phone_records SET is_deleted = 1 WHERE id = ?", (id,))
-    conn.commit()
+    cursor = conn.cursor()
+    rec = cursor.execute("SELECT customer_name FROM phone_records WHERE id = ?", (id,)).fetchone()
+    if rec:
+        cursor.execute("UPDATE phone_records SET is_deleted = 1 WHERE id = ?", (id,))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (session['user']['username'], 'DELETE_RECORD', f"ডিলিট করেছেন গ্রাহক রেকর্ড: {rec['customer_name']}"))
+        conn.commit()
     conn.close()
     return jsonify({'success': True})
 
@@ -1136,7 +1185,7 @@ def delete_user(user_id):
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    target = cursor.execute("SELECT username, role FROM users WHERE id = ?", (user_id,)).fetchone()
+    target = cursor.execute("SELECT username, role, name FROM users WHERE id = ?", (user_id,)).fetchone()
     
     if target:
         if target['username'] == MAIN_ADMIN_USERNAME or target['role'] == 'main_admin':
@@ -1144,6 +1193,8 @@ def delete_user(user_id):
             return jsonify({'success': False, 'message': 'রিয়েল এডমিনের আইডি ডিলিট করা নিষিদ্ধ!'}), 403
             
         cursor.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (user_id,))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (session['user']['username'], 'DELETE_USER', f"ডিলিট করেছেন ইউজার/এডমিন: {target['name']} (@{target['username']})"))
         conn.commit()
         
     conn.close()
@@ -1163,9 +1214,12 @@ def create_user():
     added_by = session['user']['username']
     
     conn = get_db_connection()
+    cursor = conn.cursor()
     try:
-        conn.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)",
-                     (name, username, email, phone, password, raw_pass, role, added_by))
+        cursor.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?)",
+                       (name, username, email, phone, password, raw_pass, role, added_by))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (added_by, 'CREATE_USER', f"তৈরি করেছেন নতুন {role}: {name} (@{username})"))
         conn.commit()
     except Exception as e:
         print(e)
@@ -1182,9 +1236,12 @@ def register_request():
     raw_pass = request.form.get('password')
     
     conn = get_db_connection()
+    cursor = conn.cursor()
     try:
-        conn.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending', ?)",
-                     (name, username, email, phone, password, raw_pass, 'Self Registration'))
+        cursor.execute("INSERT INTO users (name, username, email, phone, password, raw_pass, role, status, added_by) VALUES (?, ?, ?, ?, ?, ?, 'user', 'pending', ?)",
+                       (name, username, email, phone, password, raw_pass, 'Self Registration'))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (username, 'REGISTER_REQUEST', f"রেজিস্ট্রেশন রিকোয়েস্ট পাঠিয়েছেন: {name} (@{username})"))
         conn.commit()
     except Exception as e:
         print(e)
@@ -1205,8 +1262,13 @@ def approve_user(id):
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
         return jsonify({'success': False}), 403
     conn = get_db_connection()
-    conn.execute("UPDATE users SET status = 'active' WHERE id = ?", (id,))
-    conn.commit()
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT name, username FROM users WHERE id = ?", (id,)).fetchone()
+    if user:
+        cursor.execute("UPDATE users SET status = 'active' WHERE id = ?", (id,))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (session['user']['username'], 'APPROVE_USER', f"অনুমোদন করেছেন অ্যাকাউন্ট: {user['name']} (@{user['username']})"))
+        conn.commit()
     conn.close()
     return jsonify({'success': True})
 
@@ -1215,8 +1277,13 @@ def reject_user(id):
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
         return jsonify({'success': False}), 403
     conn = get_db_connection()
-    conn.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (id,))
-    conn.commit()
+    cursor = conn.cursor()
+    user = cursor.execute("SELECT name, username FROM users WHERE id = ?", (id,)).fetchone()
+    if user:
+        cursor.execute("UPDATE users SET is_deleted = 1 WHERE id = ?", (id,))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (session['user']['username'], 'REJECT_USER', f"বাতিল করেছেন রেজিস্ট্রেশন: {user['name']} (@{user['username']})"))
+        conn.commit()
     conn.close()
     return jsonify({'success': True})
 
@@ -1352,11 +1419,15 @@ def admin_history():
 @app.route('/api/admin_created_users/<username>')
 def admin_created_users(username):
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
-        return jsonify([])
+        return jsonify({'users': [], 'logs': []})
     conn = get_db_connection()
-    users = conn.execute("SELECT name, username, role, status FROM users WHERE added_by = ? AND is_deleted = 0", (username,)).fetchall()
+    users = conn.execute("SELECT name, username, role, status, created_at FROM users WHERE added_by = ? AND is_deleted = 0", (username,)).fetchall()
+    logs = conn.execute("SELECT details, timestamp FROM activity_logs WHERE actor = ? ORDER BY id DESC", (username,)).fetchall()
     conn.close()
-    return jsonify([dict(u) for u in users])
+    return jsonify({
+        'users': [dict(u) for u in users],
+        'logs': [dict(l) for l in logs]
+    })
 
 @app.route('/api/trash_records')
 def trash_records():
@@ -1372,8 +1443,13 @@ def restore_record(id):
     if 'user' not in session or session['user']['username'] != MAIN_ADMIN_USERNAME:
         return jsonify({'success': False}), 403
     conn = get_db_connection()
-    conn.execute("UPDATE phone_records SET is_deleted = 0 WHERE id = ?", (id,))
-    conn.commit()
+    cursor = conn.cursor()
+    rec = cursor.execute("SELECT customer_name FROM phone_records WHERE id = ?", (id,)).fetchone()
+    if rec:
+        cursor.execute("UPDATE phone_records SET is_deleted = 0 WHERE id = ?", (id,))
+        cursor.execute("INSERT INTO activity_logs (actor, action_type, details) VALUES (?, ?, ?)",
+                       (session['user']['username'], 'RESTORE_RECORD', f"রিস্টোর করেছেন গ্রাহক রেকর্ড: {rec['customer_name']}"))
+        conn.commit()
     conn.close()
     return jsonify({'success': True})
 
