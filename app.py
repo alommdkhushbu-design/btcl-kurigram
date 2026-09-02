@@ -90,6 +90,13 @@ HTML_TEMPLATE = """
         .clickable-name { color: #fde047; cursor: pointer; text-decoration: underline; }
         .floating-add-btn { position: fixed; bottom: 25px; right: 25px; width: 65px; height: 65px; border-radius: 50%; background: linear-gradient(45deg, #10b981, #fbbf24); color: #000; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(16,185,129,0.7); border: none; z-index: 1000; cursor: pointer; }
         .status-dot { width: 10px; height: 10px; background-color: #22c55e; border-radius: 50%; display: inline-block; }
+        @media (max-width: 768px) {
+            .container { padding-left: 10px; padding-right: 10px; }
+            .btn-sm { padding: 4px 8px; font-size: 12px; }
+            h3 { font-size: 1.25rem; }
+            .floating-add-btn { width: 55px; height: 55px; font-size: 22px; bottom: 20px; right: 20px; }
+            table { font-size: 13px; }
+        }
     </style>
 </head>
 <body>
@@ -141,10 +148,10 @@ HTML_TEMPLATE = """
 
     {% if session.get('user').get('role') in ['admin', 'main_admin'] %}
     <div class="row g-2 mb-3">
-        <div class="col" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:11px;">সকল</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:11px;">টেলিফোন</div></div></div>
-        <div class="col" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:11px;">উভয়</div></div></div>
-        <div class="col" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:11px;">ওয়াইফাই</div></div></div>
+        <div class="col-3" onclick="filterService('')"><div class="stat-card"><div class="stat-number" id="countTotal">0</div><div style="font-size:11px;">সকল</div></div></div>
+        <div class="col-3" onclick="filterService('টেলিফোন নাম্বার')"><div class="stat-card"><div class="stat-number" id="countTel">0</div><div style="font-size:11px;">টেলিফোন</div></div></div>
+        <div class="col-3" onclick="filterService('টেলিফোন+ওয়াইফাই নম্বর')"><div class="stat-card"><div class="stat-number" id="countBoth">0</div><div style="font-size:11px;">উভয়</div></div></div>
+        <div class="col-3" onclick="filterService('ওয়াইফাই নাম্বার')"><div class="stat-card"><div class="stat-number" id="countWifi">0</div><div style="font-size:11px;">ওয়াইফাই</div></div></div>
     </div>
     {% endif %}
 
@@ -172,7 +179,7 @@ HTML_TEMPLATE = """
 <div class="modal fade" id="adminHistoryModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning">এডমিন হিস্ট্রি</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><div class="modal-body"><table class="table table-dark table-striped"><thead><tr><th>নাম</th><th>ইউজারনেম</th><th>শেষ অ্যাক্টিভ</th><th>মোট</th></tr></thead><tbody id="adminHistoryTableBody"></tbody></table></div></div></div></div>
 <div class="modal fade" id="accountRequestsModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning">রিকোয়েস্ট তালিকা</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><div class="modal-body"><table class="table table-dark table-striped"><thead><tr><th>নাম</th><th>ইউজার</th><th>ইমেইল</th><th>অ্যাকশন</th></tr></thead><tbody id="requestTableBody"></tbody></table></div></div></div></div>
 <div class="modal fade" id="registerModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning">রেজিস্ট্রেশন</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><form action="/api/register_request" method="POST" class="modal-body"><div class="mb-2"><input type="text" name="name" class="form-control" placeholder="নাম" required></div><div class="mb-2"><input type="text" name="username" class="form-control" placeholder="ইউজারনেম" required></div><div class="mb-2"><input type="email" name="email" class="form-control" placeholder="জিমেইল" required></div><div class="mb-2"><input type="text" name="phone" class="form-control" placeholder="মোবাইল"></div><div class="mb-3"><input type="password" name="password" class="form-control" placeholder="পাসওয়ার্ড" required></div><button type="submit" class="btn btn-green-gold w-100">পাঠান</button></form></div></div></div>
-<div class="modal fade" id="messengerModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning">মেসেঞ্জার</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><div class="modal-body"><div class="row"><div class="col-md-4 border-end border-success"><div class="d-flex gap-1 mb-2"><button class="btn btn-sm btn-green-gold w-50" onclick="switchChat('users')">ইনবক্স</button><button class="btn btn-sm btn-emerald w-50" onclick="switchChat('group')">গ্রুপ</button></div><div id="chatUserList" style="max-height:350px; overflow-y:auto;"></div></div><div class="col-md-8 d-flex flex-column"><div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-success">সিলেক্ট করুন</div><div id="chatMessages" class="chat-box mb-2"></div><form id="chatForm" onsubmit="sendMessage(event)" class="input-group" style="display:none;"><input type="text" id="chatInput" class="form-control" placeholder="মেসেজ..."><input type="file" id="chatFile" class="d-none"><button type="submit" class="btn btn-green-gold"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div></div></div></div>
+<div class="modal fade" id="messengerModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning">মেসেঞ্জার</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><div class="modal-body"><div class="row"><div class="col-md-4 border-end border-success mb-2 mb-md-0"><div class="d-flex gap-1 mb-2"><button class="btn btn-sm btn-green-gold w-50" onclick="switchChat('users')">ইনবক্স</button><button class="btn btn-sm btn-emerald w-50" onclick="switchChat('group')">গ্রুপ</button></div><div id="chatUserList" style="max-height:350px; overflow-y:auto;"></div></div><div class="col-md-8 d-flex flex-column"><div id="activeChatTitle" class="text-warning fw-bold mb-2 pb-1 border-bottom border-success">সিলেক্ট করুন</div><div id="chatMessages" class="chat-box mb-2"></div><form id="chatForm" onsubmit="sendMessage(event)" class="input-group" style="display:none;"><input type="text" id="chatInput" class="form-control" placeholder="মেসেজ..."><input type="file" id="chatFile" class="d-none"><button type="submit" class="btn btn-green-gold"><i class="fa-solid fa-paper-plane"></i></button></form></div></div></div></div></div></div>
 <div class="modal fade" id="recordModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning" id="recordModalTitle">নম্বর যোগ</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><form id="recordForm" onsubmit="saveRecord(event)" class="modal-body row g-2"><input type="hidden" id="rec_id" name="id"><div class="col-12"><input type="text" id="rec_name" name="customer_name" class="form-control" placeholder="গ্রাহকের নাম" required></div><div class="col-md-6"><input type="text" id="rec_mobile" name="mobile" class="form-control" placeholder="মোবাইল"></div><div class="col-md-6"><select id="rec_service" name="service_type" class="form-select"><option value="টেলিফোন নাম্বার">টেলিফোন</option><option value="টেলিফোন+ওয়াইফাই নম্বর">টেলিফোন+ওয়াইফাই</option><option value="ওয়াইফাই নাম্বার">ওয়াইফাই</option></select></div><div class="col-md-6"><input type="text" id="rec_conn" name="connection_num" class="form-control" placeholder="সংযোগ নম্বর"></div><div class="col-md-6"><input type="text" id="rec_address" name="address" class="form-control" placeholder="ঠিকানা"></div><div class="col-12"><input type="text" id="rec_note" name="note" class="form-control" placeholder="নোট"></div><div class="col-12"><input type="file" name="record_image_gallery" class="form-control" accept="image/*"></div><div class="col-12 text-end mt-2"><button type="submit" class="btn btn-green-gold">সেভ</button></div></form></div></div></div>
 <div class="modal fade" id="createUserModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content card-custom"><div class="modal-header border-success"><h5 class="modal-title text-warning" id="createUserModalTitle">ইউজার তৈরি</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><form action="/api/create_user" method="POST" class="modal-body"><input type="hidden" id="target_role_input" name="role" value="user"><div class="mb-2"><input type="text" name="name" class="form-control" placeholder="নাম" required></div><div class="mb-2"><input type="text" name="username" class="form-control" placeholder="ইউজারনেম" required></div><div class="mb-2"><input type="email" name="email" class="form-control" placeholder="জিমেইল"></div><div class="mb-2"><input type="text" name="phone" class="form-control" placeholder="মোবাইল"></div><div class="mb-3"><input type="password" name="password" class="form-control" placeholder="পাসওয়ার্ড" required></div><button type="submit" class="btn btn-green-gold w-100">তৈরি করুন</button></form></div></div></div>
 <div class="modal fade" id="profileModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content card-custom text-center"><div class="modal-header border-success"><h5 class="modal-title text-warning">প্রোফাইল ছবি</h5><i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i></div><form action="/update_profile_pic" method="POST" enctype="multipart/form-data" class="modal-body"><div class="mb-3 text-start"><input type="file" name="profile_pic" class="form-control" accept="image/*" required></div><button type="submit" class="btn btn-green-gold w-100">আপডেট</button></form></div></div></div>
@@ -461,14 +468,15 @@ def send_message():
 
 @app.route('/api/notifications_count')
 def notifications_count():
-    if 'user' not in session: return jsonify({'messages': 0, 'requests': 0})
-    un = session['user']['username']
-    mc_res = db_exec("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (un,), fetchone=True)
-    rc_res = db_exec("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0", fetchone=True) if un == MAIN_ADMIN_USERNAME else [0]
-    return jsonify({
-        'messages': mc_res[0] if mc_res else 0,
-        'requests': rc_res[0] if rc_res else 0
-    })
+    if 'user' in session:
+        un = session['user']['username']
+        mc_res = db_exec("SELECT COUNT(*) FROM messages WHERE receiver = ? AND is_read = 0", (un,), fetchone=True)
+        rc_res = db_exec("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0", fetchone=True) if un == MAIN_ADMIN_USERNAME else [0]
+        return jsonify({
+            'messages': mc_res[0] if mc_res else 0,
+            'requests': rc_res[0] if rc_res else 0
+        })
+    return jsonify({'messages': 0, 'requests': 0})
 
 @app.route('/update_profile_pic', methods=['POST'])
 def update_profile_pic():
@@ -509,5 +517,4 @@ def restore_record(id):
     return jsonify({'success': True})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', debug=True, port=5000)
