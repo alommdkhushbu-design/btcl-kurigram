@@ -9,12 +9,17 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "btcl_kurigram_green_vibrant_pro_2026")
 
 MAIN_ADMIN_USERNAME = "Khushbu23"
-UPLOAD_FOLDER = 'static/uploads'
+
+# পার্মানেন্ট ফোল্ডার পাথ নিশ্চিতকরণ (যাতে ডেটা লস না হয়)
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+DB_PATH = os.path.join(BASE_DIR, 'database.db')
+
 def get_db_connection():
-    conn = sqlite3.connect('database.db', timeout=30.0)
+    conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -80,6 +85,7 @@ def init_db():
         )
     ''')
 
+    # মেইন এডমিন চেক এবং সুনিশ্চিতকরণ
     cursor.execute("SELECT * FROM users WHERE username = ?", (MAIN_ADMIN_USERNAME,))
     if not cursor.fetchone():
         hashed_pw = generate_password_hash("01751947523")
@@ -229,7 +235,7 @@ HTML_TEMPLATE = """
 
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-success pb-2">
-            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহک ও সংযোগ নম্বরসমূহ</h5>
+            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-warning text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
         <div class="table-responsive">
