@@ -131,11 +131,6 @@ HTML_TEMPLATE = """
 <div class="container py-3">
     {% if session.get('user') %}
 
-    <div id="latestGroupAnnouncement" class="announcement-banner text-center" style="display:none;">
-        <i class="fa-solid fa-bullhorn me-2"></i> <span id="announcementText"></span>
-        <button class="btn btn-dark btn-sm float-end py-0 text-warning" onclick="openMessengerModal(); switchChatTab('group');">গ্রুপে দেখুন</button>
-    </div>
-
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <button class="btn btn-emerald btn-sm" onclick="showHome()"><i class="fa-solid fa-house"></i> হোম</button>
@@ -161,9 +156,8 @@ HTML_TEMPLATE = """
                 <span id="msgBadge" class="notification-badge" style="display:none;">0</span>
             </button>
 
-            <button class="btn btn-outline-danger btn-sm position-relative fw-bold" onclick="openNotificationModal()">
-                <i class="fa-solid fa-bell"></i> নোটিফিকেশন
-                <span id="notifBadge" class="notification-badge" style="display:none;">0</span>
+            <button class="btn btn-outline-success btn-sm position-relative fw-bold" onclick="openActiveUsersModal()">
+                <i class="fa-solid fa-signal"></i> কারা অ্যাক্টিভ আছে <span id="activeCountBadge" class="badge bg-success ms-1">0</span>
             </button>
         </div>
         
@@ -209,7 +203,7 @@ HTML_TEMPLATE = """
         </div>
         <div class="col-md-6">
             <div class="input-group">
-                <span class="input-group-text bg-dark text-warning"><i class="fa-solid fa-arrow-down-a-z"></i> সাজান:</span>
+                <span class="input-group-text bg-dark text-warning"><i class="fa-solid fa-arrow-down-a-z"></i> সিরিয়াল বিন্যাস:</span>
                 <select id="sortSelect" class="form-select" onchange="loadRecords()">
                     <option value="id_desc">সর্বশেষ যোগ করা নম্বর আগে (New to Old)</option>
                     <option value="id_asc">ক্রমিক নম্বর ১ থেকে হাজার (1 to N - ছোট থেকে বড়)</option>
@@ -232,7 +226,7 @@ HTML_TEMPLATE = """
 
     <div id="recordsSection" class="card-custom p-3 mb-4">
         <div class="d-flex justify-content-between align-items-center border-bottom border-success pb-2">
-            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহक ও সংযোগ নম্বরসমূহ</h5>
+            <h5 class="text-warning mb-0"><i class="fa-solid fa-list"></i> গ্রাহক ও সংযোগ নম্বরসমূহ</h5>
             <span class="badge bg-warning text-dark" id="currentFilterLabel">সকল নম্বর</span>
         </div>
         <div class="table-responsive">
@@ -297,6 +291,22 @@ HTML_TEMPLATE = """
 </div>
 
 <!-- Modals -->
+<div class="modal fade" id="activeUsersModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content card-custom">
+      <div class="modal-header border-success d-flex justify-content-between">
+        <h5 class="modal-title text-warning"><i class="fa-solid fa-signal text-success"></i> বর্তমানে কারা অ্যাক্টিভ আছেন</h5>
+        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
+      </div>
+      <div class="modal-body">
+        <div id="activeUsersListModalBody" class="list-group list-group-flush bg-transparent">
+            <p class="text-muted text-center">কেউ অ্যাক্টিভ নেই।</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal fade" id="customerDetailsModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content card-custom">
@@ -397,22 +407,6 @@ HTML_TEMPLATE = """
                 </form>
                 <div id="selectedFilePreview" class="small text-warning mt-1" style="display:none;"></div>
             </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="notificationModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content card-custom">
-      <div class="modal-header border-success d-flex justify-content-between">
-        <h5 class="modal-title text-warning"><i class="fa-solid fa-bell"></i> নোটিফিকেশন</h5>
-        <i class="fa-solid fa-xmark close-cross" data-bs-dismiss="modal"></i>
-      </div>
-      <div class="modal-body">
-        <div id="notificationList" class="list-group list-group-flush bg-transparent">
-            <p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>
         </div>
       </div>
     </div>
@@ -534,6 +528,7 @@ document.addEventListener("DOMContentLoaded", () => {
     loadRecords();
     loadStats();
     loadAdminCount();
+    loadActiveCount();
     setInterval(updateActivity, 10000);
     setInterval(pollData, 4000);
     {% endif %}
@@ -560,6 +555,56 @@ function loadAdminCount() {
             document.getElementById('totalAdminCount').innerText = data.count;
         }
     });
+}
+
+function loadActiveCount() {
+    fetch('/api/chat_users').then(res => res.json()).then(data => {
+        let activeUsers = data.filter(u => u.is_online);
+        document.getElementById('activeCountBadge').innerText = activeUsers.length;
+    });
+}
+
+function openActiveUsersModal() {
+    fetch('/api/chat_users').then(res => res.json()).then(data => {
+        let body = document.getElementById('activeUsersListModalBody');
+        body.innerHTML = '';
+        let activeUsers = data.filter(u => u.is_online);
+        if(activeUsers.length === 0) {
+            body.innerHTML = `<p class="text-muted text-center">এই মুহূর্তে আর কোনো ইউজার অ্যাক্টিভ নেই।</p>`;
+        } else {
+            activeUsers.forEach(u => {
+                let item = document.createElement('div');
+                item.className = 'list-group-item bg-transparent text-white border-success d-flex align-items-center justify-content-between mb-1 rounded';
+                item.innerHTML = `
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="${u.profile_pic || 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/svgs/solid/circle-user.svg'}" class="msg-avatar">
+                        <div>
+                            <strong>${u.name}</strong> <span class="status-dot"></span><br>
+                            <small class="text-muted">@${u.username}</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-green-gold" onclick="openChatWithUser('${u.username}', '${u.name}')">
+                        <i class="fa-solid fa-paper-plane me-1"></i> মেসেজ দিন
+                    </button>
+                `;
+                body.appendChild(item);
+            });
+        }
+        new bootstrap.Modal(document.getElementById('activeUsersModal')).show();
+    });
+}
+
+function openChatWithUser(username, name) {
+    // Hide Active Modal and Open Messenger Modal with selected user
+    let activeModalEl = document.getElementById('activeUsersModal');
+    let activeModal = bootstrap.Modal.getInstance(activeModalEl);
+    if(activeModal) activeModal.hide();
+    
+    openMessengerModal();
+    switchChatTab('users');
+    setTimeout(() => {
+        selectChat(username, name);
+    }, 200);
 }
 
 function loadRecords() {
@@ -920,10 +965,6 @@ function pollData() {
         let msgBadge = document.getElementById('msgBadge');
         if(data.messages > 0) { msgBadge.innerText = data.messages; msgBadge.style.display = 'inline-block'; }
         else { msgBadge.style.display = 'none'; }
-        
-        let notifBadge = document.getElementById('notifBadge');
-        if(data.notifications > 0) { notifBadge.innerText = data.notifications; notifBadge.style.display = 'inline-block'; }
-        else { notifBadge.style.display = 'none'; }
 
         {% if session.get('user').get('username') == MAIN_ADMIN_USERNAME %}
         let reqBadge = document.getElementById('reqMenuBadge');
@@ -931,24 +972,8 @@ function pollData() {
         else { reqBadge.style.display = 'none'; }
         {% endif %}
     });
+    loadActiveCount();
     if(currentChatUser) loadMessages();
-}
-
-function openNotificationModal() {
-    fetch('/api/notifications').then(res => res.json()).then(data => {
-        let list = document.getElementById('notificationList');
-        list.innerHTML = '';
-        if(data.length === 0) {
-            list.innerHTML = `<p class="text-muted text-center">কোনো নতুন নোটিফিকেশন নেই।</p>`;
-        }
-        data.forEach(n => {
-            let item = document.createElement('div');
-            item.className = 'list-group-item bg-transparent text-white border-success mb-1';
-            item.innerHTML = `<i class="fa-solid fa-circle-info text-warning me-2"></i> ${n.message} <small class="text-muted float-end">${n.timestamp}</small>`;
-            list.appendChild(item);
-        });
-        new bootstrap.Modal(document.getElementById('notificationModal')).show();
-    });
 }
 </script>
 </body>
@@ -1295,13 +1320,11 @@ def chat_users():
     users = []
     now = datetime.now()
     for r in rows:
-        # Check active status within last 30 seconds
         last_active_time = datetime.strptime(r[3], '%Y-%m-%d %H:%M:%S') if r[3] else now
         is_online = (now - last_active_time).total_seconds() < 35
         users.append({
             'username': r[0], 'name': r[1], 'profile_pic': r[2], 'is_online': is_online
         })
-    # Sort active users to top
     users.sort(key=lambda x: x['is_online'], reverse=True)
     return jsonify(users)
 
@@ -1357,7 +1380,7 @@ def send_message():
 @app.route('/api/notifications_count')
 def notifications_count():
     if 'user' not in session:
-        return jsonify({'messages': 0, 'notifications': 0, 'requests': 0})
+        return jsonify({'messages': 0, 'requests': 0})
     username = session['user']['username']
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -1369,11 +1392,7 @@ def notifications_count():
         cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'pending' AND is_deleted = 0")
         req_count = cursor.fetchone()[0]
     conn.close()
-    return jsonify({'messages': msg_count, 'notifications': 0, 'requests': req_count})
-
-@app.route('/api/notifications')
-def notifications():
-    return jsonify([])
+    return jsonify({'messages': msg_count, 'requests': req_count})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
