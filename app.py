@@ -13,8 +13,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-SECURITY_PIN = "137955"  # আপনার নির্ধারিত সিকিউরিটি পিন
-
 def init_db():
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
@@ -27,6 +25,12 @@ def init_db():
                         status TEXT DEFAULT 'Pending',
                         profile_pic TEXT DEFAULT 'default.png')''')
                         
+    # টেবিল আপডেট চেক (যদি profile_pic কলাম না থাকে)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN profile_pic TEXT DEFAULT 'default.png'")
+    except:
+        pass
+
     # ফিক্সড রিয়েল এডমিন (Khushbu23 / 01751947523)
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
@@ -70,7 +74,7 @@ def register():
     try:
         conn = sqlite3.connect('btcl_database.db')
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status) VALUES (?, ?, ?, ?, ?, 'user', 'Pending')",
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status, profile_pic) VALUES (?, ?, ?, ?, ?, 'user', 'Pending', 'default.png')",
                        (name, email, phone, username, password))
         conn.commit()
         conn.close()
@@ -96,7 +100,7 @@ def login():
         session['user'] = user[4]
         session['role'] = user[6]
         return redirect(url_for('dashboard'))
-    return "ভুল ইউজারনেম অথবা পাসওয়ার্ড!"
+    return "ভুল ইউজারনেম অথবা পাসওয়ার্ড! দয়া করে সঠিক তথ্য দিন।"
 
 @app.route('/dashboard')
 def dashboard():
@@ -109,7 +113,6 @@ def dashboard():
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     
-    # কাউন্টসের জন্য
     cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0")
     total_count = cursor.fetchone()[0]
     
@@ -122,7 +125,6 @@ def dashboard():
     cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND service_type = 'WiFi'")
     wifi_count = cursor.fetchone()[0]
     
-    # কুয়েরি ফিল্টার
     query = "SELECT * FROM records WHERE is_deleted = 0"
     params = []
     
@@ -150,8 +152,11 @@ def dashboard():
     cursor.execute("SELECT * FROM history ORDER BY id DESC LIMIT 20")
     history_logs = cursor.fetchall()
     
-    cursor.execute("SELECT * FROM users WHERE username = ?", (session['user'],))
+    # বর্তমান ইউজারের ডাটা ফেচ করা, না পেলে সেফ ডিফল্ট ভ্যালু দেওয়া
+    cursor.execute("SELECT * FROM users WHERE username = ?", (session.get('user'),))
     current_user_data = cursor.fetchone()
+    if not current_user_data:
+        current_user_data = (0, 'User', '', '', session.get('user'), '', 'user', 'Active', 'default.png')
 
     conn.close()
     
@@ -186,7 +191,7 @@ def add_record():
                    (name, phone, service_type, service_no, address, note, doc_file_name, time_now))
     
     cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
-                   (f"Added record: {name}", session['user'], time_now))
+                   (f"Added record: {name}", session.get('user'), time_now))
                    
     conn.commit()
     conn.close()
@@ -252,7 +257,7 @@ def update_profile():
             
             conn = sqlite3.connect('btcl_database.db')
             cursor = conn.cursor()
-            cursor.execute("UPDATE users SET profile_pic = ? WHERE username = ?", (filename, session['user']))
+            cursor.execute("UPDATE users SET profile_pic = ? WHERE username = ?", (filename, session.get('user')))
             conn.commit()
             conn.close()
     return redirect(url_for('dashboard'))
