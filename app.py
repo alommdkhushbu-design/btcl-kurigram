@@ -6,6 +6,8 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'btcl_kurigram_super_secret_key_2026'
 
+SECURITY_PIN = "137955"  # সিকিউরিটি পাসওয়ার্ড
+
 # ডেটাবেস এবং রিয়েল এডমিন ইনিশিয়ালাইজেশন
 def init_db():
     conn = sqlite3.connect('btcl_database.db')
@@ -19,13 +21,13 @@ def init_db():
                         role TEXT DEFAULT 'user',
                         status TEXT DEFAULT 'Pending')''')
                         
-    # নির্দিষ্ট রিয়েল এডমিন তৈরি (যদি না থাকে)
+    # ফিক্সড রিয়েল এডমিন তৈরি (ইউজারনেম: Khushbu23, পাসওয়ার্ড: 01751947523)
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
                        ("Real Admin", "admin@btcl.com", "01751947523", "Khushbu23", "01751947523", "super_admin", "Active"))
     
-    # নাম্বার এবং ডকুমেন্ট টেবিল
+    # নাম্বার এবং ডকুমেন্ট টেবিল (সফট ডিলিট সহ)
     cursor.execute('''CREATE TABLE IF NOT EXISTS records (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         name TEXT, phone TEXT, service_type TEXT, 
@@ -53,7 +55,7 @@ def index():
 def register_page():
     return render_template('index.html', page='register')
 
-# রেজিস্ট্রেশন হ্যান্ডেল
+# রেজিস্ট্রেশন হ্যান্ডেল (নতুন ইউজার রিকোয়েস্ট)
 @app.route('/register', methods=['POST'])
 def register():
     name = request.form['name']
@@ -70,13 +72,13 @@ def register():
         
         time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("INSERT INTO notifications (title, message, timestamp) VALUES (?, ?, ?)",
-                       ("নতুন অ্যাকাউন্ট রিকোয়েস্ট", f"{name} একটি নতুন অ্যাকাউন্টের জন্য আবেদন করেছেন।", time_now))
+                       ("নতুন অ্যাকাউন্ট রিকোয়েস্ট", f"{name} ({username}) একটি নতুন অ্যাকাউন্টের জন্য আবেদন করেছেন।", time_now))
         
         conn.commit()
         conn.close()
         return redirect(url_for('index'))
     except Exception as e:
-        return f"Error: {str(e)}"
+        return f"Registration Error: Username already exists or invalid data! ({str(e)})"
 
 # লগইন হ্যান্ডেল
 @app.route('/login', methods=['POST'])
@@ -92,7 +94,7 @@ def login():
     
     if user:
         if user[7] != 'Active' and username != 'Khushbu23':
-            return "আপনার অ্যাকাউন্টটি এখনো রিয়েল এডমিন কর্তৃক অনুমোদিত (Active) হয়নি!"
+            return "আপনার অ্যাকাউন্টটি এখনো রিয়েল এডমিন কর্তৃক অনুমোদিত (Active) হয়নি! দয়া করে অপেক্ষা করুন।"
                 
         session['user'] = user[4]
         session['role'] = 'super_admin' if username == 'Khushbu23' else 'user'
@@ -127,14 +129,32 @@ def dashboard():
                            pending_users=pending_users, all_users=all_users, notifications=notifications, 
                            role=session.get('role'), current_user=session.get('user'))
 
-# অ্যাকাউন্ট এপ্রুভ করার রুট (শুধু রিয়েল এডমিন)
+# অ্যাকাউন্ট এপ্রুভ করার রুট (শুধুমাত্র রিয়েল এডমিন)
 @app.route('/approve_user/<int:user_id>')
 def approve_user(user_id):
+    if session.get('user') != 'Khushbu23':
+        return "Access Denied! শুধুমাত্র রিয়েল এডমিন অ্যাকাউন্ট এপ্রুভ করতে পারবেন।"
+    conn = sqlite3.connect('btcl_database.db')
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET status = 'Active' WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('dashboard'))
+
+# ইউজার ডিলেট করার রুট (শুধুমাত্র রিয়েল এডমিন)
+@app.route('/delete_user/<int:user_id>')
+def delete_user(user_id):
     if session.get('user') != 'Khushbu23':
         return "Access Denied!"
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET status = 'Active' WHERE id = ?", (user_id,))
+    cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    target_user = cursor.fetchone()
+    if target_user and target_user[0] == 'Khushbu23':
+        conn.close()
+        return "রিয়েল এডমিনের আইডি কখনো ডিলিট করা যাবে না!"
+    
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
@@ -158,7 +178,7 @@ def add_record():
     conn.close()
     return redirect(url_for('dashboard'))
 
-# সফট ডিলিট
+# সফট ডিলিট (নাম্বার ট্র্যাশ বিনে পাঠানো)
 @app.route('/delete_record/<int:rec_id>')
 def delete_record(rec_id):
     conn = sqlite3.connect('btcl_database.db')
@@ -168,11 +188,11 @@ def delete_record(rec_id):
     conn.close()
     return redirect(url_for('dashboard'))
 
-# রিকভার রেকর্ড (শুধু রিয়েল এডমিন)
+# রিকভার রেকর্ড (শুধুমাত্র রিয়েল এডমিন রিসাইকেল বিন থেকে রিকভার করতে পারবে)
 @app.route('/recover_record/<int:rec_id>')
 def recover_record(rec_id):
     if session.get('user') != 'Khushbu23':
-        return "অনুমতি নেই! শুধুমাত্র রিয়েল এডমিন এটি রিকভার করতে পারবেন।"
+        return "অনুমতি নেই! শুধুমাত্র রিয়েল এডমিন ডিলিট করা নাম্বার রিকভার করতে পারবেন।"
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE records SET is_deleted = 0 WHERE id = ?", (rec_id,))
