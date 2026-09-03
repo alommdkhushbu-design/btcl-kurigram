@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL, কুড়িগ্রাম - পোর্টাল</title>
+    <title>BTCL, কুড়িগ্রাম - সার্ভার পোর্টাল</title>
     <style>
         :root {
             --primary-green: #0A5C36;
@@ -26,15 +26,21 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
         h2, h3 { color: var(--accent-gold); }
-        .container { padding: 20px; max-width: 1200px; margin: auto; }
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
         .card {
             background-color: var(--light-card);
             border-left: 5px solid var(--accent-gold);
             padding: 20px;
             margin-bottom: 20px;
             border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,255,200,0.1);
         }
         .btn-custom {
             background: linear-gradient(90deg, var(--accent-gold), var(--sky-blue));
@@ -44,8 +50,9 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
-            text-decoration: none;
-            display: inline-block;
+        }
+        .btn-custom:hover {
+            opacity: 0.9;
         }
         input, select, textarea {
             width: 100%;
@@ -57,150 +64,81 @@
             border-radius: 4px;
             box-sizing: border-box;
         }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: left;
+        }
         th { background-color: var(--primary-green); color: var(--accent-gold); }
-        .badge { background: red; color: white; padding: 2px 6px; border-radius: 50%; font-size: 12px; }
+        .notification-badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
 
     <header>
-        <h2>BTCL, কুড়িগ্রাম (সার্ভার)</h2>
-        {% if session.get('user') %}
+        <h2>BTCL, কুড়িগ্রাম</h2>
         <div>
-            <span>ইউজার: <b>{{ session.get('user') }}</b></span> | 
-            <a href="/logout" style="color: var(--accent-gold);">লগআউট</a>
+            <span>🔔 নোটিফিকেশন <span class="notification-badge">0</span></span>
         </div>
-        {% endif %}
     </header>
 
     <div class="container">
         
-        {% if not session.get('user') %}
-            <!-- লগইন পেজ -->
-            {% if page == 'login' or page is not defined %}
-            <div class="card">
-                <h3>লগইন করুন</h3>
-                <form action="/login" method="POST">
-                    <input type="text" name="username" placeholder="ইউজারনেম / জিমেইল / ফোন" required>
-                    <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
-                    <button type="submit" class="btn-custom">লগইন</button>
-                </form>
-                <p style="margin-top: 15px;">একাউন্ট নেই? <a href="/register_page" style="color: var(--accent-gold);">রেজিস্ট্রেশন করুন</a></p>
-            </div>
-            {% endif %}
+        <!-- লগইন বা রেজিস্ট্রেশন কার্ড -->
+        <div class="card">
+            <h3>অ্যাডমিন / ইউজার লগইন</h3>
+            <form action="/login" method="POST">
+                <input type="text" name="username" placeholder="ইউজারনেম / জিমেইল / ফোন" required>
+                <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
+                <button type="submit" class="btn-custom">লগইন করুন</button>
+            </form>
+        </div>
 
-            <!-- রেজিস্ট্রেশন পেজ -->
-            {% if page == 'register' %}
-            <div class="card">
-                <h3>নতুন অ্যাকাউন্ট তৈরি করুন</h3>
-                <form action="/register" method="POST">
-                    <input type="text" name="name" placeholder="আপনার নাম" required>
-                    <input type="email" name="email" placeholder="সঠিক জিমেইল আইডি" required>
-                    <input type="text" name="phone" placeholder="১১ ডিজিট মোবাইল নম্বর" required>
-                    <input type="text" name="username" placeholder="ইউজারনেম দিন" required>
-                    <input type="password" name="password" placeholder="পাসওয়ার্ড দিন" required>
-                    <button type="submit" class="btn-custom">একাউন্ট রিকোয়েস্ট পাঠান</button>
-                </form>
-                <p style="margin-top: 15px;"><a href="/" style="color: var(--accent-gold);">লগইন পেজে ফিরে যান</a></p>
-            </div>
-            {% endif %}
+        <!-- নতুন নাম্বার ও ডকুমেন্ট এড করার ফর্ম -->
+        <div class="card">
+            <h3>নতুন নম্বর ও ডকুমেন্ট এড করুন</h3>
+            <form action="/add_record" method="POST">
+                <input type="text" name="name" placeholder="গ্রাহকের নাম" required>
+                <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
+                <select name="service_type">
+                    <option value="Telephone">টেলিফোন নম্বর</option>
+                    <option value="Tel+WiFi">টেলিফোন+ওয়াইফাই নম্বর</option>
+                    <option value="WiFi">ওয়াইফাই নম্বর</option>
+                </select>
+                <input type="text" name="service_no" placeholder="সংযোগ নম্বর">
+                <input type="text" name="address" placeholder="ঠিকানা">
+                <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
+                <button type="submit" class="btn-custom">সংরক্ষণ করুন</button>
+            </form>
+        </div>
 
-        {% else %}
-            <!-- ড্যাশবোর্ড পেজ -->
-            <div class="card">
-                <h3>ড্যাশবোর্ড - স্বাগতম {{ session.get('user') }}</h3>
-                <p>সিকিউরিটি পিন: <b>137955</b> (রিয়েল এডমিন কন্ট্রোল)</p>
-            </div>
-
-            <!-- নতুন নাম্বার এড ফর্ম -->
-            <div class="card">
-                <h3>নতুন নম্বর ও ডকুমেন্ট এড করুন</h3>
-                <form action="/add_record" method="POST">
-                    <input type="text" name="name" placeholder="গ্রাহকের নাম" required>
-                    <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
-                    <select name="service_type">
-                        <option value="Telephone">টেলিফোন নম্বর</option>
-                        <option value="Tel+WiFi">টেলিফোন+ওয়াইফাই নম্বর</option>
-                        <option value="WiFi">ওয়াইফাই নম্বর</option>
-                    </select>
-                    <input type="text" name="service_no" placeholder="সংযোগ নম্বর">
-                    <input type="text" name="address" placeholder="ঠিকানা">
-                    <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
-                    <button type="submit" class="btn-custom">সংরক্ষণ করুন</button>
-                </form>
-            </div>
-
-            <!-- রিয়েল এডমিন প্যানেল: পেন্ডিং ইউজার এপ্রুভ ও গোপন তথ্য দেখা -->
-            {% if current_user == 'Khushbu23' %}
-            <div class="card" style="border-left-color: red;">
-                <h3>🛡️ রিয়েল এডমিন কন্ট্রোল প্যানেল (সবার পাসওয়ার্ড ও তথ্য)</h3>
-                <h4>পেন্ডিং অ্যাকাউন্ট রিকোয়েস্টসমূহ:</h4>
-                <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>ফোন</th><th>অ্যাকশন</th></tr>
-                    {% for u in pending_users %}
-                    <tr>
-                        <td>{{ u[1] }}</td><td>{{ u[4] }}</td><td>{{ u[2] }}</td><td>{{ u[3] }}</td>
-                        <td><a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 5px 10px; font-size: 12px;">এপ্রুভ করুন</a></td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="5">কোনো পেন্ডিং রিকোয়েস্ট নেই।</td></tr>
-                    {% endfor %}
-                </table>
-
-                <h4 style="margin-top: 20px;">সকল রেজিস্টার্ড ইউজারের তথ্য ও পাসওয়ার্ড:</h4>
-                <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>পাসওয়ার্ড</th><th>জিমেইল</th><th>স্ট্যাটাস</th></tr>
-                    {% for usr in all_users %}
-                    <tr>
-                        <td>{{ usr[1] }}</td><td>{{ usr[4] }}</td><td style="color: yellow;">{{ usr[5] }}</td><td>{{ usr[2] }}</td><td>{{ usr[7] }}</td>
-                    </tr>
-                    {% endfor %}
-                </table>
-
-                <h4 style="margin-top: 20px;">রecycle Bin (ডিলিট করা নাম্বার রিকভারি - শুধু রিয়েল এডমিন):</h4>
-                <table>
-                    <tr><th>নাম</th><th>মোবাইল</th><th>অ্যাকশন</th></tr>
-                    {% for t in trash %}
-                    <tr>
-                        <td>{{ t[1] }}</td><td>{{ t[2] }}</td>
-                        <td><a href="/recover_record/{{ t[0] }}" class="btn-custom" style="padding: 5px 10px; background: green; color: white;">রিকভার করুন</a></td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="3">রিসাইকেল বিন খালি।</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-            {% endif %}
-
-            <!-- ডাটা লিস্ট টেবিল -->
-            <div class="card">
-                <h3>গ্রাহক ও সংযোগ তালিকা</h3>
-                <table>
-                    <tr>
-                        <th>নাম</th>
-                        <th>মোবাইল</th>
-                        <th>সেবার ধরণ</th>
-                        <th>সংযোগ নম্বর</th>
-                        <th>অ্যাকশন</th>
-                    </tr>
-                    {% for rec in records %}
-                    <tr>
-                        <td>{{ rec[1] }}</td>
-                        <td>{{ rec[2] }}</td>
-                        <td>{{ rec[3] }}</td>
-                        <td>{{ rec[4] }}</td>
-                        <td>
-                            <a href="/delete_record/{{ rec[0] }}" style="color: #ff4d4d; text-decoration: none; font-weight: bold;">ডিলিট</a>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="5" style="text-align: center;">কোন ডাটা পাওয়া যায়নি।</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-        {% endif %}
+        <!-- ডাটা টেবিল -->
+        <div class="card">
+            <h3>গ্রাহক ও সংযোগ তালিকা</h3>
+            <table>
+                <tr>
+                    <th>নাম</th>
+                    <th>মোবাইল</th>
+                    <th>সেবার ধরণ</th>
+                    <th>সংযোগ নম্বর</th>
+                    <th>অ্যাকশন</th>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: center;">কোন ডাটা পাওয়া যায়নি।</td>
+                </tr>
+            </table>
+        </div>
 
     </div>
 
