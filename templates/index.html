@@ -68,6 +68,13 @@
             border: 1px solid var(--sky-blue); color: white; border-radius: 4px; box-sizing: border-box;
         }
         
+        /* টপ সার্চ ও সর্ট কন্ট্রোল প্যানেল */
+        .top-search-bar {
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px;
+        }
+        .top-search-bar input { flex: 2; min-width: 200px; margin: 0; }
+        .top-search-bar select { flex: 1; min-width: 130px; margin: 0; }
+
         /* ৪টি কাউন্টার বক্স */
         .counter-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;
@@ -186,30 +193,37 @@
                 </div>
             </div>
 
+            <div class="card" style="background: #171717; border-left: 5px solid var(--sky-blue);">
+                <form action="/dashboard" method="GET" class="top-search-bar" style="margin: 0;">
+                    <input type="text" name="search" placeholder="🔍 যেকোনো কিছু দিয়ে দ্রুত সার্চ করুন (নাম, ফোন, সার্ভিস নং...)" value="{{ request.args.get('search', '') }}">
+                    <select name="sort" onchange="this.form.submit()">
+                        <option value="new" {% if request.args.get('sort') == 'new' %}selected{% endif %}>নতুন থেকে পুরনো</option>
+                        <option value="old" {% if request.args.get('sort') == 'old' %}selected{% endif %}>পুরনো থেকে নতুন</option>
+                        <option value="az" {% if request.args.get('sort') == 'az' %}selected{% endif %}>A - Z (বর্ণানুক্রমিক)</option>
+                        <option value="za" {% if request.args.get('sort') == 'za' %}selected{% endif %}>Z - A (বিপরীত)</option>
+                    </select>
+                    <input type="hidden" name="filter" value="{{ active_filter }}">
+                    <button type="submit" class="btn-custom">খুঁজুন</button>
+                </form>
+            </div>
+
             <div class="counter-grid">
-                <a href="/dashboard?filter=all" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
+                <a href="/dashboard?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
                     <h4>টোটাল নাম্বার</h4>
                     <p>{{ total_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Telephone" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
+                <a href="/dashboard?filter=Telephone&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
                     <h4>টেলিফোন নাম্বার</h4>
                     <p>{{ tel_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Tel+WiFi" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
+                <a href="/dashboard?filter=Tel+WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
                     <h4>টেলিফোন + ওয়াইফাই</h4>
                     <p>{{ tel_wifi_count }}</p>
                 </a>
-                <a href="/dashboard?filter=WiFi" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
+                <a href="/dashboard?filter=WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
                     <h4>ওয়াইফাই নাম্বার</h4>
                     <p>{{ wifi_count }}</p>
                 </a>
-            </div>
-
-            <div class="card" style="padding: 15px;">
-                <form action="/dashboard" method="GET" style="display: flex; gap: 10px; margin: 0;">
-                    <input type="text" name="search" placeholder="নাম, ফোন, সার্ভিস নাম্বার বা ঠিকানা দিয়ে খুঁজুন..." value="{{ request.args.get('search', '') }}" style="margin: 0;">
-                    <button type="submit" class="btn-custom">সার্চ</button>
-                </form>
             </div>
 
             {% if current_user == 'Khushbu23' %}
@@ -340,7 +354,6 @@
     </div>
 
     <script>
-        /* সাইডবার মেনু কন্ট্রোল স্ক্রিপ্ট */
         function openNav() {
             document.getElementById("mySidebar").style.width = "280px";
         }
@@ -348,7 +361,6 @@
             document.getElementById("mySidebar").style.width = "0";
         }
 
-        /* মডাল পপআপ স্ক্রিপ্ট */
         function openAddModal() {
             document.getElementById("addModal").style.display = "block";
         }
