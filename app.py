@@ -6,7 +6,7 @@ from datetime import datetime
 app = Flask(__name__)
 app.secret_key = 'btcl_kurigram_super_secret_key_2026'
 
-SECURITY_PIN = "137955"  # সিকিউরিটি পাসওয়ার্ড
+SECURITY_PIN = "137955"  # আপনার দেওয়া সিকিউরিটি পাসওয়ার্ড
 
 # ডেটাবেস এবং রিয়েল এডমিন ইনিশিয়ালাইজেশন
 def init_db():
@@ -55,7 +55,7 @@ def index():
 def register_page():
     return render_template('index.html', page='register')
 
-# রেজিস্ট্রেশন হ্যান্ডেল (নতুন ইউজার রিকোয়েস্ট)
+# রেজিস্ট্রেশন হ্যান্ডেল (নতুন ইউজার বা সাব-এডমিন রিকোয়েস্ট)
 @app.route('/register', methods=['POST'])
 def register():
     name = request.form['name']
@@ -93,6 +93,7 @@ def login():
     conn.close()
     
     if user:
+        # স্ট্যাটাস পেন্ডিং থাকলে লগইন আটকে দেওয়া (রিয়েল এডমিন বাদে)
         if user[7] != 'Active' and username != 'Khushbu23':
             return "আপনার অ্যাকাউন্টটি এখনো রিয়েল এডমিন কর্তৃক অনুমোদিত (Active) হয়নি! দয়া করে অপেক্ষা করুন।"
                 
@@ -141,7 +142,7 @@ def approve_user(user_id):
     conn.close()
     return redirect(url_for('dashboard'))
 
-# ইউজার ডিলেট করার রুট (শুধুমাত্র রিয়েল এডমিন)
+# ইউজার বা এডমিন ডিলেট করার রুট (শুধুমাত্র রিয়েল এডমিন করতে পারবে, ফিক্সড এডমিন Khushbu23 ডিলিট করা যাবে না)
 @app.route('/delete_user/<int:user_id>')
 def delete_user(user_id):
     if session.get('user') != 'Khushbu23':
