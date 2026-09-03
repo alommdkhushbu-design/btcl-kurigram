@@ -25,7 +25,6 @@ def init_db():
                         status TEXT DEFAULT 'Pending',
                         profile_pic TEXT DEFAULT 'default.png')''')
                         
-    # টেবিল আপডেট চেক (যদি profile_pic কলাম না থাকে)
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN profile_pic TEXT DEFAULT 'default.png'")
     except:
@@ -109,6 +108,7 @@ def dashboard():
     
     filter_type = request.args.get('filter', 'all')
     search_query = request.args.get('search', '')
+    sort_by = request.args.get('sort', 'new')
     
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
@@ -137,6 +137,16 @@ def dashboard():
         s_param = f"%{search_query}%"
         params.extend([s_param, s_param, s_param, s_param])
         
+    # সর্টিং হ্যান্ডেলিং (A-Z, Z-A, New/Old)
+    if sort_by == 'az':
+        query += " ORDER BY name ASC"
+    elif sort_by == 'za':
+        query += " ORDER BY name DESC"
+    elif sort_by == 'old':
+        query += " ORDER BY id ASC"
+    else:
+        query += " ORDER BY id DESC"
+        
     cursor.execute(query, params)
     records = cursor.fetchall()
     
@@ -152,7 +162,6 @@ def dashboard():
     cursor.execute("SELECT * FROM history ORDER BY id DESC LIMIT 20")
     history_logs = cursor.fetchall()
     
-    # বর্তমান ইউজারের ডাটা ফেচ করা, না পেলে সেফ ডিফল্ট ভ্যালু দেওয়া
     cursor.execute("SELECT * FROM users WHERE username = ?", (session.get('user'),))
     current_user_data = cursor.fetchone()
     if not current_user_data:
