@@ -62,7 +62,7 @@ def init_db():
 init_db()
 
 # ---------------------------------------------------------
-# ফ্রন্টএন্ড UI (HTML, CSS, JS) - Blue Theme Updated
+# ফ্রন্টএন্ড UI (HTML, CSS, JS)
 # ---------------------------------------------------------
 HTML_LAYOUT = """
 <!DOCTYPE html>
@@ -73,111 +73,109 @@ HTML_LAYOUT = """
     <title>BTCL, কুড়িগ্রাম</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-        body { background-color: #0f172a; color: #ffffff; padding: 12px; }
+        body { background-color: #121212; color: #ffffff; padding: 12px; }
 
         .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
         .header-left, .header-right { display: flex; align-items: center; gap: 6px; }
         
-        .nav-btn { font-size: 13px; color: #38bdf8; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
-        .nav-btn:hover { background: #334155; }
+        .nav-btn { font-size: 13px; color: #00ff66; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+        .nav-btn:hover { background: #2a2a2a; }
         
-        .header-title { color: #38bdf8; font-size: 15px; font-weight: bold; background: #1e293b; padding: 6px 10px; border-radius: 6px; border: 1px solid #334155; }
+        .header-title { color: #00ff66; font-size: 15px; font-weight: bold; background: #1e1e1e; padding: 6px 10px; border-radius: 6px; border: 1px solid #2a2a2a; }
         
         .role-badge { font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 6px; }
-        .admin-badge-style { background: #ef4444; color: #ffffff; border: 1px solid #dc2626; }
-        .user-badge-style { background: #1e293b; color: #38bdf8; border: 1px solid #334155; }
+        .admin-badge-style { background: #ff4d4d; color: #ffffff; border: 1px solid #ff1a1a; }
+        .user-badge-style { background: #1e1e1e; color: #00ff66; border: 1px solid #333; }
 
-        .notif-bell-btn { position: relative; font-size: 16px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: #fff; }
-        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 50%; display: none; }
-        .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 300px; max-height: 350px; overflow-y: auto; background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
+        .notif-bell-btn { position: relative; font-size: 16px; background: #1e1e1e; border: 1px solid #333; border-radius: 6px; padding: 5px 8px; cursor: pointer; color: #fff; }
+        .notif-badge { position: absolute; top: -5px; right: -5px; background: #ff4d4d; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 50%; display: none; }
+        .notif-dropdown { position: absolute; top: 45px; right: 12px; width: 300px; max-height: 350px; overflow-y: auto; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1002; display: none; }
         .notif-dropdown.active { display: block; }
-        .notif-header { padding: 10px; border-bottom: 1px solid #334155; font-weight: bold; color: #38bdf8; font-size: 13px; }
-        .notif-item { padding: 10px; border-bottom: 1px solid #334155; font-size: 12px; cursor: pointer; }
-        .notif-item:hover { background: #334155; }
-        .notif-empty { padding: 15px; text-align: center; color: #94a3b8; font-size: 12px; }
+        .notif-header { padding: 10px; border-bottom: 1px solid #333; font-weight: bold; color: #00ff66; font-size: 13px; }
+        .notif-item { padding: 10px; border-bottom: 1px solid #2a2a2a; font-size: 12px; cursor: pointer; }
+        .notif-item:hover { background: #2a2a2a; }
+        .notif-empty { padding: 15px; text-align: center; color: #888; font-size: 12px; }
 
         .search-container { position: relative; margin-bottom: 10px; }
-        .search-box { width: 100%; padding: 12px 15px 12px 38px; background: #1e293b; border: 1px solid #38bdf8; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
-        .search-box:focus { box-shadow: 0 0 10px rgba(56, 189, 248, 0.4); }
-        .search-icon { position: absolute; left: 14px; top: 12px; color: #38bdf8; }
+        .search-box { width: 100%; padding: 12px 15px 12px 38px; background: #1e1e1e; border: 1px solid #00ff66; border-radius: 20px; color: #fff; font-size: 14px; outline: none; }
+        .search-box:focus { box-shadow: 0 0 10px rgba(0,255,102,0.3); }
+        .search-icon { position: absolute; left: 14px; top: 12px; color: #00ff66; }
 
-        .sort-controls { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; background: #1e293b; padding: 8px 12px; border-radius: 8px; border: 1px solid #334155; }
-        .sort-label { font-size: 12px; color: #94a3b8; }
-        .sort-select { background: #334155; color: #38bdf8; border: 1px solid #475569; padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
+        .sort-controls { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; background: #1e1e1e; padding: 8px 12px; border-radius: 8px; border: 1px solid #2a2a2a; }
+        .sort-label { font-size: 12px; color: #aaa; }
+        .sort-select { background: #2a2a2a; color: #00ff66; border: 1px solid #333; padding: 6px 10px; border-radius: 6px; font-size: 12px; outline: none; cursor: pointer; }
 
-        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e293b; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #334155; box-shadow: 5px 0 15px rgba(0,0,0,0.5); overflow-y: auto; }
+        .sidebar { position: fixed; top: 0; left: -280px; width: 260px; height: 100%; background: #1e1e1e; z-index: 1000; transition: 0.3s; padding: 15px; border-right: 1px solid #333; box-shadow: 5px 0 15px rgba(0,0,0,0.5); overflow-y: auto; }
         .sidebar.active { left: 0; }
-        .close-btn { color: #ef4444; background: none; border: none; font-size: 16px; cursor: pointer; float: right; font-weight: bold; }
+        .close-btn { color: #ff4d4d; background: none; border: none; font-size: 16px; cursor: pointer; float: right; font-weight: bold; }
         
-        .menu-title { color: #94a3b8; font-size: 13px; margin: 20px 0 10px 0; }
+        .menu-title { color: #888; font-size: 13px; margin: 20px 0 10px 0; }
         .menu-list { display: flex; flex-direction: column; gap: 8px; }
-        .menu-item { background: #334155; color: #fff; padding: 12px; border-radius: 6px; font-size: 13px; border: none; text-align: left; width: 100%; cursor: pointer; }
-        .menu-item.active { background: #0284c7; color: #fff; font-weight: bold; }
-        .logout-btn { background: #ef4444; color: #fff; width: 100%; padding: 12px; border-radius: 6px; border: none; margin-top: 20px; font-weight: bold; cursor: pointer; }
+        .menu-item { background: #2a2a2a; color: #fff; padding: 12px; border-radius: 6px; font-size: 13px; border: none; text-align: left; width: 100%; cursor: pointer; }
+        .menu-item.active { background: #00e65c; color: #000; font-weight: bold; }
+        .logout-btn { background: #ff4d4d; color: #fff; width: 100%; padding: 12px; border-radius: 6px; border: none; margin-top: 20px; font-weight: bold; cursor: pointer; }
 
-        .card { background: #1e293b; padding: 15px; border-radius: 10px; border: 1px solid #334155; margin-bottom: 15px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #2a2a2a; margin-bottom: 15px; }
         .card-title { font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 12px; }
         
         .grid-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; text-align: center; }
-        .stat-box { background: #0f172a; border: 1px solid #38bdf8; padding: 8px 2px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-        .stat-box:hover { background: #0369a1; }
-        .stat-box.active-card { background: #0284c7; color: #fff; }
-        .stat-box.active-card p, .stat-box.active-card h3 { color: #fff !important; }
-        .stat-box p { font-size: 9px; color: #94a3b8; pointer-events: none; }
-        .stat-box h3 { color: #38bdf8; margin-top: 4px; font-size: 14px; pointer-events: none; }
+        .stat-box { background: #18221a; border: 1px solid #00ff66; padding: 8px 2px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .stat-box:hover { background: #005c26; }
+        .stat-box.active-card { background: #00e65c; color: #000; }
+        .stat-box.active-card p, .stat-box.active-card h3 { color: #000 !important; }
+        .stat-box p { font-size: 9px; color: #aaa; pointer-events: none; }
+        .stat-box h3 { color: #00ff66; margin-top: 4px; font-size: 14px; pointer-events: none; }
 
-        .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #334155; border: 1px solid #475569; border-radius: 6px; color: #fff; font-size: 14px; }
-        .submit-btn { width: 100%; padding: 12px; background: #0284c7; color: #fff; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
-        .submit-btn:hover { background: #0369a1; }
-        .btn-approve { background: #0284c7; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 4px; }
-        .btn-danger { background: #ef4444; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+        .input-box { width: 100%; padding: 12px; margin-bottom: 10px; background: #2a2a2a; border: 1px solid #333; border-radius: 6px; color: #fff; font-size: 14px; }
+        .submit-btn { width: 100%; padding: 12px; background: #00e65c; color: #000; font-weight: bold; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; }
+        .btn-approve { background: #00e65c; color: #000; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-right: 4px; }
+        .btn-danger { background: #ff4d4d; color: #fff; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 
         .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th, td { border: 1px solid #334155; padding: 8px; text-align: left; }
-        th { background: #334155; color: #38bdf8; }
+        th, td { border: 1px solid #333; padding: 8px; text-align: left; }
+        th { background: #2a2a2a; color: #00ff66; }
 
-        .clickable-name { color: #38bdf8; cursor: pointer; font-weight: bold; text-decoration: underline; }
+        .clickable-name { color: #00ff66; cursor: pointer; font-weight: bold; text-decoration: underline; }
         .clickable-name:hover { color: #ffffff; }
 
-        .auth-container { max-width: 400px; margin: 30px auto; background: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155; }
+        .auth-container { max-width: 400px; margin: 30px auto; background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #2a2a2a; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 15px; }
         .tab-btn { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         
         /* মেসেঞ্জার লেআউট */
         .messenger-layout { display: flex; gap: 10px; height: 420px; }
-        .chat-user-list { width: 35%; background: #0f172a; border: 1px solid #334155; border-radius: 6px; overflow-y: auto; padding: 5px; }
-        .chat-user-item { padding: 10px; border-bottom: 1px solid #1e293b; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; margin-bottom: 3px; background: #1e293b; }
-        .chat-user-item:hover, .chat-user-item.active { background: #0369a1; color: #fff; }
-        .chat-user-item .u-name { font-weight: bold; font-size: 13px; color: #38bdf8; }
-        .chat-user-item.active .u-name { color: #ffffff; }
-        .chat-user-item .u-msg { font-size: 11px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chat-user-list { width: 35%; background: #121212; border: 1px solid #333; border-radius: 6px; overflow-y: auto; padding: 5px; }
+        .chat-user-item { padding: 10px; border-bottom: 1px solid #222; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; margin-bottom: 3px; background: #1a1a1a; }
+        .chat-user-item:hover, .chat-user-item.active { background: #005c26; color: #fff; }
+        .chat-user-item .u-name { font-weight: bold; font-size: 13px; color: #00ff66; }
+        .chat-user-item .u-msg { font-size: 11px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         
         .chat-area { width: 65%; display: flex; flex-direction: column; }
-        .chat-header { background: #334155; padding: 8px 12px; font-size: 13px; font-weight: bold; color: #38bdf8; border-radius: 6px 6px 0 0; border: 1px solid #475569; }
-        .chat-box { flex: 1; overflow-y: auto; border: 1px solid #334155; border-top: none; padding: 10px; background: #0f172a; display: flex; flex-direction: column; gap: 8px; }
+        .chat-header { background: #2a2a2a; padding: 8px 12px; font-size: 13px; font-weight: bold; color: #00ff66; border-radius: 6px 6px 0 0; border: 1px solid #333; }
+        .chat-box { flex: 1; overflow-y: auto; border: 1px solid #333; border-top: none; padding: 10px; background: #121212; display: flex; flex-direction: column; gap: 8px; }
         .chat-msg { max-width: 85%; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
-        .chat-msg.sent { background: #0284c7; color: #fff; align-self: flex-end; }
-        .chat-msg.received { background: #334155; color: #fff; align-self: flex-start; }
+        .chat-msg.sent { background: #005c26; color: #fff; align-self: flex-end; }
+        .chat-msg.received { background: #2a2a2a; color: #fff; align-self: flex-start; }
         
         /* ক্যামেরা প্রিভিউ ও বাটন */
         .camera-btn-group { display: flex; gap: 10px; margin-bottom: 10px; }
-        .cam-btn { flex: 1; padding: 10px; background: #334155; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 6px; font-size: 12px; cursor: pointer; text-align: center; }
-        .cam-btn:hover { background: #0369a1; color: #fff; }
+        .cam-btn { flex: 1; padding: 10px; background: #2a2a2a; color: #00ff66; border: 1px solid #00ff66; border-radius: 6px; font-size: 12px; cursor: pointer; text-align: center; }
+        .cam-btn:hover { background: #005c26; color: #fff; }
         #camera-preview-container { text-align: center; margin-bottom: 10px; display: none; }
-        #video-element { width: 100%; max-height: 200px; background: #000; border-radius: 6px; border: 1px solid #334155; }
-        #captured-image-preview { max-width: 100%; max-height: 150px; border-radius: 6px; border: 1px solid #38bdf8; margin-top: 5px; display: none; }
+        #video-element { width: 100%; max-height: 200px; background: #000; border-radius: 6px; border: 1px solid #333; }
+        #captured-image-preview { max-width: 100%; max-height: 150px; border-radius: 6px; border: 1px solid #00ff66; margin-top: 5px; display: none; }
 
         .hidden { display: none !important; }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 999; display: none; }
         .overlay.active { display: block; }
 
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e293b; border: 1px solid #38bdf8; border-radius: 10px; padding: 20px; width: 90%; max-width: 450px; z-index: 1001; box-shadow: 0 5px 20px rgba(0,0,0,0.8); }
-        .modal-title { color: #38bdf8; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1e1e1e; border: 1px solid #00ff66; border-radius: 10px; padding: 20px; width: 90%; max-width: 450px; z-index: 1001; box-shadow: 0 5px 20px rgba(0,0,0,0.8); }
+        .modal-title { color: #00ff66; font-size: 16px; font-weight: bold; margin-bottom: 12px; border-bottom: 1px solid #333; padding-bottom: 6px; }
         .modal-item { margin-bottom: 8px; font-size: 13px; }
-        .modal-item span { color: #94a3b8; }
+        .modal-item span { color: #aaa; }
         
-        .history-card { background: #334155; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #38bdf8; }
+        .history-card { background: #2a2a2a; padding: 10px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #00ff66; }
     </style>
 </head>
 <body>
@@ -203,10 +201,10 @@ HTML_LAYOUT = """
 
     <!-- লগইন ও রেজিস্ট্রেশন -->
     <div id="auth-view" class="auth-container">
-        <div style="color:#38bdf8; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
+        <div style="color:#00ff66; text-align:center; font-weight:bold; font-size:18px; margin-bottom:15px;">BTCL, কুড়িগ্রাম</div>
         <div class="tab-buttons">
-            <button id="btn-tab-login" class="tab-btn" style="background:#0284c7; color:#fff;" onclick="toggleAuthTab('login')">লগইন</button>
-            <button id="btn-tab-reg" class="tab-btn" style="background:#334155; color:#fff;" onclick="toggleAuthTab('reg')">রেজিস্ট্রেশন</button>
+            <button id="btn-tab-login" class="tab-btn" style="background:#00e65c; color:#000;" onclick="toggleAuthTab('login')">লগইন</button>
+            <button id="btn-tab-reg" class="tab-btn" style="background:#2a2a2a; color:#fff;" onclick="toggleAuthTab('reg')">রেজিস্ট্রেশন</button>
         </div>
 
         <form id="form-login" onsubmit="doLogin(event)">
@@ -287,7 +285,7 @@ HTML_LAYOUT = """
                     </div>
                     <div class="stat-box" id="card-users" onclick="navTo('sec-users')">
                         <p>টোটাল ইউজার</p>
-                        <h3 id="stat-users-count" style="color:#38bdf8;">0</h3>
+                        <h3 id="stat-users-count" style="color:#007bff;">0</h3>
                     </div>
                 </div>
             </div>
@@ -307,7 +305,7 @@ HTML_LAYOUT = """
 
         <!-- নোটিফিকেশন হিস্ট্রি -->
         <div id="sec-notif-history" class="card hidden">
-            <div class="card-title" style="color:#38bdf8;">📜 নোটিফিকেশন হিস্ট্রি</div>
+            <div class="card-title" style="color:#00ff66;">📜 নোটিফিকেশন হিস্ট্রি</div>
             <div id="notif-history-list"></div>
         </div>
 
@@ -329,7 +327,7 @@ HTML_LAYOUT = """
                 <input type="text" id="cust-note" class="input-box" placeholder="অতিরিক্ত নোট">
 
                 <!-- ক্যামেরা ও ফাইল ফাইল সিলেক্টর (ঐচ্ছিক/Optional) -->
-                <div style="font-size:12px; color:#94a3b8; margin-bottom:5px;">ডকুমেন্ট যুক্ত করুন (ছবি বা ফাইল তুলে দেওয়া ঐচ্ছিক):</div>
+                <div style="font-size:12px; color:#aaa; margin-bottom:5px;">ডকুমেন্ট যুক্ত করুন (ছবি বা ফাইল তুলে দেওয়া ঐচ্ছিক):</div>
                 
                 <div class="camera-btn-group">
                     <button type="button" class="cam-btn" onclick="startCamera()">📷 ক্যামেরা চালু করুন</button>
@@ -342,7 +340,7 @@ HTML_LAYOUT = """
                 <!-- লাইভ ক্যামেরা ভিউ -->
                 <div id="camera-preview-container">
                     <video id="video-element" autoplay playsinline></video>
-                    <button type="button" class="cam-btn" style="background:#0284c7; color:#fff; margin-top:5px;" onclick="capturePhoto()">📸 ছবি তুলুন</button>
+                    <button type="button" class="cam-btn" style="background:#00ff66; color:#000; margin-top:5px;" onclick="capturePhoto()">📸 ছবি তুলুন</button>
                 </div>
 
                 <!-- সিলেক্ট হওয়া ছবির প্রিভিউ -->
@@ -389,22 +387,22 @@ HTML_LAYOUT = """
 
         <!-- সিকিউরিটি -->
         <div id="sec-admin-settings" class="card hidden admin-only">
-            <div class="card-title" style="color:#38bdf8;">🔐 এডমিন সিকিউরিটি</div>
+            <div class="card-title" style="color:#00ff66;">🔐 এডমিন সিকিউরিটি</div>
             <form onsubmit="updateAdminProfile(event)">
                 <input type="text" id="new-admin-uname" class="input-box" placeholder="নতুন ইউজারনেম" required>
                 <input type="password" id="new-admin-pass" class="input-box" placeholder="নতুন পাসওয়ার্ড" required>
-                <input type="password" id="admin-sec-code" class="input-box" style="border:1px solid #ef4444;" placeholder="সিকিউরিটি কোড" required>
-                <button type="submit" class="submit-btn" style="background:#ef4444; color:#fff;">আপডেট করুন</button>
+                <input type="password" id="admin-sec-code" class="input-box" style="border:1px solid #ff4d4d;" placeholder="সিকিউরিটি কোড" required>
+                <button type="submit" class="submit-btn" style="background:#ff4d4d; color:#fff;">আপডেট করুন</button>
             </form>
         </div>
 
         <!-- মেসেঞ্জার -->
         <div id="sec-messenger" class="card hidden">
-            <div class="card-title" style="color:#38bdf8;">💬 মেসেঞ্জার</div>
+            <div class="card-title" style="color:#00ff66;">💬 মেসেঞ্জার</div>
             
             <div class="messenger-layout">
                 <div id="messenger-user-list-container" class="chat-user-list admin-only">
-                    <div style="font-size:11px; color:#94a3b8; margin-bottom:5px; text-align:center;">সর্বশেষ মেসেজ অনুযায়ী সিরিয়াল</div>
+                    <div style="font-size:11px; color:#aaa; margin-bottom:5px; text-align:center;">সর্বশেষ মেসেজ অনুযায়ী সিরিয়াল</div>
                     <div id="inbox-user-list"></div>
                 </div>
 
@@ -440,16 +438,16 @@ HTML_LAYOUT = """
 
         function toggleAuthTab(tab) {
             if(tab === 'login') {
-                document.getElementById('btn-tab-login').style.background = '#0284c7';
-                document.getElementById('btn-tab-login').style.color = '#fff';
-                document.getElementById('btn-tab-reg').style.background = '#334155';
+                document.getElementById('btn-tab-login').style.background = '#00e65c';
+                document.getElementById('btn-tab-login').style.color = '#000';
+                document.getElementById('btn-tab-reg').style.background = '#2a2a2a';
                 document.getElementById('btn-tab-reg').style.color = '#fff';
                 document.getElementById('form-login').classList.remove('hidden');
                 document.getElementById('form-reg').classList.add('hidden');
             } else {
-                document.getElementById('btn-tab-reg').style.background = '#0284c7';
-                document.getElementById('btn-tab-reg').style.color = '#fff';
-                document.getElementById('btn-tab-login').style.background = '#334155';
+                document.getElementById('btn-tab-reg').style.background = '#00e65c';
+                document.getElementById('btn-tab-reg').style.color = '#000';
+                document.getElementById('btn-tab-login').style.background = '#2a2a2a';
                 document.getElementById('btn-tab-login').style.color = '#fff';
                 document.getElementById('form-reg').classList.remove('hidden');
                 document.getElementById('form-login').classList.add('hidden');
@@ -604,7 +602,7 @@ HTML_LAYOUT = """
 
             data.forEach((c, index) => {
                 const tr = document.createElement('tr');
-                let docHtml = c.doc_url ? `<a href="${c.doc_url}" target="_blank" style="color:#38bdf8;">📄 দেখুন</a>` : 'নাই';
+                let docHtml = c.doc_url ? `<a href="${c.doc_url}" target="_blank" style="color:#00ff66;">📄 দেখুন</a>` : 'নাই';
                 
                 if (isAdmin) {
                     tr.innerHTML = `
@@ -616,7 +614,7 @@ HTML_LAYOUT = """
                         <td>${c.address}</td>
                         <td>${docHtml}</td>
                         <td>
-                            <a href="https://wa.me/${c.phone}" target="_blank" style="color:#38bdf8;">WA</a>
+                            <a href="https://wa.me/${c.phone}" target="_blank" style="color:#00ff66;">WA</a>
                         </td>
                         <td>
                             <button class="btn-danger" onclick="deleteCustomer(${c.id})">ডিলিট</button>
@@ -785,7 +783,7 @@ HTML_LAYOUT = """
                     inboxBody.innerHTML = '';
 
                     if (threads.length === 0) {
-                        inboxBody.innerHTML = '<div style="font-size:11px; text-align:center; color:#94a3b8;">কোনো চ্যাট নেই</div>';
+                        inboxBody.innerHTML = '<div style="font-size:11px; text-align:center; color:#888;">কোনো চ্যাট নেই</div>';
                         return;
                     }
 
@@ -832,7 +830,7 @@ HTML_LAYOUT = """
                         if(m.file_type && m.file_type.startsWith('image/')) {
                             media = `<br><img src="${m.file_url}" style="max-width:140px; border-radius:6px; margin-top:5px;">`;
                         } else {
-                            media = `<br><a href="${m.file_url}" target="_blank" style="color:#38bdf8;">📄 ডাউনলোড</a>`;
+                            media = `<br><a href="${m.file_url}" target="_blank" style="color:#00ff66;">📄 ডাউনলোড</a>`;
                         }
                     }
 
@@ -950,19 +948,19 @@ HTML_LAYOUT = """
                 historyList.innerHTML = '';
 
                 if(data.length === 0) {
-                    historyList.innerHTML = '<div style="color:#94a3b8; text-align:center; padding:10px;">কোনো হিস্ট্রি পাওয়া যায়নি।</div>';
+                    historyList.innerHTML = '<div style="color:#aaa; text-align:center; padding:10px;">কোনো হিস্ট্রি পাওয়া যায়নি।</div>';
                     return;
                 }
 
                 data.forEach(item => {
-                    let badgeColor = item.type === 'registration' ? '#f59e0b' : '#38bdf8';
+                    let badgeColor = item.type === 'registration' ? '#ffaa00' : '#00ff66';
                     historyList.innerHTML += `
                         <div class="history-card">
                             <div style="font-size:11px; color:${badgeColor}; font-weight:bold; margin-bottom:4px;">
                                 ${item.type === 'registration' ? '👤 রেজিস্ট্রেশন রিকোয়েস্ট' : '💬 ইনকামিং মেসেজ'}
                             </div>
                             <div style="font-size:13px;">${item.details}</div>
-                            <div style="font-size:10px; color:#94a3b8; margin-top:4px;">সময়: ${item.timestamp}</div>
+                            <div style="font-size:10px; color:#aaa; margin-top:4px;">সময়: ${item.timestamp}</div>
                         </div>
                     `;
                 });
@@ -1260,7 +1258,7 @@ def mark_notification_read():
     return jsonify({"success": True})
 
 @app.route('/api/notification-history', methods=['GET'])
-def notification-history():
+def notification_history():
     username = request.args.get('username')
     status = request.args.get('status')
     
