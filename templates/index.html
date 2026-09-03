@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BTCL, কুড়িগ্রাম - সার্ভার পোর্টাল</title>
+    <style>
+        :root {
+            --primary-green: #0A5C36;
+            --accent-gold: #FFD700;
+            --sky-blue: #00B4D8;
+            --dark-bg: #121212;
+            --light-card: #1E1E1E;
+        }
+        body {
+            background-color: var(--primary-green);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: linear-gradient(135deg, var(--primary-green), var(--sky-blue));
+            border-bottom: 2px solid var(--accent-gold);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        h2, h3 { color: var(--accent-gold); }
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+        .card {
+            background-color: var(--light-card);
+            border-left: 5px solid var(--accent-gold);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,255,200,0.1);
+        }
+        .btn-custom {
+            background: linear-gradient(90deg, var(--accent-gold), var(--sky-blue));
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-custom:hover {
+            opacity: 0.9;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            background: #2D2D2D;
+            border: 1px solid var(--sky-blue);
+            color: white;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: left;
+        }
+        th { background-color: var(--primary-green); color: var(--accent-gold); }
+        .notification-badge {
+            background-color: red;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>BTCL, কুড়িগ্রাম</h2>
+        <div>
+            <span>🔔 নোটিফিকেশন <span class="notification-badge">0</span></span>
+        </div>
+    </header>
+
+    <div class="container">
+        
+        <!-- লগইন বা রেজিস্ট্রেশন কার্ড -->
+        <div class="card">
+            <h3>অ্যাডমিন / ইউজার লগইন</h3>
+            <form action="/login" method="POST">
+                <input type="text" name="username" placeholder="ইউজারনেম / জিমেইল / ফোন" required>
+                <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
+                <button type="submit" class="btn-custom">লগইন করুন</button>
+            </form>
+        </div>
+
+        <!-- নতুন নাম্বার ও ডকুমেন্ট এড করার ফর্ম -->
+        <div class="card">
+            <h3>নতুন নম্বর ও ডকুমেন্ট এড করুন</h3>
+            <form action="/add_record" method="POST">
+                <input type="text" name="name" placeholder="গ্রাহকের নাম" required>
+                <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
+                <select name="service_type">
+                    <option value="Telephone">টেলিফোন নম্বর</option>
+                    <option value="Tel+WiFi">টেলিফোন+ওয়াইফাই নম্বর</option>
+                    <option value="WiFi">ওয়াইফাই নম্বর</option>
+                </select>
+                <input type="text" name="service_no" placeholder="সংযোগ নম্বর">
+                <input type="text" name="address" placeholder="ঠিকানা">
+                <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
+                <button type="submit" class="btn-custom">সংরক্ষণ করুন</button>
+            </form>
+        </div>
+
+        <!-- ডাটা টেবিল -->
+        <div class="card">
+            <h3>গ্রাহক ও সংযোগ তালিকা</h3>
+            <table>
+                <tr>
+                    <th>নাম</th>
+                    <th>মোবাইল</th>
+                    <th>সেবার ধরণ</th>
+                    <th>সংযোগ নম্বর</th>
+                    <th>অ্যাকশন</th>
+                </tr>
+                <tr>
+                    <td colspan="5" style="text-align: center;">কোন ডাটা পাওয়া যায়নি।</td>
+                </tr>
+            </table>
+        </div>
+
+    </div>
+
+</body>
+</html>
