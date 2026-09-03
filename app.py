@@ -53,7 +53,7 @@ def login():
     password = request.form['password']
     
     # সুপার এডমিন হার্ডকোডেড চেক (বা ডেটাবেস চেক)
-    if username == "admin" and password == "Khushbu23":
+    if username == "Khushbu23" and password == "01751947523":
         session['user'] = username
         session['role'] = 'super_admin'
         return redirect(url_for('dashboard'))
