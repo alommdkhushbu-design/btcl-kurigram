@@ -30,7 +30,6 @@ def init_db():
     except:
         pass
 
-    # ফিক্সড রিয়েল এডমিন (Khushbu23 / 01751947523)
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status, profile_pic) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -108,7 +107,7 @@ def dashboard():
     
     filter_type = request.args.get('filter', 'all')
     search_query = request.args.get('search', '')
-    sort_by = request.args.get('sort', 'new')
+    sort_by = request.args.get('sort', 'asc')  # ডিফল্ট ছোট থেকে বড় (ID Ascending)
     
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
@@ -137,15 +136,11 @@ def dashboard():
         s_param = f"%{search_query}%"
         params.extend([s_param, s_param, s_param, s_param])
         
-    # সর্টিং হ্যান্ডেলিং (A-Z, Z-A, New/Old)
-    if sort_by == 'az':
-        query += " ORDER BY name ASC"
-    elif sort_by == 'za':
-        query += " ORDER BY name DESC"
-    elif sort_by == 'old':
-        query += " ORDER BY id ASC"
-    else:
+    # ছোট থেকে বড় (ASC) অথবা বড় থেকে ছোট (DESC) সিরিয়াল সাজানো
+    if sort_by == 'desc':
         query += " ORDER BY id DESC"
+    else:
+        query += " ORDER BY id ASC"
         
     cursor.execute(query, params)
     records = cursor.fetchall()
@@ -201,6 +196,38 @@ def add_record():
     
     cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
                    (f"Added record: {name}", session.get('user'), time_now))
+                   
+    conn.commit()
+    conn.close()
+    return redirect(url_for('dashboard'))
+
+@app.route('/update_record', methods=['POST'])
+def update_record():
+    rec_id = request.form['rec_id']
+    name = request.form['name']
+    phone = request.form['phone']
+    service_type = request.form['service_type']
+    service_no = request.form['service_no']
+    address = request.form['address']
+    time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    conn = sqlite3.connect('btcl_database.db')
+    cursor = conn.cursor()
+    
+    # নতুন ফাইল আপলোড করা হলে আপডেট করবে, না হলে পুরনো ফাইল অপরিবর্তিত রাখবে
+    if 'doc_file' in request.files:
+        file = request.files['doc_file']
+        if file.filename != '':
+            doc_file_name = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], doc_file_name))
+            cursor.execute("UPDATE records SET name=?, phone=?, service_type=?, service_no=?, address=?, doc_file=? WHERE id=?",
+                           (name, phone, service_type, service_no, address, doc_file_name, rec_id))
+        else:
+            cursor.execute("UPDATE records SET name=?, phone=?, service_type=?, service_no=?, address=? WHERE id=?",
+                           (name, phone, service_type, service_no, address, rec_id))
+    
+    cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
+                   (f"Updated record ID: {rec_id}", session.get('user'), time_now))
                    
     conn.commit()
     conn.close()
