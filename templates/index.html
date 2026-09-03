@@ -7,10 +7,10 @@
     <style>
         :root {
             --primary-green: #0A5C36;
+            --dark-green: #063820;
             --accent-gold: #FFD700;
             --sky-blue: #00B4D8;
-            --dark-bg: #121212;
-            --light-card: #1E1E1E;
+            --light-card: #0F4C2A;
         }
         body {
             background-color: var(--primary-green);
@@ -20,7 +20,7 @@
             padding: 0;
         }
         header {
-            background: linear-gradient(135deg, var(--primary-green), var(--sky-blue));
+            background: linear-gradient(135deg, var(--dark-green), var(--primary-green));
             border-bottom: 2px solid var(--accent-gold);
             padding: 15px 20px;
             display: flex;
@@ -38,12 +38,13 @@
         /* সাইডবার মেনু */
         .sidebar {
             height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0;
-            background-color: #111; overflow-x: hidden; transition: 0.3s; padding-top: 60px;
+            background-color: var(--dark-green); overflow-x: hidden; transition: 0.3s; padding-top: 60px;
             box-shadow: 5px 0 15px rgba(0,0,0,0.7);
+            border-right: 1px solid var(--accent-gold);
         }
         .sidebar a {
             padding: 12px 25px; text-decoration: none; font-size: 18px; color: #fff; display: block; transition: 0.2s;
-            border-bottom: 1px solid #222;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         .sidebar a:hover { background-color: var(--primary-green); color: var(--accent-gold); }
         .sidebar .close-btn { position: absolute; top: 15px; right: 20px; font-size: 30px; color: var(--accent-gold); }
@@ -55,16 +56,16 @@
             padding: 20px;
             margin-bottom: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         .btn-custom {
-            background: linear-gradient(90deg, var(--accent-gold), var(--sky-blue));
+            background: linear-gradient(90deg, var(--accent-gold), #ffc107);
             color: #000; padding: 10px 20px; border: none; border-radius: 5px;
             cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block;
         }
         .btn-custom:hover { opacity: 0.9; }
         input, select, textarea {
-            width: 100%; padding: 10px; margin: 8px 0; background: #2D2D2D;
+            width: 100%; padding: 10px; margin: 8px 0; background: #063820;
             border: 1px solid var(--sky-blue); color: white; border-radius: 4px; box-sizing: border-box;
         }
         
@@ -73,25 +74,25 @@
             display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px;
         }
         .top-search-bar input { flex: 2; min-width: 200px; margin: 0; }
-        .top-search-bar select { flex: 1; min-width: 130px; margin: 0; }
+        .top-search-bar select { flex: 1; min-width: 150px; margin: 0; }
 
         /* ৪টি কাউন্টার বক্স */
         .counter-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;
         }
         .counter-box {
-            background: #1a1a1a; border: 2px solid var(--sky-blue); padding: 15px; border-radius: 8px; text-align: center;
+            background: var(--dark-green); border: 2px solid var(--sky-blue); padding: 15px; border-radius: 8px; text-align: center;
             cursor: pointer; transition: 0.3s; text-decoration: none; color: white; display: block;
         }
-        .counter-box:hover, .counter-box.active { border-color: var(--accent-gold); background: #222; transform: translateY(-3px); }
+        .counter-box:hover, .counter-box.active { border-color: var(--accent-gold); transform: translateY(-3px); }
         .counter-box h4 { margin: 0; font-size: 16px; color: var(--sky-blue); }
         .counter-box p { font-size: 24px; font-weight: bold; color: var(--accent-gold); margin: 5px 0 0; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
-        th { background-color: var(--primary-green); color: var(--accent-gold); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: var(--dark-green); border-radius: 6px; overflow: hidden; }
+        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 10px; text-align: left; }
+        th { background-color: var(--dark-green); color: var(--accent-gold); }
 
-        /* ফ্লোটিং প্লাস বাটন (ডান দিকের নিচে) */
+        /* ফ্লোটিং প্লাস বাটন */
         .floating-btn {
             position: fixed; bottom: 30px; right: 30px;
             background: linear-gradient(135deg, var(--accent-gold), var(--sky-blue));
@@ -105,10 +106,10 @@
         /* মডাল পপআপ ফর্ম */
         .modal {
             display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.7); overflow-y: auto; padding-top: 40px;
+            background-color: rgba(0,0,0,0.8); overflow-y: auto; padding-top: 40px;
         }
         .modal-content {
-            background-color: #1E1E1E; margin: auto; padding: 25px; border: 2px solid var(--accent-gold);
+            background-color: var(--light-card); margin: auto; padding: 25px; border: 2px solid var(--accent-gold);
             width: 90%; max-width: 600px; border-radius: 10px; position: relative;
         }
         .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -134,13 +135,15 @@
         </div>
     </header>
 
+    <!-- সাইডবার মেনু -->
     <div id="mySidebar" class="sidebar">
         <a href="javascript:void(0)" class="close-btn" onclick="closeNav()">&times;</a>
         <h3 style="padding: 0 25px; color: var(--accent-gold); margin-bottom: 20px;">মেনু অপশন</h3>
         <a href="/dashboard">🏠 হোম পেজ</a>
         <a href="#" onclick="openAddModal(); closeNav();">➕ নতুন নাম্বার এড করুন</a>
+        <a href="#" onclick="openAddModal(); closeNav();">🖼️ গ্যালারি থেকে ছবি আপলোড</a>
         {% if role == 'super_admin' %}
-        <a href="#admin-panel" onclick="closeNav();">🛡️ রিয়েল এডমিন প্যানেল</a>
+        <a href="#admin-panel" onclick="closeNav();">🛡️ ইউজার ও এডমিন ম্যানেজমেন্ট</a>
         {% endif %}
         <a href="#history-sec" onclick="closeNav();">📜 হিস্ট্রি লগ</a>
         <a href="/logout" style="color: #ff4d4d;">🚪 লগআউট</a>
@@ -177,58 +180,60 @@
             {% endif %}
 
         {% else %}
+            <!-- ইউজার ও প্রোফাইল ওভারভিউ -->
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
                         <h3>স্বাগতম, {{ session.get('user') }}!</h3>
                         <p style="margin: 5px 0 0; color: #ccc;">সিকিউরিটি পিন: <b style="color: var(--accent-gold);">137955</b></p>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 10px; background: #222; padding: 10px; border-radius: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; background: var(--dark-green); padding: 10px; border-radius: 8px;">
                         <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" alt="Profile" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-gold);">
                         <form action="/update_profile" method="POST" enctype="multipart/form-data" style="margin:0;">
                             <input type="file" name="profile_pic" accept="image/*" required style="font-size: 12px; padding: 4px; width: 140px;">
-                            <button type="submit" style="background: var(--sky-blue); border:none; padding: 3px 8px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:bold;">আপডেট</button>
+                            <button type="submit" style="background: var(--sky-blue); border:none; padding: 3px 8px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:bold; color:black;">আপডেট</button>
                         </form>
                     </div>
                 </div>
             </div>
 
-            <div class="card" style="background: #171717; border-left: 5px solid var(--sky-blue);">
+            <!-- সবার উপরে লাইভ সার্চ ও সর্টিং বার (ছোট থেকে বড় / বড় থেকে ছোট সিরিয়াল) -->
+            <div class="card" style="background: var(--dark-green); border-left: 5px solid var(--sky-blue);">
                 <form action="/dashboard" method="GET" class="top-search-bar" style="margin: 0;">
-                    <input type="text" name="search" placeholder="🔍 যেকোনো কিছু দিয়ে দ্রুত সার্চ করুন (নাম, ফোন, সার্ভিস নং...)" value="{{ request.args.get('search', '') }}">
+                    <input type="text" name="search" placeholder="🔍 যেকোনো কিছু দিয়ে দ্রুত সার্চ করুন..." value="{{ request.args.get('search', '') }}">
                     <select name="sort" onchange="this.form.submit()">
-                        <option value="new" {% if request.args.get('sort') == 'new' %}selected{% endif %}>নতুন থেকে পুরনো</option>
-                        <option value="old" {% if request.args.get('sort') == 'old' %}selected{% endif %}>পুরনো থেকে নতুন</option>
-                        <option value="az" {% if request.args.get('sort') == 'az' %}selected{% endif %}>A - Z (বর্ণানুক্রমিক)</option>
-                        <option value="za" {% if request.args.get('sort') == 'za' %}selected{% endif %}>Z - A (বিপরীত)</option>
+                        <option value="asc" {% if request.args.get('sort') == 'asc' %}selected{% endif %}>ছোট থেকে বড় সিরিয়াল (1 → 10)</option>
+                        <option value="desc" {% if request.args.get('sort') == 'desc' %}selected{% endif %}>বড় থেকে ছোট সিরিয়াল (10 → 1)</option>
                     </select>
                     <input type="hidden" name="filter" value="{{ active_filter }}">
                     <button type="submit" class="btn-custom">খুঁজুন</button>
                 </form>
             </div>
 
+            <!-- ৪টি কাউন্টার ঘর -->
             <div class="counter-grid">
-                <a href="/dashboard?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
+                <a href="/dashboard?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'asc') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
                     <h4>টোটাল নাম্বার</h4>
                     <p>{{ total_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Telephone&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
+                <a href="/dashboard?filter=Telephone&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'asc') }}" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
                     <h4>টেলিফোন নাম্বার</h4>
                     <p>{{ tel_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Tel+WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
+                <a href="/dashboard?filter=Tel+WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'asc') }}" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
                     <h4>টেলিফোন + ওয়াইফাই</h4>
                     <p>{{ tel_wifi_count }}</p>
                 </a>
-                <a href="/dashboard?filter=WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'new') }}" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
+                <a href="/dashboard?filter=WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'asc') }}" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
                     <h4>ওয়াইফাই নাম্বার</h4>
                     <p>{{ wifi_count }}</p>
                 </a>
             </div>
 
+            <!-- রিয়েল এডমিন কন্ট্রোল প্যানেল -->
             {% if current_user == 'Khushbu23' %}
             <div class="card" id="admin-panel" style="border-left-color: red;">
-                <h3>🛡️ রিয়েল এডমিন কন্ট্রোল প্যানেল (Super Admin)</h3>
+                <h3>🛡️ ইউজার ও এডমিন ম্যানেজমেন্ট প্যানেল</h3>
                 
                 <h4 style="color: var(--accent-gold); margin-top: 15px;">পেন্ডিং অ্যাকাউন্ট এপ্রুভাল:</h4>
                 <table>
@@ -277,10 +282,12 @@
             </div>
             {% endif %}
 
+            <!-- গ্রাহক ও সংযোগ তালিকা -->
             <div class="card">
                 <h3>গ্রাহক ও সংযোগ তালিকা</h3>
                 <table>
                     <tr>
+                        <th>সিরিয়াল</th>
                         <th>নাম</th>
                         <th>মোবাইল</th>
                         <th>সেবার ধরণ</th>
@@ -291,6 +298,7 @@
                     </tr>
                     {% for rec in records %}
                     <tr>
+                        <td style="color: var(--accent-gold); font-weight: bold;">#{{ rec[0] }}</td>
                         <td>{{ rec[1] }}</td>
                         <td>{{ rec[2] }}</td>
                         <td>{{ rec[3] }}</td>
@@ -304,15 +312,17 @@
                             {% endif %}
                         </td>
                         <td>
+                            <button onclick="openEditModal('{{ rec[0] }}', '{{ rec[1] }}', '{{ rec[2] }}', '{{ rec[3] }}', '{{ rec[4] }}', '{{ rec[5] }}', '{{ rec[6] }}')" style="background: var(--sky-blue); border:none; padding: 4px 8px; border-radius:3px; cursor:pointer; color:black; font-weight:bold; margin-right:5px;">এডিট</button>
                             <a href="/delete_record/{{ rec[0] }}" style="color: #ff4d4d; font-weight: bold; text-decoration: none;">ডিলিট</a>
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="7" style="text-align: center;">কোনো তথ্য পাওয়া যায়নি।</td></tr>
+                    <tr><td colspan="8" style="text-align: center;">কোনো তথ্য পাওয়া যায়নি।</td></tr>
                     {% endfor %}
                 </table>
             </div>
 
+            <!-- হিস্ট্রি লগ সেকশন -->
             <div class="card" id="history-sec">
                 <h3>📜 হিস্ট্রি ও অ্যাক্টিভিটি লগ</h3>
                 <table>
@@ -325,8 +335,10 @@
                 </table>
             </div>
 
+            <!-- ডান দিকের নিচে বড় ফ্লোটিং প্লাস (+) আইকন বাটন -->
             <a href="javascript:void(0)" class="floating-btn" onclick="openAddModal()">+</a>
 
+            <!-- নতুন নাম্বার এড করার পপআপ মডাল -->
             <div id="addModal" class="modal">
                 <div class="modal-content">
                     <span class="close-modal" onclick="closeAddModal()">&times;</span>
@@ -343,10 +355,35 @@
                         <input type="text" name="address" placeholder="ঠিকানা">
                         <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
                         
-                        <label style="display: block; margin-top: 10px; color: var(--accent-gold); font-size: 14px;">ডকুমেন্ট ছবি বা ফাইল (ক্যামেরা বা গ্যালারি থেকে দিন):</label>
-                        <input type="file" name="doc_file" accept="image/*" capture="environment" style="background: #222;">
+                        <label style="display: block; margin-top: 10px; color: var(--accent-gold); font-size: 14px;">গ্যালারি বা ক্যামেরা থেকে ছবি/ডকুমেন্ট দিন:</label>
+                        <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green);">
                         
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 15px;">তথ্য সংরক্ষণ করুন</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ডাটা এডিট বা আপডেট করার পপআপ মডাল -->
+            <div id="editModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" onclick="closeEditModal()">&times;</span>
+                    <h3>রেকর্ড এডিট ও আপডেট করুন</h3>
+                    <form action="/update_record" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="rec_id" id="edit_rec_id">
+                        <input type="text" name="name" id="edit_name" placeholder="গ্রাহকের নাম" required>
+                        <input type="text" name="phone" id="edit_phone" placeholder="মোবাইল নম্বর" required>
+                        <select name="service_type" id="edit_service_type" required>
+                            <option value="Telephone">টেলিফোন নম্বর</option>
+                            <option value="Tel+WiFi">টেলিফোন + ওয়াইফাই নম্বর</option>
+                            <option value="WiFi">ওয়াইফাই নম্বর</option>
+                        </select>
+                        <input type="text" name="service_no" id="edit_service_no" placeholder="সংযোগ নম্বর">
+                        <input type="text" name="address" id="edit_address" placeholder="ঠিকানা">
+                        
+                        <label style="display: block; margin-top: 10px; color: var(--accent-gold); font-size: 14px;">নতুন ছবি বা ফাইল আপলোড (পরিবর্তন করতে চাইলে):</label>
+                        <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green);">
+                        
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 15px;">আপডেট সংরক্ষণ করুন</button>
                     </form>
                 </div>
             </div>
@@ -367,10 +404,26 @@
         function closeAddModal() {
             document.getElementById("addModal").style.display = "none";
         }
+
+        function openEditModal(id, name, phone, service_type, service_no, address) {
+            document.getElementById("edit_rec_id").value = id;
+            document.getElementById("edit_name").value = name;
+            document.getElementById("edit_phone").value = phone;
+            document.getElementById("edit_service_type").value = service_type;
+            document.getElementById("edit_service_no").value = service_no;
+            document.getElementById("edit_address").value = address;
+            document.getElementById("editModal").style.display = "block";
+        }
+        function closeEditModal() {
+            document.getElementById("editModal").style.display = "none";
+        }
+
         window.onclick = function(event) {
-            let modal = document.getElementById('addModal');
-            if (event.target == modal) {
-                modal.style.display = "none";
+            if (event.target == document.getElementById('addModal')) {
+                document.getElementById('addModal').style.display = "none";
+            }
+            if (event.target == document.getElementById('editModal')) {
+                document.getElementById('editModal').style.display = "none";
             }
         }
     </script>
