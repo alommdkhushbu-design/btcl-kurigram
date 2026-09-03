@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTCL, কুড়িগ্রাম - পোর্টাল</title>
+    <title>BTCL, কুড়িগ্রাম - সার্ভার পোর্টাল</title>
     <style>
         :root {
             --primary-green: #0A5C36;
@@ -22,31 +22,13 @@
         header {
             background: linear-gradient(135deg, var(--primary-green), var(--sky-blue));
             border-bottom: 2px solid var(--accent-gold);
-            padding: 12px 20px;
+            padding: 15px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
         }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .menu-btn { font-size: 24px; cursor: pointer; color: var(--accent-gold); background: none; border: none; }
-        .home-btn { background: var(--accent-gold); color: #000; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 14px; }
-        
-        /* সাইডবার মেনু */
-        .sidebar {
-            height: 100%; width: 0; position: fixed; z-index: 1000; top: 0; left: 0;
-            background-color: #1a1a1a; overflow-x: hidden; transition: 0.3s; padding-top: 60px;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-        }
-        .sidebar a {
-            padding: 12px 20px; text-decoration: none; font-size: 16px; color: #fff; display: block; transition: 0.2s;
-            border-bottom: 1px solid #333;
-        }
-        .sidebar a:hover { background-color: var(--primary-green); color: var(--accent-gold); }
-        .sidebar .close-btn { position: absolute; top: 10px; right: 20px; font-size: 25px; cursor: pointer; color: var(--accent-gold); }
-
+        h2, h3 { color: var(--accent-gold); }
         .container { padding: 20px; max-width: 1200px; margin: auto; }
         .card {
             background-color: var(--light-card);
@@ -54,87 +36,51 @@
             padding: 20px;
             margin-bottom: 20px;
             border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,255,200,0.1);
         }
-        
-        /* ৪টি ক্যাটাগরি কার্ড গ্রিড */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .stat-card {
-            background: #252525; border: 1px solid var(--sky-blue); border-radius: 8px; padding: 15px; text-align: center; cursor: pointer; text-decoration: none; color: white; transition: 0.2s;
-        }
-        .stat-card:hover { transform: translateY(-3px); background: #2e2e2e; }
-        .stat-card h4 { margin: 0 0 10px 0; color: var(--accent-gold); }
-        .stat-card span { font-size: 24px; font-weight: bold; color: var(--sky-blue); }
-
         .btn-custom {
             background: linear-gradient(90deg, var(--accent-gold), var(--sky-blue));
-            color: #000; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-block;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
         }
+        .btn-custom:hover { opacity: 0.9; }
         input, select, textarea {
-            width: 100%; padding: 10px; margin: 8px 0; background: #2D2D2D; border: 1px solid var(--sky-blue); color: white; border-radius: 4px; box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0;
+            background: #2D2D2D;
+            border: 1px solid var(--sky-blue);
+            color: white;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #333; padding: 10px; text-align: left; }
         th { background-color: var(--primary-green); color: var(--accent-gold); }
-
-        /* ফ্লোটিং প্লাস বাটন */
-        .floating-btn {
-            position: fixed; bottom: 30px; right: 30px;
-            background: linear-gradient(135deg, var(--accent-gold), var(--sky-blue));
-            color: #000; width: 65px; height: 65px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 32px; font-weight: bold; text-decoration: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 99; transition: 0.3s;
-        }
-        .floating-btn:hover { transform: scale(1.1); }
-        
-        .profile-section { display: flex; align-items: center; gap: 10px; }
-        .profile-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-gold); cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="mySidebar" class="sidebar">
-        <a href="javascript:void(0)" class="close-btn" onclick="closeNav()">&times;</a>
-        <h3 style="padding: 0 20px; color: var(--accent-gold);">মেনু অপশন</h3>
-        <a href="/dashboard">🏠 ড্যাশবোর্ড / হোম</a>
-        <a href="/dashboard?filter=Telephone">📞 টেলিফোন নম্বর</a>
-        <a href="/dashboard?filter=Tel+WiFi">🌐 টেলিফোন + ওয়াইফাই</a>
-        <a href="/dashboard?filter=WiFi">📶 ওয়াইফাই নম্বর</a>
-        {% if current_user == 'Khushbu23' %}
-        <a href="#admin-panel">🛡️ এডমিন প্যানেল</a>
-        {% endif %}
-        <a href="/logout" style="color: #ff4d4d;">🚪 লগআউট</a>
-    </div>
-
     <header>
-        <div class="header-left">
-            <button class="menu-btn" onclick="openNav()">&#9776;</button>
-            <a href="/dashboard" class="home-btn">হোম</a>
+        <h2>BTCL, কুড়িগ্রাম (স্মার্ট সার্ভার)</h2>
+        {% if session.get('user') %}
+        <div>
+            <span>ইউজার: <b>{{ session.get('user') }}</b></span> | 
+            <a href="/logout" style="color: var(--accent-gold); text-decoration: none; font-weight: bold;">লগআউট</a>
         </div>
-        
-        <h2 style="margin: 0; font-size: 18px; color: var(--accent-gold);">BTCL কুড়িগ্রাম</h2>
-
-        <div class="profile-section">
-            {% if current_user_data and current_user_data[8] %}
-                <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" class="profile-img" onclick="document.getElementById('profileForm').style.display='block'">
-            {% else %}
-                <img src="https://via.placeholder.com/35" class="profile-img" onclick="document.getElementById('profileForm').style.display='block'" title="প্রোফাইল পিক পরিবর্তন করুন">
-            {% endif %}
-        </div>
+        {% endif %}
     </header>
-
-    <div id="profileForm" style="display:none; position:fixed; top:20%; left:50%; transform:translate(-50%, 0); background:#1E1E1E; padding:20px; border:2px solid var(--accent-gold); border-radius:8px; z-index:2000;">
-        <h3 style="margin-top:0;">প্রোফাইল ছবি পরিবর্তন করুন</h3>
-        <form action="/upload_profile" method="POST" enctype="multipart/form-data">
-            <input type="file" name="profile_pic" accept="image/*" required>
-            <button type="submit" class="btn-custom" style="margin-top:10px;">আপলোড করুন</button>
-            <button type="button" onclick="document.getElementById('profileForm').style.display='none'" style="background:red; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer;">বাতিল</button>
-        </form>
-    </div>
 
     <div class="container">
         
         {% if not session.get('user') %}
+            <!-- ১. লগইন পেজ -->
             {% if page == 'login' or page is not defined %}
             <div class="card">
                 <h3>লগইন করুন</h3>
@@ -147,52 +93,34 @@
             </div>
             {% endif %}
 
+            <!-- ২. একাউন্ট ক্রিয়েট (রেজিস্ট্রেশন) পেজ -->
             {% if page == 'register' %}
             <div class="card">
                 <h3>নতুন অ্যাকাউন্ট তৈরি করুন</h3>
+                <p style="color: var(--accent-gold); font-size: 14px;">* একাউন্ট তৈরি করার পর রিয়েল এডমিন পারমিশন (Active) না দেওয়া পর্যন্ত লগইন করতে পারবেন না।</p>
                 <form action="/register" method="POST">
-                    <input type="text" name="name" placeholder="পুরো নাম" required>
-                    <input type="email" name="email" placeholder="জিমেইল আইডি" required>
+                    <input type="text" name="name" placeholder="আপনার পুরো নাম" required>
+                    <input type="email" name="email" placeholder="সঠিক জিমেইল আইডি" required>
                     <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
-                    <input type="text" name="username" placeholder="ইউজারনেম" required>
-                    <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
-                    <button type="submit" class="btn-custom">রিকোয়েস্ট পাঠান</button>
+                    <input type="text" name="username" placeholder="ইউজারনেম দিন" required>
+                    <input type="password" name="password" placeholder="পাসওয়ার্ড দিন" required>
+                    <button type="submit" class="btn-custom">রেজিস্ট্রেশন রিকোয়েস্ট পাঠান</button>
                 </form>
                 <p style="margin-top: 15px;"><a href="/" style="color: var(--accent-gold);">লগইন পেজে ফিরে যান</a></p>
             </div>
             {% endif %}
 
         {% else %}
-            
-            <div class="stats-grid">
-                <a href="/dashboard" class="stat-card">
-                    <h4>টোটাল নম্বর</h4>
-                    <span>{{ total_count }}</span>
-                </a>
-                <a href="/dashboard?filter=Telephone" class="stat-card">
-                    <h4>টেলিফোন নম্বর</h4>
-                    <span>{{ tel_count }}</span>
-                </a>
-                <a href="/dashboard?filter=Tel+WiFi" class="stat-card">
-                    <h4>টেলিফোন + ওয়াইফাই</h4>
-                    <span>{{ tel_wifi_count }}</span>
-                </a>
-                <a href="/dashboard?filter=WiFi" class="stat-card">
-                    <h4>ওয়াইফাই নম্বর</h4>
-                    <span>{{ wifi_count }}</span>
-                </a>
+            <!-- ৩. ড্যাশবোর্ড পেজ -->
+            <div class="card">
+                <h3>ড্যাশবোর্ড - স্বাগতম {{ session.get('user') }}</h3>
+                <p>সিকিউরিটি পিন (Security Password): <b style="color: var(--accent-gold);">137955</b></p>
             </div>
 
-            <div class="card" style="padding: 15px;">
-                <form action="/dashboard" method="GET" style="display: flex; gap: 10px; margin: 0;">
-                    <input type="text" name="search" placeholder="নাম, মোবাইল বা সংযোগ নম্বর দিয়ে সার্চ করুন..." style="margin:0;" value="{{ request.args.get('search', '') }}">
-                    <button type="submit" class="btn-custom" style="padding: 10px 20px;">সার্চ</button>
-                </form>
-            </div>
-
-            <div id="addRecordCard" class="card" style="display:none; border-left-color: var(--sky-blue);">
-                <h3>নতুন নম্বর ও ডকুমেন্ট যুক্ত করুন</h3>
-                <form action="/add_record" method="POST" enctype="multipart/form-data">
+            <!-- নাম্বার ও ডকুমেন্ট এড করার ফর্ম -->
+            <div class="card">
+                <h3>নম্বর ও তথ্য এড করুন</h3>
+                <form action="/add_record" method="POST">
                     <input type="text" name="name" placeholder="গ্রাহকের নাম" required>
                     <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
                     <select name="service_type">
@@ -203,47 +131,62 @@
                     <input type="text" name="service_no" placeholder="সংযোগ নম্বর">
                     <input type="text" name="address" placeholder="ঠিকানা">
                     <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
-                    
-                    <label style="display:block; margin-top:10px; color:var(--accent-gold);">ডকুমেন্ট বা ছবি আপলোড (ক্যামেরা বা গ্যালারি থেকে):</label>
-                    <input type="file" name="doc_file" accept="image/*" capture="environment" style="background:#222;">
-                    
-                    <button type="submit" class="btn-custom" style="margin-top:10px;">সংরক্ষণ করুন</button>
-                    <button type="button" onclick="document.getElementById('addRecordCard').style.display='none'" style="background:gray; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; margin-left:10px;">বন্ধ করুন</button>
+                    <button type="submit" class="btn-custom">তথ্য সংরক্ষণ করুন</button>
                 </form>
             </div>
 
+            <!-- 🛡️ রিয়েল এডমিন এক্সক্লুসিভ কন্ট্রোল প্যানেল -->
             {% if current_user == 'Khushbu23' %}
-            <div id="admin-panel" class="card" style="border-left-color: red;">
-                <h3>🛡️ রিয়েল এডমিন কন্ট্রোল প্যানেল</h3>
-                <h4>পেন্ডিং ইউজারগণ:</h4>
+            <div class="card" style="border-left-color: red;">
+                <h3>🛡️ রিয়েল এডমিন কন্ট্রোল প্যানেল (Super Admin)</h3>
+                <p style="color: #ff4d4d; font-size: 13px;">এই সেকশনটি শুধুমাত্র আপনি (Khushbu23) দেখতে পাচ্ছেন। সকল ইউজারের পাসওয়ার্ড ও গোপন তথ্য এখানে সংরক্ষিত আছে।</p>
+                
+                <h4 style="color: var(--accent-gold); margin-top: 15px;">পেন্ডিং অ্যাকাউন্ট রিকোয়েস্টসমূহ (Approval Pending):</h4>
                 <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>ফোন</th><th>অ্যাকশন</th></tr>
                     {% for u in pending_users %}
                     <tr>
-                        <td>{{ u[1] }}</td><td>{{ u[4] }}</td>
-                        <td><a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 3px 8px; font-size: 12px; background:green; color:white;">এপ্রুভ</a></td>
+                        <td>{{ u[1] }}</td><td>{{ u[4] }}</td><td>{{ u[2] }}</td><td>{{ u[3] }}</td>
+                        <td><a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 5px 10px; font-size: 12px; background: green; color: white;">এপ্রুভ করুন</a></td>
                     </tr>
-                    {% else %}
-                    <tr><td colspan="3">কোনো পেন্ডিং রিকোয়েস্ট নেই।</td></tr>
                     {% endfor %}
                 </table>
-                <h4 style="margin-top: 15px;">সকল ইউজারের পাসওয়ার্ড ও তথ্য:</h4>
+
+                <h4 style="color: var(--accent-gold); margin-top: 25px;">সকল ইউজার ও এডমিনের তালিকা (পাসওয়ার্ডসহ গোপন তথ্য):</h4>
                 <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>পাসওয়ার্ড</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>পাসওয়ার্ড</th><th>জিমেইল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
                     {% for usr in all_users %}
                     <tr>
-                        <td>{{ usr[1] }}</td><td>{{ usr[4] }}</td><td style="color:yellow;">{{ usr[5] }}</td>
+                        <td>{{ usr[1] }}</td>
+                        <td>{{ usr[4] }}</td>
+                        <td style="color: yellow; font-weight: bold;">{{ usr[5] }}</td>
+                        <td>{{ usr[2] }}</td>
+                        <td>{{ usr[7] }}</td>
                         <td>
                             {% if usr[4] != 'Khushbu23' %}
-                            <a href="/delete_user/{{ usr[0] }}" style="color:red; font-weight:bold;">ডিলিট</a>
-                            {% else %}অপরিবর্তনযোগ্য{% endif %}
+                            <a href="/delete_user/{{ usr[0] }}" style="color: red; text-decoration: none; font-weight: bold;">ডিলিট</a>
+                            {% else %}
+                            <span style="color: gray;">Fixed Admin</span>
+                            {% endif %}
                         </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+
+                <h4 style="color: var(--accent-gold); margin-top: 25px;">রিসাইকেল বিন (ডিলিট করা নাম্বার রিকভারি - শুধু রিয়েল এডমিন):</h4>
+                <table>
+                    <tr><th>নাম</th><th>মোবাইল নম্বর</th><th>অ্যাকশন</th></tr>
+                    {% for t in trash %}
+                    <tr>
+                        <td>{{ t[1] }}</td><td>{{ t[2] }}</td>
+                        <td><a href="/recover_record/{{ t[0] }}" class="btn-custom" style="padding: 5px 10px; background: #00B4D8; color: black; font-size: 12px;">রিকভার করুন</a></td>
                     </tr>
                     {% endfor %}
                 </table>
             </div>
             {% endif %}
 
+            <!-- ৪. গ্রাহক ও সংযোগ তালিকা টেবিল -->
             <div class="card">
                 <h3>গ্রাহক ও সংযোগ তালিকা</h3>
                 <table>
@@ -252,7 +195,6 @@
                         <th>মোবাইল</th>
                         <th>সেবার ধরণ</th>
                         <th>সংযোগ নম্বর</th>
-                        <th>ডকুমেন্ট</th>
                         <th>অ্যাকশন</th>
                     </tr>
                     {% for rec in records %}
@@ -262,12 +204,15 @@
                         <td>{{ rec[3] }}</td>
                         <td>{{ rec[4] }}</td>
                         <td>
-                            {% if rec[6] %}
-                            <a href="{{ url_for('static', filename='uploads/' + rec[6]) }}" target="_blank" style="color: var(--sky-blue);">ফাইল দেখুন</a>
-                            {% else %}নেই{% endif %}
-                        </td>
-                        <td>
                             <a href="/delete_record/{{ rec[0] }}" style="color: #ff4d4d; text-decoration: none; font-weight: bold;">ডিলিট</a>
                         </td>
                     </tr>
-                    {% else %}
+                    {% endfor %}
+                </table>
+            </div>
+        {% endif %}
+
+    </div>
+
+</body>
+</html>
