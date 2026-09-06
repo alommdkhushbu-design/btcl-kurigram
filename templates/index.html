@@ -122,7 +122,6 @@
         .nav-tab-btn { background: var(--dark-green); border: 2px solid var(--sky-blue); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; }
         .nav-tab-btn.active { background: var(--accent-gold); color: black; border-color: var(--accent-gold); }
 
-        /* মেসেঞ্জার স্টাইল */
         .messenger-box { display: flex; flex-direction: column; height: 350px; background: var(--dark-green); border-radius: 6px; border: 1px solid var(--sky-blue); overflow: hidden; }
         .chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
         .msg-bubble { padding: 8px 12px; border-radius: 6px; max-width: 75%; font-size: 13px; }
@@ -130,6 +129,8 @@
         .msg-out { background: #145a32; align-self: flex-end; border: 1px solid var(--accent-gold); }
         .chat-input-area { display: flex; padding: 8px; background: #042918; gap: 6px; }
         .chat-input-area input { margin: 0; }
+        
+        .badge-notif { background: red; color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -148,9 +149,13 @@
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-gold);">
                     <span style="font-size: 14px;"><b>{{ session.get('user') }}</b></span>
+                    {% if pending_users|length > 0 and session.get('role') != 'user' %}
+                    <span class="badge-notif">{{ pending_users|length }}</span>
+                    {% endif %}
                 </div>
                 <div class="dropdown-content">
                     <a href="javascript:void(0)" onclick="openProfileModal()">👤 প্রোফাইল ও হিসাব</a>
+                    <a href="javascript:void(0)" onclick="openMessengerModal()">💬 মেসেঞ্জার {% if messages|length > 0 %}<span class="badge-notif">!</span>{% endif %}</a>
                     <a href="/logout" style="color: #ff4d4d; font-weight: bold;">🚪 লগআউট</a>
                 </div>
             </div>
@@ -161,11 +166,13 @@
     <div id="mySidebar" class="sidebar">
         <a href="javascript:void(0)" class="close-btn" onclick="closeNav()">&times;</a>
         <h3 style="padding: 0 25px; color: var(--accent-gold); margin-bottom: 15px;">মেনু অপশন</h3>
-        <a href="/dashboard">🏠 হোম পেজ</a>
+        <a href="/dashboard">🏠 হোম পেজ (জেলা সদর)</a>
         {% if session.get('role') != 'user' %}
         <a href="javascript:void(0)" onclick="openAddModal(); closeNav();">➕ নতুন নাম্বার এড করুন</a>
         <a href="javascript:void(0)" onclick="openUpazilaModal(); closeNav();">📍 নতুন উপজেলা তৈরি</a>
-        <a href="javascript:void(0)" onclick="openUserModal(); closeNav();">👤 ইউজার / এডমিন তৈরি</a>
+        {% if session.get('role') == 'super_admin' %}
+        <a href="javascript:void(0)" onclick="openUserModal(); closeNav();">👤 এডমিন তৈরি করুন</a>
+        {% endif %}
         {% endif %}
         <a href="javascript:void(0)" onclick="openMessengerModal(); closeNav();">💬 মেসেঞ্জার ও চ্যাট</a>
         <a href="/logout" style="color: #ff4d4d;">🚪 লগআউট</a>
@@ -201,7 +208,7 @@
                         <option value="District">জেলা সদর (কুড়িগ্রাম)</option>
                         <option value="Upazila">উপজেলা</option>
                     </select>
-                    <div id="regUpazilaDiv" style="display:none;">
+                    <div id="regUpazilaDiv" style="display:none; margin-top: 5px;">
                         <select name="pref_upazila">
                             {% for u in upazilas %}
                             <option value="{{ u }}">{{ u }}</option>
@@ -209,8 +216,8 @@
                         </select>
                     </div>
 
-                    <input type="password" name="security_pin" placeholder="সিকিউরিটি পাসওয়ার্ড (137955)" required>
-                    <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">রিকোয়েস্ট পাঠান</button>
+                    <!-- পিন ফিল্ড বা লেখা সম্পূর্ণ মুছে ফেলা হয়েছে -->
+                    <button type="submit" class="btn-custom" style="width: 100%; margin-top: 15px;">রিকোয়েস্ট পাঠান</button>
                 </form>
                 <p style="margin-top: 12px; text-align: center; font-size: 14px;"><a href="/" style="color: var(--accent-gold);">লগইন পেজে ফিরে যান</a></p>
             </div>
@@ -223,11 +230,21 @@
             {% endif %}
 
         {% else %}
-            <!-- নেভিগেশন ট্যাব: হোম ও উপজেলা সমূহ -->
+            <!-- গ্রুপ নোটিশ ব্যানার (যদি থাকে) -->
+            {% if group_notices %}
+            <div class="card" style="background: #042918; border-left: 5px solid var(--accent-gold);">
+                <h4 style="color: var(--accent-gold); margin-bottom: 5px;">📢 গুরুত্বপূর্ণ নোটিশ / গ্রুপ বার্তা:</h4>
+                {% for gn in group_notices %}
+                <p style="margin: 3px 0; font-size: 13px;"><b>{{ gn[1] }}:</b> {{ gn[2] }} <span style="font-size: 10px; color: #aaa; float: right;">{{ gn[4] }}</span></p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- নেভিগেশন ট্যাব: জেলা ও উপজেলা সমূহ -->
             <div class="nav-tabs">
-                <a href="/dashboard" class="nav-tab-btn {% if page == 'dashboard' %}active{% endif %}">🏠 জেলা সদর (হোম)</a>
+                <a href="/dashboard" class="nav-tab-btn {% if page == 'dashboard' %}active{% endif %}">🏠 জেলা সদর হোম</a>
                 {% for u_name in upazilas %}
-                <a href="/upazila/{{ u_name }}" class="nav-tab-btn {% if page == 'upazila_page' and selected_upazila == u_name %}active{% endif %}">📍 {{ u_name }} বিল</a>
+                <a href="/upazila/{{ u_name }}" class="nav-tab-btn {% if page == 'upazila_page' and selected_upazila == u_name %}active{% endif %}">📍 {{ u_name }}</a>
                 {% endfor %}
             </div>
 
@@ -235,9 +252,9 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3>স্বাগতম, {{ session.get('user') }}!</h3>
-                        <p style="margin: 4px 0 0; color: #ccc; font-size: 13px;">অ্যাকাউন্ট টাইপ: <b style="color: var(--accent-gold);">{{ session.get('role') }} {% if session.get('assigned_upazila') %} ({{ session.get('assigned_upazila') }}) {% endif %}</b></p>
+                        <p style="margin: 4px 0 0; color: #ccc; font-size: 13px;">রোল: <b style="color: var(--accent-gold);">{{ session.get('role') }} {% if session.get('assigned_upazila') %} ({{ session.get('assigned_upazila') }}) {% endif %}</b></p>
                     </div>
-                    <button onclick="openMessengerModal()" class="btn-custom" style="background: var(--sky-blue); color: black;">💬 মেসেঞ্জার</button>
+                    <button onclick="openMessengerModal()" class="btn-custom" style="background: var(--sky-blue); color: black;">💬 মেসেঞ্জার {% if messages|length > 0 %}<span class="badge-notif">!</span>{% endif %}</button>
                 </div>
             </div>
 
@@ -279,25 +296,28 @@
             <div class="card" style="border-left-color: red;">
                 <h3>🛡️ এডমিন ও ইউজার কন্ট্রোল প্যানেল (রিয়েল এডমিন)</h3>
                 
-                <h4 style="color: var(--accent-gold); margin-top: 12px; font-size: 14px;">পেন্ডিং অ্যাকাউন্ট ও মেসেজ রিকোয়েস্ট:</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 12px; font-size: 14px;">পেন্ডিং অ্যাকাউন্ট রিকোয়েস্ট (এক্সেপ্ট বা ডিলিট করুন):</h4>
                 <table>
                     <tr><th>নাম</th><th>ইউজারনেম</th><th>একাউন্ট টাইপ</th><th>অ্যাকশন</th></tr>
                     {% for u in pending_users %}
                     <tr>
                         <td>{{ u[1] }}</td><td>{{ u[4] }}</td><td>{{ u[6] }} {% if u[9] %}({{ u[9] }}){% endif %}</td>
-                        <td><a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 3px 8px; background: green; color: white; font-size: 11px;">এপ্রুভ করুন</a></td>
+                        <td>
+                            <a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 3px 8px; background: green; color: white; font-size: 11px; text-decoration:none; margin-right:5px;">এক্সেপ্ট করুন</a>
+                            <button onclick="openDeleteUserModal('{{ u[0] }}')" style="background: #ff4d4d; border:none; padding: 3px 6px; border-radius:3px; cursor:pointer; color:white; font-weight:bold; font-size:11px;">বাতিল</button>
+                        </td>
                     </tr>
                     {% else %}
                     <tr><td colspan="4">কোনো পেন্ডিং অ্যাকাউন্ট নেই।</td></tr>
                     {% endfor %}
                 </table>
 
-                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা (অ্যাক্টিভিটি ও লাস্ট সিন):</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা (নামে ক্লিক করে ডিটেইলস ও হিস্ট্রি দেখুন):</h4>
                 <table>
                     <tr><th>নাম</th><th>ইউজারনেম</th><th>রোল / উপজেলা</th><th>শেষ অ্যাক্টিভ সময়</th><th>অ্যাকশন</th></tr>
                     {% for usr in all_users %}
                     <tr>
-                        <td>{{ usr[1] }}</td>
+                        <td><a href="javascript:void(0)" onclick="openUserHistory('{{ usr[0] }}', '{{ usr[1] }}')" style="color: var(--sky-blue); font-weight: bold; text-decoration: none;">{{ usr[1] }}</a></td>
                         <td>{{ usr[4] }}</td>
                         <td>{{ usr[6] }} {% if usr[9] %}- {{ usr[9] }} {% endif %}</td>
                         <td style="color: var(--sky-blue); font-size: 12px;">{{ usr[10] or 'নিবন্ধিত' }}</td>
@@ -311,25 +331,12 @@
                     </tr>
                     {% endfor %}
                 </table>
-
-                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">রিসাইকেল বিন (ডিলিট করা রেকর্ড):</h4>
-                <table>
-                    <tr><th>নাম</th><th>নম্বর</th><th>অ্যাকশন</th></tr>
-                    {% for t in trash %}
-                    <tr>
-                        <td>{{ t[1] }}</td><td>{{ t[4] }}</td>
-                        <td><button onclick="openRecoverModal('{{ t[0] }}')" class="btn-custom" style="padding: 3px 8px; font-size: 11px;">রিকভার করুন</button></td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="3">রিসাইকেল বিন খালি।</td></tr>
-                    {% endfor %}
-                </table>
             </div>
             {% endif %}
 
             <!-- গ্রাহক ও সংযোগ তালিকা টেবিল -->
             <div class="card">
-                <h3>{% if page == 'upazila_page' %}উপজেলা: {{ selected_upazila }} - {% endif %}গ্রাহক ও সংযোগ তালিকা</h3>
+                <h3>{% if page == 'upazila_page' %}উপজেলা: {{ selected_upazila }} - {% else %}জেলা সদর - {% endif %}গ্রাহক ও সংযোগ তালিকা</h3>
                 <table>
                     <tr>
                         <th>সিরিয়াল</th>
@@ -413,11 +420,12 @@
                 </div>
             </div>
 
-            <!-- ইউজার / এডমিন তৈরি মডাল -->
+            <!-- ইউজার / এডমিন তৈরি মডাল (শুধুমাত্র রিয়েল এডমিনের জন্য) -->
+            {% if session.get('role') == 'super_admin' %}
             <div id="userModal" class="modal">
                 <div class="modal-content">
                     <span class="close-modal" onclick="closeUserModal()">&times;</span>
-                    <h3>নতুন ইউজার বা এডমিন তৈরি করুন</h3>
+                    <h3>নতুন সহকারী এডমিন বা স্পেশাল ইউজার তৈরি</h3>
                     <form action="/create_user_by_admin" method="POST">
                         <input type="text" name="name" placeholder="পুরো নাম" required>
                         <input type="text" name="username" placeholder="ইউজারনেম" required>
@@ -429,35 +437,36 @@
                         <select name="role" id="adminRoleSelect" onchange="toggleAdminUpazila()" required>
                             <option value="user">সাধারণ ইউজার (শুধু দেখতে পারবে)</option>
                             <option value="sub_admin">সহকারী এডমিন (জেলা ও উপজেলা)</option>
+                            <option value="editor_admin">বিশেষ এডমিন (শুধু বিল এড করতে পারবে, ডিলিট বা ইউজার তৈরি নয়)</option>
                         </select>
 
                         <div id="adminUpazilaDiv" style="display:none; margin-top: 8px;">
-                            <label style="color: var(--accent-gold); font-size: 13px;">উপজেলা নির্ধারণ (যদি শুধু নির্দিষ্ট উপজেলা হয়):</label>
+                            <label style="color: var(--accent-gold); font-size: 13px;">এলাকা নির্ধারণ:</label>
                             <select name="assigned_upazila">
-                                <option value="All">সকল উপজেলা ও জেলা</option>
+                                <option value="All">সকল উপজেলা ও জেলা সদর</option>
                                 {% for u in upazilas %}
                                 <option value="{{ u }}">{{ u }}</option>
                                 {% endfor %}
                             </select>
                         </div>
 
-                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required style="margin-top: 10px;">
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">তৈরি করুন</button>
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 15px;">তৈরি করুন</button>
                     </form>
                 </div>
             </div>
             <script>
                 function toggleAdminUpazila() {
                     let r = document.getElementById("adminRoleSelect").value;
-                    document.getElementById("adminUpazilaDiv").style.display = (r === 'sub_admin') ? 'block' : 'none';
+                    document.getElementById("adminUpazilaDiv").style.display = (r !== 'user') ? 'block' : 'none';
                 }
             </script>
+            {% endif %}
 
-            <!-- প্রোফাইল ও হিসাব মডাল -->
+            <!-- প্রোফাইল ও হিসাব এবং ইউজার হিস্ট্রি মডাল -->
             <div id="profileModal" class="modal">
-                <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-content" style="max-width: 500px;">
                     <span class="close-modal" onclick="closeProfileModal()">&times;</span>
-                    <h3 style="color: var(--accent-gold);">প্রোফাইল ও সিস্টেম পরিসংখ্যান</h3>
+                    <h3 style="color: var(--accent-gold);">👤 প্রোফাইল ও সিস্টেম পরিসংখ্যান</h3>
                     <div style="text-align: center; margin: 15px 0;">
                         <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent-gold); object-fit: cover;">
                         <h4 style="margin-top: 8px;">{{ current_user_data[1] }}</h4>
@@ -465,8 +474,8 @@
                     </div>
                     <hr style="border-color: rgba(255,255,255,0.2);">
                     <div style="font-size: 14px; margin-top: 10px;">
-                        <p><b>মোট জেলা ইউজার সংখ্যা:</b> {{ total_users_count }} জন</p>
-                        <p><b>মোট উপজেলা এডমিন ও ইউজার:</b> {{ total_upazila_users_count }} জন</p>
+                        <p><b>জেলা সদর ইউজার সংখ্যা:</b> {{ district_users_count }} জন</p>
+                        <p><b>উপজেলাসমূহ মোট ইউজার ও এডমিন:</b> {{ upazila_users_count }} জন</p>
                         <p><b>আপনার শেষ অ্যাক্টিভ টাইম:</b> <span style="color: var(--sky-blue);">{{ current_user_data[10] }}</span></p>
                     </div>
                     <form action="/update_profile" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
@@ -477,36 +486,68 @@
                 </div>
             </div>
 
-            <!-- মেসেঞ্জার মডাল -->
+            <!-- নির্দিষ্ট ইউজারের হিস্ট্রি দেখতে মডাল -->
+            <div id="userHistoryModal" class="modal">
+                <div class="modal-content" style="max-width: 550px;">
+                    <span class="close-modal" onclick="closeUserHistoryModal()">&times;</span>
+                    <h3 id="historyUserName" style="color: var(--accent-gold);">ইউজার হিস্ট্রি ও অ্যাক্টিভিটি</h3>
+                    <div style="margin: 10px 0;">
+                        <label style="font-size: 13px; color: var(--sky-blue);">তারিখ অনুযায়ী ফিল্টার করুন:</label>
+                        <input type="date" id="historyDateFilter" onchange="filterUserHistory()" style="background: var(--dark-green);">
+                    </div>
+                    <div id="userHistoryContent" style="background: var(--dark-green); padding: 10px; border-radius: 5px; max-height: 250px; overflow-y: auto; font-size: 13px;">
+                        <!-- ডাইনামিকালি লোড হবে -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- মেসেঞ্জার ও চ্যাট মডাল (আলাদা সেকশন ও চ্যাট লিস্ট সহ) -->
             <div id="messengerModal" class="modal">
-                <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-content" style="max-width: 650px;">
                     <span class="close-modal" onclick="closeMessengerModal()">&times;</span>
-                    <h3 style="color: var(--accent-gold); margin-bottom: 10px;">💬 বিটিসিএল চ্যাট ও মেসেঞ্জার</h3>
+                    <h3 style="color: var(--accent-gold); margin-bottom: 10px;">💬 বিটিসিএল মেসেঞ্জার ও চ্যাট সেন্টার</h3>
                     
-                    <div class="messenger-box">
-                        <div class="chat-messages" id="chatContainer">
-                            {% for m in messages %}
-                            <div class="msg-bubble {% if m[1] == session.get('user') %}msg-out{% else %}msg-in{% endif %}">
-                                <b style="font-size: 11px; color: var(--accent-gold);">{{ m[1] }} {% if m[3] == 'group' %}[গ্রুপ নোটিশ]{% endif %}</b>
-                                <p style="margin: 3px 0 0;">{{ m[2] }}</p>
-                                <span style="font-size: 9px; color: #aaa; float: right;">{{ m[4] }}</span>
-                            </div>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <!-- চ্যাট ইউজার লিস্ট (এডমিনদের জন্য) -->
+                        {% if session.get('role') != 'user' %}
+                        <div style="flex: 1; min-width: 180px; background: var(--dark-green); border-radius: 6px; padding: 8px; max-height: 350px; overflow-y: auto;">
+                            <h4 style="font-size: 13px; color: var(--accent-gold); margin-bottom: 5px;">মেসেজ প্রেরকগণ:</h4>
+                            {% for chatter in chat_senders %}
+                            <a href="/dashboard?chat_with={{ chatter }}" style="display: block; padding: 6px; color: white; text-decoration: none; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.1);">👤 {{ chatter }}</a>
                             {% else %}
-                            <p style="text-align: center; color: #aaa; margin-top: 20px;">কোনো বার্তা নেই। কথোপকথন শুরু করুন!</p>
+                            <p style="font-size: 12px; color: #aaa;">কোনো চ্যাট লিস্ট নেই।</p>
                             {% endfor %}
                         </div>
-                        <form action="/send_message" method="POST" class="chat-input-area">
-                            {% if session.get('role') != 'user' %}
-                            <select name="msg_type" style="width: 110px; margin: 0; font-size: 12px;">
-                                <option value="single">পার্সোনাল</option>
-                                <option value="group">গ্রুপ নোটিশ</option>
-                            </select>
-                            {% else %}
-                            <input type="hidden" name="msg_type" value="single">
-                            {% endif %}
-                            <input type="text" name="message" placeholder="আপনার মেসেজ লিখুন..." required style="flex: 1; margin: 0;">
-                            <button type="submit" class="btn-custom" style="padding: 6px 12px;">প্রেরণ</button>
-                        </form>
+                        {% endif %}
+
+                        <!-- চ্যাট বক্স -->
+                        <div style="flex: 2; min-width: 280px;" class="messenger-box">
+                            <div class="chat-messages" id="chatContainer">
+                                {% for m in messages %}
+                                <div class="msg-bubble {% if m[1] == session.get('user') %}msg-out{% else %}msg-in{% endif %}">
+                                    <b style="font-size: 11px; color: var(--accent-gold);">
+                                        {% if m[3] == 'group' %}📢 [গ্রুপ নোটিশ]{% else %}👤 {{ m[1] }}{% endif %}
+                                    </b>
+                                    <p style="margin: 3px 0 0;">{{ m[2] }}</p>
+                                    <span style="font-size: 9px; color: #aaa; float: right;">{{ m[4] }}</span>
+                                </div>
+                                {% else %}
+                                <p style="text-align: center; color: #aaa; margin-top: 20px;">কোনো বার্তা নেই।</p>
+                                {% endfor %}
+                            </div>
+                            <form action="/send_message" method="POST" class="chat-input-area">
+                                {% if session.get('role') != 'user' %}
+                                <select name="msg_type" style="width: 110px; margin: 0; font-size: 12px;">
+                                    <option value="single">পার্সোনাল</option>
+                                    <option value="group">গ্রুপ নোটিশ</option>
+                                </select>
+                                {% else %}
+                                <input type="hidden" name="msg_type" value="single">
+                                {% endif %}
+                                <input type="text" name="message" placeholder="মেসেজ লিখুন..." required style="flex: 1; margin: 0;">
+                                <button type="submit" class="btn-custom" style="padding: 6px 12px;">প্রেরণ</button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -533,14 +574,13 @@
                 </div>
             </div>
 
-            <!-- ডিলিট ও রিকভার মডালসমূহ -->
+            <!-- ডিলিট মডালসমূহ -->
             <div id="deleteRecordModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteRecordModal()">&times;</span>
-                    <h3 style="color: #ff4d4d;">নিরাপত্তা যাচাই (ডিলিট)</h3>
+                    <h3 style="color: #ff4d4d;">রেকর্ড ডিলিট নিশ্চিতকরণ</h3>
                     <form action="/delete_record" method="POST">
                         <input type="hidden" name="rec_id" id="del_rec_id">
-                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px; background: #ff4d4d; color: white;">নিশ্চিত ডিলিট</button>
                     </form>
                 </div>
@@ -549,23 +589,10 @@
             <div id="deleteUserModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteUserModal()">&times;</span>
-                    <h3 style="color: #ff4d4d;">ইউজার ডিলিট</h3>
+                    <h3 style="color: #ff4d4d;">ইউজার ডিলিট বা বাতিল</h3>
                     <form action="/delete_user" method="POST">
                         <input type="hidden" name="user_id" id="del_user_id">
-                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px; background: #ff4d4d; color: white;">ডিলিট করুন</button>
-                    </form>
-                </div>
-            </div>
-
-            <div id="recoverModal" class="modal">
-                <div class="modal-content" style="max-width: 400px;">
-                    <span class="close-modal" onclick="closeRecoverModal()">&times;</span>
-                    <h3 style="color: var(--accent-gold);">রেকর্ড রিকভারি</h3>
-                    <form action="/recover_record" method="POST">
-                        <input type="hidden" name="rec_id" id="rec_rec_id">
-                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">রিকভার করুন</button>
                     </form>
                 </div>
             </div>
@@ -586,6 +613,25 @@
         function openMessengerModal() { document.getElementById("messengerModal").style.display = "block"; }
         function closeMessengerModal() { document.getElementById("messengerModal").style.display = "none"; }
 
+        function openUserHistory(userId, userName) {
+            document.getElementById("historyUserName").innerText = userName + " - এর অ্যাক্টিভিটি হিস্ট্রি";
+            document.getElementById("userHistoryModal").style.display = "block";
+            fetch('/get_user_history/' + userId)
+                .then(response => response.json())
+                .then(data => {
+                    let box = document.getElementById("userHistoryContent");
+                    box.innerHTML = "";
+                    if(data.length === 0) {
+                        box.innerHTML = "<p>কোনো হিস্ট্রি পাওয়া যায়নি।</p>";
+                    } else {
+                        data.forEach(item => {
+                            box.innerHTML += `<p><b>[${item[1]}]</b> ${item[2]}</p>`;
+                        });
+                    }
+                });
+        }
+        function closeUserHistoryModal() { document.getElementById("userHistoryModal").style.display = "none"; }
+
         function openEditModal(id, name, phone, service_type, service_no, address) {
             document.getElementById("edit_rec_id").value = id;
             document.getElementById("edit_name").value = name;
@@ -601,8 +647,6 @@
         function closeDeleteRecordModal() { document.getElementById("deleteRecordModal").style.display = "none"; }
         function openDeleteUserModal(id) { document.getElementById("del_user_id").value = id; document.getElementById("deleteUserModal").style.display = "block"; }
         function closeDeleteUserModal() { document.getElementById("deleteUserModal").style.display = "none"; }
-        function openRecoverModal(id) { document.getElementById("rec_rec_id").value = id; document.getElementById("recoverModal").style.display = "block"; }
-        function closeRecoverModal() { document.getElementById("recoverModal").style.display = "none"; }
 
         window.onclick = function(event) {
             if (event.target == document.getElementById('addModal')) document.getElementById('addModal').style.display = "none";
@@ -610,10 +654,10 @@
             if (event.target == document.getElementById('upazilaModal')) document.getElementById('upazilaModal').style.display = "none";
             if (event.target == document.getElementById('userModal')) document.getElementById('userModal').style.display = "none";
             if (event.target == document.getElementById('profileModal')) document.getElementById('profileModal').style.display = "none";
+            if (event.target == document.getElementById('userHistoryModal')) document.getElementById('userHistoryModal').style.display = "none";
             if (event.target == document.getElementById('messengerModal')) document.getElementById('messengerModal').style.display = "none";
             if (event.target == document.getElementById('deleteRecordModal')) document.getElementById('deleteRecordModal').style.display = "none";
             if (event.target == document.getElementById('deleteUserModal')) document.getElementById('deleteUserModal').style.display = "none";
-            if (event.target == document.getElementById('recoverModal')) document.getElementById('recoverModal').style.display = "none";
         }
     </script>
 </body>
