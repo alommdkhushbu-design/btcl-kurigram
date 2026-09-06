@@ -69,9 +69,7 @@
             border: 1px solid var(--sky-blue); color: white; border-radius: 4px; box-sizing: border-box;
         }
         
-        .top-search-bar {
-            display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px;
-        }
+        .top-search-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 15px; }
         .top-search-bar input { flex: 2; min-width: 200px; margin: 0; }
         .top-search-bar select { flex: 1; min-width: 150px; margin: 0; }
 
@@ -123,6 +121,15 @@
         .nav-tabs { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
         .nav-tab-btn { background: var(--dark-green); border: 2px solid var(--sky-blue); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; }
         .nav-tab-btn.active { background: var(--accent-gold); color: black; border-color: var(--accent-gold); }
+
+        /* মেসেঞ্জার স্টাইল */
+        .messenger-box { display: flex; flex-direction: column; height: 350px; background: var(--dark-green); border-radius: 6px; border: 1px solid var(--sky-blue); overflow: hidden; }
+        .chat-messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .msg-bubble { padding: 8px 12px; border-radius: 6px; max-width: 75%; font-size: 13px; }
+        .msg-in { background: #0b5345; align-self: flex-start; }
+        .msg-out { background: #145a32; align-self: flex-end; border: 1px solid var(--accent-gold); }
+        .chat-input-area { display: flex; padding: 8px; background: #042918; gap: 6px; }
+        .chat-input-area input { margin: 0; }
     </style>
 </head>
 <body>
@@ -143,6 +150,7 @@
                     <span style="font-size: 14px;"><b>{{ session.get('user') }}</b></span>
                 </div>
                 <div class="dropdown-content">
+                    <a href="javascript:void(0)" onclick="openProfileModal()">👤 প্রোফাইল ও হিসাব</a>
                     <a href="/logout" style="color: #ff4d4d; font-weight: bold;">🚪 লগআউট</a>
                 </div>
             </div>
@@ -154,10 +162,12 @@
         <a href="javascript:void(0)" class="close-btn" onclick="closeNav()">&times;</a>
         <h3 style="padding: 0 25px; color: var(--accent-gold); margin-bottom: 15px;">মেনু অপশন</h3>
         <a href="/dashboard">🏠 হোম পেজ</a>
+        {% if session.get('role') != 'user' %}
         <a href="javascript:void(0)" onclick="openAddModal(); closeNav();">➕ নতুন নাম্বার এড করুন</a>
-        <a href="javascript:void(0)" onclick="openUpazilaModal(); closeNav();">📍 নতুন উপজেলা যোগ করুন</a>
-        <a href="javascript:void(0)" onclick="openUserModal(); closeNav();">👤 ইউজার / সহকারী এডমিন তৈরি</a>
-        <a href="#history-sec" onclick="closeNav();">📜 হিস্ট্রি লগ</a>
+        <a href="javascript:void(0)" onclick="openUpazilaModal(); closeNav();">📍 নতুন উপজেলা তৈরি</a>
+        <a href="javascript:void(0)" onclick="openUserModal(); closeNav();">👤 ইউজার / এডমিন তৈরি</a>
+        {% endif %}
+        <a href="javascript:void(0)" onclick="openMessengerModal(); closeNav();">💬 মেসেঞ্জার ও চ্যাট</a>
         <a href="/logout" style="color: #ff4d4d;">🚪 লগআউট</a>
     </div>
 
@@ -185,11 +195,31 @@
                     <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
                     <input type="text" name="username" placeholder="ইউজারনেম দিন" required>
                     <input type="password" name="password" placeholder="পাসওয়ার্ড দিন" required>
+                    
+                    <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">অ্যাকাউন্টের ধরণ ও এলাকা:</label>
+                    <select name="pref_type" id="prefType" onchange="toggleRegUpazila()" required>
+                        <option value="District">জেলা সদর (কুড়িগ্রাম)</option>
+                        <option value="Upazila">উপজেলা</option>
+                    </select>
+                    <div id="regUpazilaDiv" style="display:none;">
+                        <select name="pref_upazila">
+                            {% for u in upazilas %}
+                            <option value="{{ u }}">{{ u }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
                     <input type="password" name="security_pin" placeholder="সিকিউরিটি পাসওয়ার্ড (137955)" required>
                     <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">রিকোয়েস্ট পাঠান</button>
                 </form>
                 <p style="margin-top: 12px; text-align: center; font-size: 14px;"><a href="/" style="color: var(--accent-gold);">লগইন পেজে ফিরে যান</a></p>
             </div>
+            <script>
+                function toggleRegUpazila() {
+                    let val = document.getElementById("prefType").value;
+                    document.getElementById("regUpazilaDiv").style.display = (val === 'Upazila') ? 'block' : 'none';
+                }
+            </script>
             {% endif %}
 
         {% else %}
@@ -205,19 +235,16 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>
                         <h3>স্বাগতম, {{ session.get('user') }}!</h3>
-                        <p style="margin: 4px 0 0; color: #ccc; font-size: 13px;">রোল: <b style="color: var(--accent-gold);">{{ session.get('role') }}</b></p>
+                        <p style="margin: 4px 0 0; color: #ccc; font-size: 13px;">অ্যাকাউন্ট টাইপ: <b style="color: var(--accent-gold);">{{ session.get('role') }} {% if session.get('assigned_upazila') %} ({{ session.get('assigned_upazila') }}) {% endif %}</b></p>
                     </div>
-                    <form action="/update_profile" method="POST" enctype="multipart/form-data" style="margin:0; display: flex; align-items: center; gap: 8px;">
-                        <input type="file" name="profile_pic" accept="image/*" required style="font-size: 11px; padding: 3px; width: 130px;">
-                        <button type="submit" style="background: var(--sky-blue); border:none; padding: 4px 8px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:bold; color:black;">প্রোফাইল ছবি বদল</button>
-                    </form>
+                    <button onclick="openMessengerModal()" class="btn-custom" style="background: var(--sky-blue); color: black;">💬 মেসেঞ্জার</button>
                 </div>
             </div>
 
-            <!-- সার্চ ও A-Z / Z-A সর্টিং বার -->
+            <!-- সার্চ ও সর্টিং বার -->
             <div class="card" style="background: var(--dark-green); border-left: 5px solid var(--sky-blue);">
                 <form action="{% if page == 'upazila_page' %}/upazila/{{ selected_upazila }}{% else %}/dashboard{% endif %}" method="GET" class="top-search-bar" style="margin: 0;">
-                    <input type="text" name="search" placeholder="🔍 সংযোগ নম্বর, নাম বা মোবাইল দিয়ে সার্চ করুন..." value="{{ request.args.get('search', '') }}">
+                    <input type="text" name="search" placeholder="🔍 সংযোগ নম্বর, নাম, ফোন দিয়ে সার্চ করুন..." value="{{ request.args.get('search', '') }}">
                     <select name="sort" onchange="this.form.submit()">
                         <option value="az" {% if request.args.get('sort') == 'az' %}selected{% endif %}>ছোট সংখ্যা থেকে বড় (A → Z)</option>
                         <option value="za" {% if request.args.get('sort') == 'za' %}selected{% endif %}>বড় সংখ্যা থেকে ছোট (Z → A)</option>
@@ -227,8 +254,7 @@
                 </form>
             </div>
 
-            <!-- কাউন্টার বক্স -->
-            {% if session.get('role') != 'user' or page == 'dashboard' %}
+            <!-- কাউন্টার বক্স (ক্লিক করলে সেই ফিল্টার অনুযায়ী ডেটা দেখাবে) -->
             <div class="counter-grid">
                 <a href="?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
                     <h4>টোটাল নাম্বার</h4>
@@ -247,51 +273,51 @@
                     <p>{{ wifi_count }}</p>
                 </a>
             </div>
-            {% endif %}
 
-            <!-- অ্যাডমিন ম্যানেজমেন্ট প্যানেল -->
-            {% if session.get('role') != 'user' and page == 'dashboard' %}
-            <div class="card" id="admin-panel" style="border-left-color: red;">
-                <h3>🛡️ ইউজার ও সহকারী এডমিন ম্যানেজমেন্ট প্যানেল</h3>
+            <!-- রিয়েল এডমিন ম্যানেজমেন্ট প্যানেল -->
+            {% if session.get('role') == 'super_admin' and page == 'dashboard' %}
+            <div class="card" style="border-left-color: red;">
+                <h3>🛡️ এডমিন ও ইউজার কন্ট্রোল প্যানেল (রিয়েল এডমিন)</h3>
                 
-                <h4 style="color: var(--accent-gold); margin-top: 12px; font-size: 14px;">পেন্ডিং অ্যাকাউন্ট এপ্রুভাল:</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 12px; font-size: 14px;">পেন্ডিং অ্যাকাউন্ট ও মেসেজ রিকোয়েস্ট:</h4>
                 <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>জিমেইল</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>একাউন্ট টাইপ</th><th>অ্যাকশন</th></tr>
                     {% for u in pending_users %}
                     <tr>
-                        <td>{{ u[1] }}</td><td>{{ u[4] }}</td><td>{{ u[2] }}</td>
+                        <td>{{ u[1] }}</td><td>{{ u[4] }}</td><td>{{ u[6] }} {% if u[9] %}({{ u[9] }}){% endif %}</td>
                         <td><a href="/approve_user/{{ u[0] }}" class="btn-custom" style="padding: 3px 8px; background: green; color: white; font-size: 11px;">এপ্রুভ করুন</a></td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4">কোনো পেন্ডিং রিকোয়েস্ট নেই।</td></tr>
+                    <tr><td colspan="4">কোনো পেন্ডিং অ্যাকাউন্ট নেই।</td></tr>
                     {% endfor %}
                 </table>
 
-                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা:</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা (অ্যাক্টিভিটি ও লাস্ট সিন):</h4>
                 <table>
-                    <tr><th>নাম</th><th>ইউজারনেম</th><th>পাসওয়ার্ড</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>ইউজারনেম</th><th>রোল / উপজেলা</th><th>শেষ অ্যাক্টিভ সময়</th><th>অ্যাকশন</th></tr>
                     {% for usr in all_users %}
                     <tr>
-                        <td>{{ usr[1] }}</td><td>{{ usr[4] }}</td>
-                        <td style="color: yellow; font-weight: bold;">{{ usr[5] }}</td>
-                        <td>{{ usr[6] }}</td><td>{{ usr[7] }}</td>
+                        <td>{{ usr[1] }}</td>
+                        <td>{{ usr[4] }}</td>
+                        <td>{{ usr[6] }} {% if usr[9] %}- {{ usr[9] }} {% endif %}</td>
+                        <td style="color: var(--sky-blue); font-size: 12px;">{{ usr[10] or 'নিবন্ধিত' }}</td>
                         <td>
                             {% if usr[4] != 'Khushbu23' %}
                             <button onclick="openDeleteUserModal('{{ usr[0] }}')" style="background: #ff4d4d; border:none; padding: 3px 6px; border-radius:3px; cursor:pointer; color:white; font-weight:bold; font-size:11px;">ডিলিট</button>
                             {% else %}
-                            <span style="color: gray; font-size: 12px;">Fixed</span>
+                            <span style="color: gray; font-size: 12px;">Primary Admin</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                 </table>
 
-                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">রিসাইকেল বিন (সিকিউরিটি পিন দিয়ে রিকভার):</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">রিসাইকেল বিন (ডিলিট করা রেকর্ড):</h4>
                 <table>
-                    <tr><th>নাম</th><th>ফোন</th><th>অ্যাকশন</th></tr>
+                    <tr><th>নাম</th><th>নম্বর</th><th>অ্যাকশন</th></tr>
                     {% for t in trash %}
                     <tr>
-                        <td>{{ t[1] }}</td><td>{{ t[2] }}</td>
+                        <td>{{ t[1] }}</td><td>{{ t[4] }}</td>
                         <td><button onclick="openRecoverModal('{{ t[0] }}')" class="btn-custom" style="padding: 3px 8px; font-size: 11px;">রিকভার করুন</button></td>
                     </tr>
                     {% else %}
@@ -313,7 +339,9 @@
                         <th>সংযোগ নম্বর</th>
                         <th>ঠিকানা</th>
                         <th>ডকুমেন্ট</th>
+                        {% if session.get('role') != 'user' %}
                         <th>অ্যাকশন</th>
+                        {% endif %}
                     </tr>
                     {% for rec in records %}
                     <tr>
@@ -330,10 +358,12 @@
                             নেই
                             {% endif %}
                         </td>
+                        {% if session.get('role') != 'user' %}
                         <td>
                             <button onclick="openEditModal('{{ rec[0] }}', '{{ rec[1] }}', '{{ rec[2] }}', '{{ rec[3] }}', '{{ rec[4] }}', '{{ rec[5] }}')" style="background: var(--sky-blue); border:none; padding: 3px 6px; border-radius:3px; cursor:pointer; color:black; font-weight:bold; font-size:11px; margin-right:3px;">এডিট</button>
                             <button onclick="openDeleteRecordModal('{{ rec[0] }}')" style="background: #ff4d4d; border:none; padding: 3px 6px; border-radius:3px; cursor:pointer; color:white; font-weight:bold; font-size:11px;">ডিলিট</button>
                         </td>
+                        {% endif %}
                     </tr>
                     {% else %}
                     <tr><td colspan="8" style="text-align: center;">কোনো তথ্য পাওয়া যায়নি।</td></tr>
@@ -341,20 +371,9 @@
                 </table>
             </div>
 
-            <!-- হিস্ট্রি লগ -->
-            <div class="card" id="history-sec">
-                <h3>📜 হিস্ট্রি ও অ্যাক্টিভিটি লগ</h3>
-                <table>
-                    <tr><th>অ্যাকশন</th><th>ইউজার</th><th>সময়</th></tr>
-                    {% for h in history_logs %}
-                    <tr><td>{{ h[1] }}</td><td>{{ h[2] }}</td><td>{{ h[3] }}</td></tr>
-                    {% else %}
-                    <tr><td colspan="3">কোনো হিস্ট্রি নেই।</td></tr>
-                    {% endfor %}
-                </table>
-            </div>
-
+            {% if session.get('role') != 'user' %}
             <a href="javascript:void(0)" class="floating-btn" onclick="openAddModal()">+</a>
+            {% endif %}
 
             <!-- নতুন নাম্বার এড করার মডাল -->
             <div id="addModal" class="modal">
@@ -374,32 +393,129 @@
                         <input type="text" name="address" placeholder="ঠিকানা">
                         <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
                         
-                        <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">গ্যালারি থেকে ছবি/ডকুমেন্ট দিন:</label>
+                        <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">ডকুমেন্ট দিন:</label>
                         <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green);">
                         
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">তথ্য সংরক্ষণ করুন</button>
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">সংরক্ষণ করুন</button>
                     </form>
                 </div>
             </div>
 
-            <!-- উপজেলা এড করার মডাল -->
+            <!-- উপজেলা তৈরি মডাল -->
             <div id="upazilaModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeUpazilaModal()">&times;</span>
                     <h3 style="color: var(--accent-gold);">নতুন উপজেলা যোগ করুন</h3>
                     <form action="/add_upazila" method="POST">
-                        <p style="font-size: 13px; margin: 8px 0;">উপজেলার নাম লিখুন (যেমন: ফুলবাড়ী, রাজারহাট):</p>
                         <input type="text" name="upazila_name" placeholder="উপজেলার নাম" required>
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">উপজেলা তৈরি করুন</button>
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">তৈরি করুন</button>
                     </form>
                 </div>
             </div>
 
-            <!-- রেকর্ড এডিট মডাল -->
+            <!-- ইউজার / এডমিন তৈরি মডাল -->
+            <div id="userModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-modal" onclick="closeUserModal()">&times;</span>
+                    <h3>নতুন ইউজার বা এডমিন তৈরি করুন</h3>
+                    <form action="/create_user_by_admin" method="POST">
+                        <input type="text" name="name" placeholder="পুরো নাম" required>
+                        <input type="text" name="username" placeholder="ইউজারনেম" required>
+                        <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
+                        <input type="email" name="email" placeholder="জিমেইল" required>
+                        <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
+                        
+                        <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">অ্যাকাউন্টের রোল নির্বাচন করুন:</label>
+                        <select name="role" id="adminRoleSelect" onchange="toggleAdminUpazila()" required>
+                            <option value="user">সাধারণ ইউজার (শুধু দেখতে পারবে)</option>
+                            <option value="sub_admin">সহকারী এডমিন (জেলা ও উপজেলা)</option>
+                        </select>
+
+                        <div id="adminUpazilaDiv" style="display:none; margin-top: 8px;">
+                            <label style="color: var(--accent-gold); font-size: 13px;">উপজেলা নির্ধারণ (যদি শুধু নির্দিষ্ট উপজেলা হয়):</label>
+                            <select name="assigned_upazila">
+                                <option value="All">সকল উপজেলা ও জেলা</option>
+                                {% for u in upazilas %}
+                                <option value="{{ u }}">{{ u }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required style="margin-top: 10px;">
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">তৈরি করুন</button>
+                    </form>
+                </div>
+            </div>
+            <script>
+                function toggleAdminUpazila() {
+                    let r = document.getElementById("adminRoleSelect").value;
+                    document.getElementById("adminUpazilaDiv").style.display = (r === 'sub_admin') ? 'block' : 'none';
+                }
+            </script>
+
+            <!-- প্রোফাইল ও হিসাব মডাল -->
+            <div id="profileModal" class="modal">
+                <div class="modal-content" style="max-width: 450px;">
+                    <span class="close-modal" onclick="closeProfileModal()">&times;</span>
+                    <h3 style="color: var(--accent-gold);">প্রোফাইল ও সিস্টেম পরিসংখ্যান</h3>
+                    <div style="text-align: center; margin: 15px 0;">
+                        <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--accent-gold); object-fit: cover;">
+                        <h4 style="margin-top: 8px;">{{ current_user_data[1] }}</h4>
+                        <p style="font-size: 13px; color: #ccc; margin: 2px 0;">ইউজারনেম: {{ current_user_data[4] }} | রোল: {{ current_user_data[6] }}</p>
+                    </div>
+                    <hr style="border-color: rgba(255,255,255,0.2);">
+                    <div style="font-size: 14px; margin-top: 10px;">
+                        <p><b>মোট জেলা ইউজার সংখ্যা:</b> {{ total_users_count }} জন</p>
+                        <p><b>মোট উপজেলা এডমিন ও ইউজার:</b> {{ total_upazila_users_count }} জন</p>
+                        <p><b>আপনার শেষ অ্যাক্টিভ টাইম:</b> <span style="color: var(--sky-blue);">{{ current_user_data[10] }}</span></p>
+                    </div>
+                    <form action="/update_profile" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+                        <label style="font-size: 13px; color: var(--accent-gold);">প্রোফাইল ছবি পরিবর্তন:</label>
+                        <input type="file" name="profile_pic" accept="image/*" required style="background: var(--dark-green);">
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 8px;">ছবি আপডেট করুন</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- মেসেঞ্জার মডাল -->
+            <div id="messengerModal" class="modal">
+                <div class="modal-content" style="max-width: 600px;">
+                    <span class="close-modal" onclick="closeMessengerModal()">&times;</span>
+                    <h3 style="color: var(--accent-gold); margin-bottom: 10px;">💬 বিটিসিএল চ্যাট ও মেসেঞ্জার</h3>
+                    
+                    <div class="messenger-box">
+                        <div class="chat-messages" id="chatContainer">
+                            {% for m in messages %}
+                            <div class="msg-bubble {% if m[1] == session.get('user') %}msg-out{% else %}msg-in{% endif %}">
+                                <b style="font-size: 11px; color: var(--accent-gold);">{{ m[1] }} {% if m[3] == 'group' %}[গ্রুপ নোটিশ]{% endif %}</b>
+                                <p style="margin: 3px 0 0;">{{ m[2] }}</p>
+                                <span style="font-size: 9px; color: #aaa; float: right;">{{ m[4] }}</span>
+                            </div>
+                            {% else %}
+                            <p style="text-align: center; color: #aaa; margin-top: 20px;">কোনো বার্তা নেই। কথোপকথন শুরু করুন!</p>
+                            {% endfor %}
+                        </div>
+                        <form action="/send_message" method="POST" class="chat-input-area">
+                            {% if session.get('role') != 'user' %}
+                            <select name="msg_type" style="width: 110px; margin: 0; font-size: 12px;">
+                                <option value="single">পার্সোনাল</option>
+                                <option value="group">গ্রুপ নোটিশ</option>
+                            </select>
+                            {% else %}
+                            <input type="hidden" name="msg_type" value="single">
+                            {% endif %}
+                            <input type="text" name="message" placeholder="আপনার মেসেজ লিখুন..." required style="flex: 1; margin: 0;">
+                            <button type="submit" class="btn-custom" style="padding: 6px 12px;">প্রেরণ</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- এডিট মডাল -->
             <div id="editModal" class="modal">
                 <div class="modal-content">
                     <span class="close-modal" onclick="closeEditModal()">&times;</span>
-                    <h3>রেকর্ড এডিট ও আপডেট করুন</h3>
+                    <h3>রেকর্ড এডিট করুন</h3>
                     <form action="/update_record" method="POST" enctype="multipart/form-data">
                         <input type="hidden" name="rec_id" id="edit_rec_id">
                         <input type="text" name="name" id="edit_name" placeholder="গ্রাহকের নাম" required>
@@ -411,76 +527,43 @@
                         </select>
                         <input type="text" name="service_no" id="edit_service_no" placeholder="সংযোগ নম্বর" required>
                         <input type="text" name="address" id="edit_address" placeholder="ঠিকানা">
-                        
-                        <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">নতুন ছবি বা ফাইল আপলোড:</label>
-                        <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green);">
-                        
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">আপডেট সংরক্ষণ করুন</button>
+                        <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green); margin-top: 8px;">
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">আপডেট করুন</button>
                     </form>
                 </div>
             </div>
 
-            <!-- ইউজার তৈরি মডাল -->
-            <div id="userModal" class="modal">
-                <div class="modal-content">
-                    <span class="close-modal" onclick="closeUserModal()">&times;</span>
-                    <h3>নতুন অ্যাকাউন্ট তৈরি করুন</h3>
-                    <form action="/create_user_by_admin" method="POST">
-                        <input type="text" name="name" placeholder="পুরো নাম" required>
-                        <input type="text" name="username" placeholder="ইউজারনেম" required>
-                        <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
-                        <input type="email" name="email" placeholder="জিমেইল" required>
-                        <input type="password" name="password" placeholder="পাসওয়ার্ড" required>
-                        <input type="password" name="confirm_password" placeholder="কনফার্ম পাসওয়ার্ড" required>
-                        <input type="password" name="security_pin" placeholder="সিকিউরিটি পাসওয়ার্ড (137955)" required>
-                        
-                        <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">অ্যাকাউন্টের ধরণ নির্বাচন করুন:</label>
-                        <select name="role" required>
-                            <option value="user">সাধারণ ইউজার</option>
-                            <option value="sub_admin">সহকারী এডমিন</option>
-                        </select>
-                        
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">অ্যাকাউন্ট তৈরি করুন</button>
-                    </form>
-                </div>
-            </div>
-
-            <!-- ডিলিট সিকিউরিটি পিন মডাল -->
+            <!-- ডিলিট ও রিকভার মডালসমূহ -->
             <div id="deleteRecordModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteRecordModal()">&times;</span>
                     <h3 style="color: #ff4d4d;">নিরাপত্তা যাচাই (ডিলিট)</h3>
                     <form action="/delete_record" method="POST">
                         <input type="hidden" name="rec_id" id="del_rec_id">
-                        <p style="font-size: 14px; margin: 10px 0;">নম্বরটি ডিলিট করতে সিকিউরিটি পিন দিন:</p>
                         <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
-                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px; background: #ff4d4d; color: white;">নিশ্চিত ডিলিট করুন</button>
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px; background: #ff4d4d; color: white;">নিশ্চিত ডিলিট</button>
                     </form>
                 </div>
             </div>
 
-            <!-- ইউজার ডিলিট সিকিউরিটি মডাল -->
             <div id="deleteUserModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteUserModal()">&times;</span>
-                    <h3 style="color: #ff4d4d;">ইউজার ডিলিট সিকিউরিটি</h3>
+                    <h3 style="color: #ff4d4d;">ইউজার ডিলিট</h3>
                     <form action="/delete_user" method="POST">
                         <input type="hidden" name="user_id" id="del_user_id">
-                        <p style="font-size: 14px; margin: 10px 0;">ইউজার ডিলিট করতে সিকিউরিটি পিন দিন:</p>
                         <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px; background: #ff4d4d; color: white;">ডিলিট করুন</button>
                     </form>
                 </div>
             </div>
 
-            <!-- রিকভার সিকিউরিটি পিন মডাল -->
             <div id="recoverModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeRecoverModal()">&times;</span>
-                    <h3 style="color: var(--accent-gold);">নম্বর রিকভার পিন</h3>
+                    <h3 style="color: var(--accent-gold);">রেকর্ড রিকভারি</h3>
                     <form action="/recover_record" method="POST">
                         <input type="hidden" name="rec_id" id="rec_rec_id">
-                        <p style="font-size: 14px; margin: 10px 0;">রিসাইকেল বিন থেকে ফিরিয়ে আনতে পিন দিন:</p>
                         <input type="password" name="security_pin" placeholder="সিকিউরিটি পিন (137955)" required>
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">রিকভার করুন</button>
                     </form>
@@ -492,15 +575,16 @@
     <script>
         function openNav() { document.getElementById("mySidebar").style.width = "270px"; }
         function closeNav() { document.getElementById("mySidebar").style.width = "0"; }
-
         function openAddModal() { document.getElementById("addModal").style.display = "block"; }
         function closeAddModal() { document.getElementById("addModal").style.display = "none"; }
-
         function openUpazilaModal() { document.getElementById("upazilaModal").style.display = "block"; }
         function closeUpazilaModal() { document.getElementById("upazilaModal").style.display = "none"; }
-
         function openUserModal() { document.getElementById("userModal").style.display = "block"; }
         function closeUserModal() { document.getElementById("userModal").style.display = "none"; }
+        function openProfileModal() { document.getElementById("profileModal").style.display = "block"; }
+        function closeProfileModal() { document.getElementById("profileModal").style.display = "none"; }
+        function openMessengerModal() { document.getElementById("messengerModal").style.display = "block"; }
+        function closeMessengerModal() { document.getElementById("messengerModal").style.display = "none"; }
 
         function openEditModal(id, name, phone, service_type, service_no, address) {
             document.getElementById("edit_rec_id").value = id;
@@ -513,22 +597,11 @@
         }
         function closeEditModal() { document.getElementById("editModal").style.display = "none"; }
 
-        function openDeleteRecordModal(id) {
-            document.getElementById("del_rec_id").value = id;
-            document.getElementById("deleteRecordModal").style.display = "block";
-        }
+        function openDeleteRecordModal(id) { document.getElementById("del_rec_id").value = id; document.getElementById("deleteRecordModal").style.display = "block"; }
         function closeDeleteRecordModal() { document.getElementById("deleteRecordModal").style.display = "none"; }
-
-        function openDeleteUserModal(id) {
-            document.getElementById("del_user_id").value = id;
-            document.getElementById("deleteUserModal").style.display = "block";
-        }
+        function openDeleteUserModal(id) { document.getElementById("del_user_id").value = id; document.getElementById("deleteUserModal").style.display = "block"; }
         function closeDeleteUserModal() { document.getElementById("deleteUserModal").style.display = "none"; }
-
-        function openRecoverModal(id) {
-            document.getElementById("rec_rec_id").value = id;
-            document.getElementById("recoverModal").style.display = "block";
-        }
+        function openRecoverModal(id) { document.getElementById("rec_rec_id").value = id; document.getElementById("recoverModal").style.display = "block"; }
         function closeRecoverModal() { document.getElementById("recoverModal").style.display = "none"; }
 
         window.onclick = function(event) {
@@ -536,6 +609,8 @@
             if (event.target == document.getElementById('editModal')) document.getElementById('editModal').style.display = "none";
             if (event.target == document.getElementById('upazilaModal')) document.getElementById('upazilaModal').style.display = "none";
             if (event.target == document.getElementById('userModal')) document.getElementById('userModal').style.display = "none";
+            if (event.target == document.getElementById('profileModal')) document.getElementById('profileModal').style.display = "none";
+            if (event.target == document.getElementById('messengerModal')) document.getElementById('messengerModal').style.display = "none";
             if (event.target == document.getElementById('deleteRecordModal')) document.getElementById('deleteRecordModal').style.display = "none";
             if (event.target == document.getElementById('deleteUserModal')) document.getElementById('deleteUserModal').style.display = "none";
             if (event.target == document.getElementById('recoverModal')) document.getElementById('recoverModal').style.display = "none";
