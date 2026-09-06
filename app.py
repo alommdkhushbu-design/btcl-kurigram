@@ -31,18 +31,32 @@ def init_db():
     except:
         pass
 
-    # ফিক্সড রিয়েল এডমিন (Khushbu23 / 01751947523)
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status, profile_pic) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                        ("Real Admin", "admin@btcl.com", "01751947523", "Khushbu23", "01751947523", "super_admin", "Active", "default.png"))
     
+    cursor.execute('''CREATE TABLE IF NOT EXISTS upazilas (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE)''')
+                        
+    # ডিফল্ট কিছু উপজেলা যোগ করে দেওয়া
+    default_upazilas = ['ফুলবাড়ী', 'রাজারহাট', 'উলিপুর', 'চিলমারী', 'রৌমারী', 'রাজিবপুর', 'নাগেশ্বরী', 'ভুরুঙ্গামারী']
+    for upa in default_upazilas:
+        cursor.execute("INSERT OR IGNORE INTO upazilas (name) VALUES (?)", (upa,))
+
     cursor.execute('''CREATE TABLE IF NOT EXISTS records (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        upazila TEXT DEFAULT 'District HQ',
                         name TEXT, phone TEXT, service_type TEXT, 
                         service_no TEXT, address TEXT, note TEXT, 
                         doc_file TEXT, is_deleted INTEGER DEFAULT 0,
                         created_at TEXT)''')
+                        
+    try:
+        cursor.execute("ALTER TABLE records ADD COLUMN upazila TEXT DEFAULT 'District HQ'")
+    except:
+        pass
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS history (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,6 +66,14 @@ def init_db():
     conn.close()
 
 init_db()
+
+def get_all_upazilas():
+    conn = sqlite3.connect('btcl_database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM upazilas ORDER BY name ASC")
+    res = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    return res
 
 @app.route('/')
 def index():
@@ -144,24 +166,24 @@ def dashboard():
     
     filter_type = request.args.get('filter', 'all')
     search_query = request.args.get('search', '')
-    sort_by = request.args.get('sort', 'az') # ডিফল্ট A থেকে Z সিরিয়াল
+    sort_by = request.args.get('sort', 'az') # az = ছোট থেকে বড়, za = বড় থেকে ছোট
     
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     
-    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0")
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = 'District HQ'")
     total_count = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND service_type = 'Telephone'")
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = 'District HQ' AND service_type = 'Telephone'")
     tel_count = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND service_type = 'Tel+WiFi'")
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = 'District HQ' AND service_type = 'Tel+WiFi'")
     tel_wifi_count = cursor.fetchone()[0]
     
-    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND service_type = 'WiFi'")
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = 'District HQ' AND service_type = 'WiFi'")
     wifi_count = cursor.fetchone()[0]
     
-    query = "SELECT * FROM records WHERE is_deleted = 0"
+    query = "SELECT * FROM records WHERE is_deleted = 0 AND upazila = 'District HQ'"
     params = []
     
     if filter_type != 'all':
@@ -173,11 +195,11 @@ def dashboard():
         s_param = f"%{search_query}%"
         params.extend([s_param, s_param, s_param, s_param])
         
-    # A-Z অথবা Z-A নাম অনুযায়ী সর্টিং
+    # ছোট সংখ্যা থেকে বড় (A-Z) অথবা বড় সংখ্যা থেকে ছোট (Z-A) সংযোগ নম্বর/নাম অনুযায়ী সর্টিং
     if sort_by == 'za':
-        query += " ORDER BY name DESC"
+        query += " ORDER BY service_no DESC, name DESC"
     else:
-        query += " ORDER BY name ASC"
+        query += " ORDER BY service_no ASC, name ASC"
         
     cursor.execute(query, params)
     records = cursor.fetchall()
@@ -201,16 +223,101 @@ def dashboard():
 
     conn.close()
     
+    upazilas = get_all_upazilas()
+    
     return render_template('index.html', page='dashboard', records=records, trash=trash_records, 
                            pending_users=pending_users, all_users=all_users, history_logs=history_logs,
                            role=session.get('role'), current_user=session.get('user'),
-                           current_user_data=current_user_data,
+                           current_user_data=current_user_data, upazilas=upazilas,
                            total_count=total_count, tel_count=tel_count, 
                            tel_wifi_count=tel_wifi_count, wifi_count=wifi_count,
                            active_filter=filter_type)
 
+@app.route('/upazila/<upazila_name>')
+def upazila_page(upazila_name):
+    if 'user' not in session:
+        return redirect(url_for('index'))
+        
+    filter_type = request.args.get('filter', 'all')
+    search_query = request.args.get('search', '')
+    sort_by = request.args.get('sort', 'az')
+    
+    conn = sqlite3.connect('btcl_database.db')
+    cursor = conn.cursor()
+    
+    query = "SELECT * FROM records WHERE is_deleted = 0 AND upazila = ?"
+    params = [upazila_name]
+    
+    if filter_type != 'all':
+        query += " AND service_type = ?"
+        params.append(filter_type)
+        
+    if search_query:
+        query += " AND (name LIKE ? OR phone LIKE ? OR service_no LIKE ? OR address LIKE ?)"
+        s_param = f"%{search_query}%"
+        params.extend([s_param, s_param, s_param, s_param])
+        
+    if sort_by == 'za':
+        query += " ORDER BY service_no DESC, name DESC"
+    else:
+        query += " ORDER BY service_no ASC, name ASC"
+        
+    cursor.execute(query, params)
+    records = cursor.fetchall()
+    
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = ?", (upazila_name,))
+    total_count = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = ? AND service_type = 'Telephone'", (upazila_name,))
+    tel_count = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = ? AND service_type = 'Tel+WiFi'", (upazila_name,))
+    tel_wifi_count = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM records WHERE is_deleted = 0 AND upazila = ? AND service_type = 'WiFi'", (upazila_name,))
+    wifi_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT * FROM users WHERE username = ?", (session.get('user'),))
+    current_user_data = cursor.fetchone()
+    if not current_user_data:
+        current_user_data = (0, 'User', '', '', session.get('user'), '', 'user', 'Active', 'default.png')
+
+    cursor.execute("SELECT * FROM history ORDER BY id DESC LIMIT 20")
+    history_logs = cursor.fetchall()
+
+    conn.close()
+    
+    upazilas = get_all_upazilas()
+
+    return render_template('index.html', page='upazila_page', records=records, 
+                           selected_upazila=upazila_name, upazilas=upazilas,
+                           current_user_data=current_user_data, history_logs=history_logs,
+                           total_count=total_count, tel_count=tel_count,
+                           tel_wifi_count=tel_wifi_count, wifi_count=wifi_count,
+                           active_filter=filter_type)
+
+@app.route('/add_upazila', methods=['POST'])
+def add_upazila():
+    if 'user' not in session:
+        return redirect(url_for('index'))
+    up_name = request.form['upazila_name'].strip()
+    if up_name:
+        try:
+            conn = sqlite3.connect('btcl_database.db')
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO upazilas (name) VALUES (?)", (up_name,))
+            time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
+                           (f"Added new Upazila: {up_name}", session.get('user'), time_now))
+            conn.commit()
+            conn.close()
+        except:
+            pass
+    return redirect(url_for('dashboard'))
+
 @app.route('/add_record', methods=['POST'])
 def add_record():
+    upazila = request.form.get('upazila', 'District HQ')
     name = request.form['name']
     phone = request.form['phone']
     service_type = request.form['service_type']
@@ -228,14 +335,17 @@ def add_record():
             
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO records (name, phone, service_type, service_no, address, note, doc_file, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                   (name, phone, service_type, service_no, address, note, doc_file_name, time_now))
+    cursor.execute("INSERT INTO records (upazila, name, phone, service_type, service_no, address, note, doc_file, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (upazila, name, phone, service_type, service_no, address, note, doc_file_name, time_now))
     
     cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
-                   (f"Added record: {name}", session.get('user'), time_now))
+                   (f"Added record in {upazila}: {name} ({service_no})", session.get('user'), time_now))
                    
     conn.commit()
     conn.close()
+    
+    if upazila != 'District HQ':
+        return redirect(url_for('upazila_page', upazila_name=upazila))
     return redirect(url_for('dashboard'))
 
 @app.route('/update_record', methods=['POST'])
@@ -250,6 +360,9 @@ def update_record():
     
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
+    cursor.execute("SELECT upazila FROM records WHERE id = ?", (rec_id,))
+    res = cursor.fetchone()
+    upa = res[0] if res else 'District HQ'
     
     if 'doc_file' in request.files:
         file = request.files['doc_file']
@@ -267,6 +380,9 @@ def update_record():
                    
     conn.commit()
     conn.close()
+    
+    if upa != 'District HQ':
+        return redirect(url_for('upazila_page', upazila_name=upa))
     return redirect(url_for('dashboard'))
 
 @app.route('/approve_user/<int:user_id>')
@@ -310,7 +426,6 @@ def delete_record():
         
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
-    # ডিলিট করার পর টোটাল নাম্বার থেকে স্বয়ংক্রিয়ভাবে মাইনাস হয়ে যাবে (is_deleted = 1)
     cursor.execute("UPDATE records SET is_deleted = 1 WHERE id = ?", (rec_id,))
     
     time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
