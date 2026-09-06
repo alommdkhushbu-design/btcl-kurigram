@@ -9,6 +9,7 @@ app.secret_key = 'btcl_kurigram_super_secret_key_2026'
 
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+SECURITY_PIN = '137955'
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -30,6 +31,7 @@ def init_db():
     except:
         pass
 
+    # ফিক্সড রিয়েল এডমিন (Khushbu23 / 01751947523)
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status, profile_pic) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -68,6 +70,10 @@ def register():
     phone = request.form['phone']
     username = request.form['username']
     password = request.form['password']
+    sec_pin = request.form['security_pin']
+    
+    if sec_pin != SECURITY_PIN:
+        return "ভুল সিকিউরিটি পাসওয়ার্ড! সঠিক সিকিউরিটি পিন দিন।"
     
     try:
         conn = sqlite3.connect('btcl_database.db')
@@ -76,9 +82,40 @@ def register():
                        (name, email, phone, username, password))
         conn.commit()
         conn.close()
-        return redirect(url_for('index'))
+        return "সফলভাবে রেজিস্ট্রেশন রিকোয়েস্ট পাঠানো হয়েছে। রিয়েল এডমিন এপ্রুভ করলে লগইন করতে পারবেন।"
     except Exception as e:
         return f"Registration Error: {str(e)}"
+
+@app.route('/create_user_by_admin', methods=['POST'])
+def create_user_by_admin():
+    if 'user' not in session:
+        return redirect(url_for('index'))
+    
+    name = request.form['name']
+    username = request.form['username']
+    phone = request.form['phone']
+    email = request.form['email']
+    password = request.form['password']
+    confirm_password = request.form['confirm_password']
+    sec_pin = request.form['security_pin']
+    role = request.form['role']
+    
+    if password != confirm_password:
+        return "পাসওয়ার্ড এবং কনফার্ম পাসওয়ার্ড মিলছে না!"
+        
+    if sec_pin != SECURITY_PIN:
+        return "ভুল সিকিউরিটি পাসওয়ার্ড (137955)!"
+        
+    try:
+        conn = sqlite3.connect('btcl_database.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO users (name, email, phone, username, password, role, status, profile_pic) VALUES (?, ?, ?, ?, ?, ?, 'Active', 'default.png')",
+                       (name, email, phone, username, password, role))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -98,7 +135,7 @@ def login():
         session['user'] = user[4]
         session['role'] = user[6]
         return redirect(url_for('dashboard'))
-    return "ভুল ইউজারনেম অথবা পাসওয়ার্ড! দয়া করে সঠিক তথ্য দিন।"
+    return "ভুল ইউজারনেম অথবা পাসওয়ার্ড!"
 
 @app.route('/dashboard')
 def dashboard():
@@ -107,7 +144,7 @@ def dashboard():
     
     filter_type = request.args.get('filter', 'all')
     search_query = request.args.get('search', '')
-    sort_by = request.args.get('sort', 'asc')  # ডিফল্ট ছোট থেকে বড় (ID Ascending)
+    sort_by = request.args.get('sort', 'az') # ডিফল্ট A থেকে Z সিরিয়াল
     
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
@@ -136,11 +173,11 @@ def dashboard():
         s_param = f"%{search_query}%"
         params.extend([s_param, s_param, s_param, s_param])
         
-    # ছোট থেকে বড় (ASC) অথবা বড় থেকে ছোট (DESC) সিরিয়াল সাজানো
-    if sort_by == 'desc':
-        query += " ORDER BY id DESC"
+    # A-Z অথবা Z-A নাম অনুযায়ী সর্টিং
+    if sort_by == 'za':
+        query += " ORDER BY name DESC"
     else:
-        query += " ORDER BY id ASC"
+        query += " ORDER BY name ASC"
         
     cursor.execute(query, params)
     records = cursor.fetchall()
@@ -214,7 +251,6 @@ def update_record():
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     
-    # নতুন ফাইল আপলোড করা হলে আপডেট করবে, না হলে পুরনো ফাইল অপরিবর্তিত রাখবে
     if 'doc_file' in request.files:
         file = request.files['doc_file']
         if file.filename != '':
@@ -235,7 +271,7 @@ def update_record():
 
 @app.route('/approve_user/<int:user_id>')
 def approve_user(user_id):
-    if session.get('user') != 'Khushbu23':
+    if session.get('role') == 'user':
         return "Access Denied!"
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
@@ -244,38 +280,63 @@ def approve_user(user_id):
     conn.close()
     return redirect(url_for('dashboard'))
 
-@app.route('/delete_user/<int:user_id>')
-def delete_user(user_id):
-    if session.get('user') != 'Khushbu23':
-        return "Access Denied!"
+@app.route('/delete_user', methods=['POST'])
+def delete_user():
+    user_id = request.form['user_id']
+    sec_pin = request.form['security_pin']
+    
+    if sec_pin != SECURITY_PIN:
+        return "ভুল সিকিউরিটি পাসওয়ার্ড! সঠিক পিন (137955) দিন।"
+        
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
     target = cursor.fetchone()
     if target and target[0] == 'Khushbu23':
         conn.close()
-        return "রিয়েল এডমিনের আইডি ডিলিট করা নিষিদ্ধ!"
+        return "রিয়েল এডমিনের আইডি ডিলিট করা নিষেধ!"
     cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
 
-@app.route('/delete_record/<int:rec_id>')
-def delete_record(rec_id):
+@app.route('/delete_record', methods=['POST'])
+def delete_record():
+    rec_id = request.form['rec_id']
+    sec_pin = request.form['security_pin']
+    
+    if sec_pin != SECURITY_PIN:
+        return "ভুল সিকিউরিটি পিন! সঠিক পিন (137955) দিয়ে ডিলিট করুন।"
+        
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
+    # ডিলিট করার পর টোটাল নাম্বার থেকে স্বয়ংক্রিয়ভাবে মাইনাস হয়ে যাবে (is_deleted = 1)
     cursor.execute("UPDATE records SET is_deleted = 1 WHERE id = ?", (rec_id,))
+    
+    time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
+                   (f"Deleted record ID: {rec_id}", session.get('user'), time_now))
+                   
     conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
 
-@app.route('/recover_record/<int:rec_id>')
-def recover_record(rec_id):
-    if session.get('user') != 'Khushbu23':
-        return "Access Denied!"
+@app.route('/recover_record', methods=['POST'])
+def recover_record():
+    rec_id = request.form['rec_id']
+    sec_pin = request.form['security_pin']
+    
+    if sec_pin != SECURITY_PIN:
+        return "ভুল সিকিউরিটি পিন (137955)!"
+        
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE records SET is_deleted = 0 WHERE id = ?", (rec_id,))
+    
+    time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("INSERT INTO history (action, username, timestamp) VALUES (?, ?, ?)",
+                   (f"Recovered record ID: {rec_id}", session.get('user'), time_now))
+                   
     conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
