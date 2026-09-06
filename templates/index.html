@@ -18,7 +18,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            zoom: 90%; /* স্ক্রিন ছোট-বড় বা জুম করা ছাড়াই এক নজরে সব দেখার জন্য */
+            zoom: 90%;
         }
         header {
             background: linear-gradient(135deg, var(--dark-green), var(--primary-green));
@@ -36,7 +36,6 @@
         .menu-btn { background: none; border: none; color: var(--accent-gold); font-size: 24px; cursor: pointer; }
         h2, h3 { color: var(--accent-gold); margin: 0; }
         
-        /* সাইডবার মেনু */
         .sidebar {
             height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0;
             background-color: var(--dark-green); overflow-x: hidden; transition: 0.3s; padding-top: 60px;
@@ -112,7 +111,6 @@
         .close-modal { color: #aaa; float: right; font-size: 26px; font-weight: bold; cursor: pointer; }
         .close-modal:hover { color: white; }
         
-        /* প্রোফাইল ড্রপডাউন মেনু */
         .profile-dropdown { position: relative; display: inline-block; cursor: pointer; }
         .dropdown-content {
             display: none; position: absolute; right: 0; background-color: var(--dark-green);
@@ -121,6 +119,10 @@
         .dropdown-content a { color: white; padding: 10px 14px; text-decoration: none; display: block; font-size: 14px; }
         .dropdown-content a:hover { background-color: var(--primary-green); color: var(--accent-gold); }
         .profile-dropdown:hover .dropdown-content { display: block; }
+        
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .nav-tab-btn { background: var(--dark-green); border: 2px solid var(--sky-blue); color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        .nav-tab-btn.active { background: var(--accent-gold); color: black; border-color: var(--accent-gold); }
     </style>
 </head>
 <body>
@@ -135,8 +137,6 @@
         <div style="display: flex; align-items: center; gap: 15px;">
             {% if session.get('user') %}
             <a href="/dashboard" class="btn-custom" style="padding: 5px 10px; font-size: 13px;">🏠 হোম</a>
-            
-            <!-- প্রোফাইল পিকচার ও ক্লিক করলে লগআউট অপশন -->
             <div class="profile-dropdown">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="{{ url_for('static', filename='uploads/' + current_user_data[8]) }}" alt="Profile" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-gold);">
@@ -150,12 +150,12 @@
         </div>
     </header>
 
-    <!-- সাইডবার থ্রি-ডট মেনু -->
     <div id="mySidebar" class="sidebar">
         <a href="javascript:void(0)" class="close-btn" onclick="closeNav()">&times;</a>
         <h3 style="padding: 0 25px; color: var(--accent-gold); margin-bottom: 15px;">মেনু অপশন</h3>
         <a href="/dashboard">🏠 হোম পেজ</a>
         <a href="javascript:void(0)" onclick="openAddModal(); closeNav();">➕ নতুন নাম্বার এড করুন</a>
+        <a href="javascript:void(0)" onclick="openUpazilaModal(); closeNav();">📍 নতুন উপজেলা যোগ করুন</a>
         <a href="javascript:void(0)" onclick="openUserModal(); closeNav();">👤 ইউজার / সহকারী এডমিন তৈরি</a>
         <a href="#history-sec" onclick="closeNav();">📜 হিস্ট্রি লগ</a>
         <a href="/logout" style="color: #ff4d4d;">🚪 লগআউট</a>
@@ -193,7 +193,14 @@
             {% endif %}
 
         {% else %}
-            <!-- ইউজার ওভারভিউ ও প্রোফাইল আপডেট -->
+            <!-- নেভিগেশন ট্যাব: হোম ও উপজেলা সমূহ -->
+            <div class="nav-tabs">
+                <a href="/dashboard" class="nav-tab-btn {% if page == 'dashboard' %}active{% endif %}">🏠 জেলা সদর (হোম)</a>
+                {% for u_name in upazilas %}
+                <a href="/upazila/{{ u_name }}" class="nav-tab-btn {% if page == 'upazila_page' and selected_upazila == u_name %}active{% endif %}">📍 {{ u_name }} বিল</a>
+                {% endfor %}
+            </div>
+
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                     <div>
@@ -209,41 +216,41 @@
 
             <!-- সার্চ ও A-Z / Z-A সর্টিং বার -->
             <div class="card" style="background: var(--dark-green); border-left: 5px solid var(--sky-blue);">
-                <form action="/dashboard" method="GET" class="top-search-bar" style="margin: 0;">
-                    <input type="text" name="search" placeholder="🔍 যেকোনো কিছু দিয়ে দ্রুত সার্চ করুন..." value="{{ request.args.get('search', '') }}">
+                <form action="{% if page == 'upazila_page' %}/upazila/{{ selected_upazila }}{% else %}/dashboard{% endif %}" method="GET" class="top-search-bar" style="margin: 0;">
+                    <input type="text" name="search" placeholder="🔍 সংযোগ নম্বর, নাম বা মোবাইল দিয়ে সার্চ করুন..." value="{{ request.args.get('search', '') }}">
                     <select name="sort" onchange="this.form.submit()">
-                        <option value="az" {% if request.args.get('sort') == 'az' %}selected{% endif %}>নাম সিরিয়াল (A → Z)</option>
-                        <option value="za" {% if request.args.get('sort') == 'za' %}selected{% endif %}>নাম সিরিয়াল (Z → A)</option>
+                        <option value="az" {% if request.args.get('sort') == 'az' %}selected{% endif %}>ছোট সংখ্যা থেকে বড় (A → Z)</option>
+                        <option value="za" {% if request.args.get('sort') == 'za' %}selected{% endif %}>বড় সংখ্যা থেকে ছোট (Z → A)</option>
                     </select>
                     <input type="hidden" name="filter" value="{{ active_filter }}">
                     <button type="submit" class="btn-custom">খুঁজুন</button>
                 </form>
             </div>
 
-            <!-- কাউন্টার বক্স (সুপার এডমিন ও সহকারী এডমিন দেখতে পারবে, সাধারণ ইউজাররা গোপন থাকবে) -->
-            {% if session.get('role') != 'user' %}
+            <!-- কাউন্টার বক্স -->
+            {% if session.get('role') != 'user' or page == 'dashboard' %}
             <div class="counter-grid">
-                <a href="/dashboard?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
+                <a href="?filter=all&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'all' %}active{% endif %}">
                     <h4>টোটাল নাম্বার</h4>
                     <p>{{ total_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Telephone&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
+                <a href="?filter=Telephone&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'Telephone' %}active{% endif %}">
                     <h4>টেলিফোন নাম্বার</h4>
                     <p>{{ tel_count }}</p>
                 </a>
-                <a href="/dashboard?filter=Tel+WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
+                <a href="?filter=Tel+WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'Tel+WiFi' %}active{% endif %}">
                     <h4>টেলিফোন + ওয়াইফাই</h4>
                     <p>{{ tel_wifi_count }}</p>
                 </a>
-                <a href="/dashboard?filter=WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
+                <a href="?filter=WiFi&search={{ request.args.get('search', '') }}&sort={{ request.args.get('sort', 'az') }}" class="counter-box {% if active_filter == 'WiFi' %}active{% endif %}">
                     <h4>ওয়াইফাই নাম্বার</h4>
                     <p>{{ wifi_count }}</p>
                 </a>
             </div>
             {% endif %}
 
-            <!-- অ্যাডমিন ম্যানেজমেন্ট প্যানেল (রিয়েল এডমিন ও সহকারী এডমিন উভয়েই সব ইউজারের তথ্য ও পাসওয়ার্ড দেখতে পারবে) -->
-            {% if session.get('role') != 'user' %}
+            <!-- অ্যাডমিন ম্যানেজমেন্ট প্যানেল -->
+            {% if session.get('role') != 'user' and page == 'dashboard' %}
             <div class="card" id="admin-panel" style="border-left-color: red;">
                 <h3>🛡️ ইউজার ও সহকারী এডমিন ম্যানেজমেন্ট প্যানেল</h3>
                 
@@ -260,7 +267,7 @@
                     {% endfor %}
                 </table>
 
-                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা ও পাসওয়ার্ড:</h4>
+                <h4 style="color: var(--accent-gold); margin-top: 15px; font-size: 14px;">সকল ইউজার ও সহকারী এডমিনের তালিকা:</h4>
                 <table>
                     <tr><th>নাম</th><th>ইউজারনেম</th><th>পাসওয়ার্ড</th><th>রোল</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr>
                     {% for usr in all_users %}
@@ -294,9 +301,9 @@
             </div>
             {% endif %}
 
-            <!-- গ্রাহক ও সংযোগ তালিকা -->
+            <!-- গ্রাহক ও সংযোগ তালিকা টেবিল -->
             <div class="card">
-                <h3>গ্রাহক ও সংযোগ তালিকা</h3>
+                <h3>{% if page == 'upazila_page' %}উপজেলা: {{ selected_upazila }} - {% endif %}গ্রাহক ও সংযোগ তালিকা</h3>
                 <table>
                     <tr>
                         <th>সিরিয়াল</th>
@@ -314,7 +321,7 @@
                         <td>{{ rec[1] }}</td>
                         <td>{{ rec[2] }}</td>
                         <td>{{ rec[3] }}</td>
-                        <td>{{ rec[4] }}</td>
+                        <td style="color: var(--sky-blue); font-weight: bold;">{{ rec[4] }}</td>
                         <td>{{ rec[5] }}</td>
                         <td>
                             {% if rec[6] %}
@@ -334,7 +341,7 @@
                 </table>
             </div>
 
-            <!-- হিস্ট্রি লগ সেকশন -->
+            <!-- হিস্ট্রি লগ -->
             <div class="card" id="history-sec">
                 <h3>📜 হিস্ট্রি ও অ্যাক্টিভিটি লগ</h3>
                 <table>
@@ -347,7 +354,6 @@
                 </table>
             </div>
 
-            <!-- ফ্লোটিং প্লাস (+) বাটন -->
             <a href="javascript:void(0)" class="floating-btn" onclick="openAddModal()">+</a>
 
             <!-- নতুন নাম্বার এড করার মডাল -->
@@ -356,6 +362,7 @@
                     <span class="close-modal" onclick="closeAddModal()">&times;</span>
                     <h3>নতুন নাম্বার ও তথ্য সংযোজন</h3>
                     <form action="/add_record" method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="upazila" value="{% if page == 'upazila_page' %}{{ selected_upazila }}{% else %}District HQ{% endif %}">
                         <input type="text" name="name" placeholder="গ্রাহকের নাম" required>
                         <input type="text" name="phone" placeholder="মোবাইল নম্বর" required>
                         <select name="service_type" required>
@@ -363,7 +370,7 @@
                             <option value="Tel+WiFi">টেলিফোন + ওয়াইফাই নম্বর</option>
                             <option value="WiFi">ওয়াইফাই নম্বর</option>
                         </select>
-                        <input type="text" name="service_no" placeholder="সংযোগ নম্বর">
+                        <input type="text" name="service_no" placeholder="সংযোগ নম্বর (যেমন: 0581-51234)" required>
                         <input type="text" name="address" placeholder="ঠিকানা">
                         <textarea name="note" placeholder="অতিরিক্ত নোট"></textarea>
                         
@@ -371,6 +378,19 @@
                         <input type="file" name="doc_file" accept="image/*" style="background: var(--dark-green);">
                         
                         <button type="submit" class="btn-custom" style="width: 100%; margin-top: 12px;">তথ্য সংরক্ষণ করুন</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- উপজেলা এড করার মডাল -->
+            <div id="upazilaModal" class="modal">
+                <div class="modal-content" style="max-width: 400px;">
+                    <span class="close-modal" onclick="closeUpazilaModal()">&times;</span>
+                    <h3 style="color: var(--accent-gold);">নতুন উপজেলা যোগ করুন</h3>
+                    <form action="/add_upazila" method="POST">
+                        <p style="font-size: 13px; margin: 8px 0;">উপজেলার নাম লিখুন (যেমন: ফুলবাড়ী, রাজারহাট):</p>
+                        <input type="text" name="upazila_name" placeholder="উপজেলার নাম" required>
+                        <button type="submit" class="btn-custom" style="width: 100%; margin-top: 10px;">উপজেলা তৈরি করুন</button>
                     </form>
                 </div>
             </div>
@@ -389,7 +409,7 @@
                             <option value="Tel+WiFi">টেলিফোন + ওয়াইফাই নম্বর</option>
                             <option value="WiFi">ওয়াইফাই নম্বর</option>
                         </select>
-                        <input type="text" name="service_no" id="edit_service_no" placeholder="সংযোগ নম্বর">
+                        <input type="text" name="service_no" id="edit_service_no" placeholder="সংযোগ নম্বর" required>
                         <input type="text" name="address" id="edit_address" placeholder="ঠিকানা">
                         
                         <label style="display: block; margin-top: 8px; color: var(--accent-gold); font-size: 13px;">নতুন ছবি বা ফাইল আপলোড:</label>
@@ -400,7 +420,7 @@
                 </div>
             </div>
 
-            <!-- ইউজার বা সহকারী এডমিন তৈরি করার মডাল -->
+            <!-- ইউজার তৈরি মডাল -->
             <div id="userModal" class="modal">
                 <div class="modal-content">
                     <span class="close-modal" onclick="closeUserModal()">&times;</span>
@@ -425,7 +445,7 @@
                 </div>
             </div>
 
-            <!-- ডিলিট সিকিউরিটি পিন কনফার্মেশন মডাল -->
+            <!-- ডিলিট সিকিউরিটি পিন মডাল -->
             <div id="deleteRecordModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteRecordModal()">&times;</span>
@@ -439,7 +459,7 @@
                 </div>
             </div>
 
-            <!-- ইউজার ডিলিট সিকিউরিটি পিন মডাল -->
+            <!-- ইউজার ডিলিট সিকিউরিটি মডাল -->
             <div id="deleteUserModal" class="modal">
                 <div class="modal-content" style="max-width: 400px;">
                     <span class="close-modal" onclick="closeDeleteUserModal()">&times;</span>
@@ -476,6 +496,9 @@
         function openAddModal() { document.getElementById("addModal").style.display = "block"; }
         function closeAddModal() { document.getElementById("addModal").style.display = "none"; }
 
+        function openUpazilaModal() { document.getElementById("upazilaModal").style.display = "block"; }
+        function closeUpazilaModal() { document.getElementById("upazilaModal").style.display = "none"; }
+
         function openUserModal() { document.getElementById("userModal").style.display = "block"; }
         function closeUserModal() { document.getElementById("userModal").style.display = "none"; }
 
@@ -511,6 +534,7 @@
         window.onclick = function(event) {
             if (event.target == document.getElementById('addModal')) document.getElementById('addModal').style.display = "none";
             if (event.target == document.getElementById('editModal')) document.getElementById('editModal').style.display = "none";
+            if (event.target == document.getElementById('upazilaModal')) document.getElementById('upazilaModal').style.display = "none";
             if (event.target == document.getElementById('userModal')) document.getElementById('userModal').style.display = "none";
             if (event.target == document.getElementById('deleteRecordModal')) document.getElementById('deleteRecordModal').style.display = "none";
             if (event.target == document.getElementById('deleteUserModal')) document.getElementById('deleteUserModal').style.display = "none";
