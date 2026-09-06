@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import sqlite3
 import os
 from datetime import datetime
@@ -9,7 +9,6 @@ app.secret_key = 'btcl_kurigram_super_secret_key_2026'
 
 UPLOAD_FOLDER = 'static/uploads'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-SECURITY_PIN = '137955'
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -28,11 +27,11 @@ def init_db():
                         assigned_upazila TEXT DEFAULT 'All',
                         last_active TEXT)''')
                         
-    for col, def_val in [('profile_pic', "'default.png'"), ('assigned_upazila', "'All'"), ('last_active', "NULL")]:
-        try:
-            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} {def_val}")
-        except:
-            pass
+    cursor.execute('''CREATE TABLE IF NOT EXISTS user_logs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER,
+                        action TEXT,
+                        timestamp TEXT)''')
 
     # রিয়েল এডমিন নিশ্চিতকরণ
     cursor.execute("SELECT * FROM users WHERE username = 'Khushbu23'")
@@ -56,11 +55,6 @@ def init_db():
                         service_no TEXT, address TEXT, note TEXT, 
                         doc_file TEXT, is_deleted INTEGER DEFAULT 0,
                         created_at TEXT)''')
-                        
-    try:
-        cursor.execute("ALTER TABLE records ADD COLUMN upazila TEXT DEFAULT 'District HQ'")
-    except:
-        pass
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,6 +65,17 @@ def init_db():
     conn.close()
 
 init_db()
+
+def log_user_action(user_id, action):
+    try:
+        conn = sqlite3.connect('btcl_database.db')
+        cursor = conn.cursor()
+        time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("INSERT INTO user_logs (user_id, action, timestamp) VALUES (?, ?, ?)", (user_id, action, time_now))
+        conn.commit()
+        conn.close()
+    except:
+        pass
 
 def get_all_upazilas():
     conn = sqlite3.connect('btcl_database.db')
@@ -100,10 +105,6 @@ def register():
     password = request.form['password']
     pref_type = request.form['pref_type']
     pref_upazila = request.form.get('pref_upazila', 'All') if pref_type == 'Upazila' else 'District'
-    sec_pin = request.form['security_pin']
-    
-    if sec_pin != SECURITY_PIN:
-        return "ভুল সিকিউরিটি পাসওয়ার্ড!"
     
     try:
         conn = sqlite3.connect('btcl_database.db')
@@ -113,14 +114,14 @@ def register():
                        (name, email, phone, username, password, pref_upazila, time_now))
         conn.commit()
         conn.close()
-        return "রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে জমা হয়েছে। রিয়েল এডমিন এপ্রুভ করলে লগইন করতে পারবেন।"
+        return "রেজিস্ট্রেশন রিকোয়েস্ট সফলভাবে জমা হয়েছে। রিয়েল বা সহকারী এডমিন এক্সেপ্ট করলে লগইন করতে পারবেন।"
     except Exception as e:
         return f"Error: {str(e)}"
 
 @app.route('/create_user_by_admin', methods=['POST'])
 def create_user_by_admin():
-    if 'user' not in session:
-        return redirect(url_for('index'))
+    if 'user' not in session or session.get('role') != 'super_admin':
+        return "Access Denied!"
     
     name = request.form['name']
     username = request.form['username']
@@ -129,10 +130,6 @@ def create_user_by_admin():
     password = request.form['password']
     role = request.form['role']
     assigned_upazila = request.form.get('assigned_upazila', 'All')
-    sec_pin = request.form['security_pin']
-    
-    if sec_pin != SECURITY_PIN:
-        return "ভুল সিকিউরিটি পিন (137955)!"
         
     try:
         conn = sqlite3.connect('btcl_database.db')
@@ -159,13 +156,14 @@ def login():
     if user:
         if user[7] != 'Active' and username != 'Khushbu23':
             conn.close()
-            return "আপনার অ্যাকাউন্টটি এখনো রিয়েল এডমিন কর্তৃক অনুমোদিত হয়নি!"
+            return "আপনার অ্যাকাউন্টটি এখনো এডমিন কর্তৃক অনুমোদিত হয়নি!"
                 
         time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("UPDATE users SET last_active = ? WHERE username = ?", (time_now, username))
         conn.commit()
         conn.close()
         
+        log_user_action(user[0], "লগইন করেছেন")
         session['user'] = user[4]
         session['role'] = user[6]
         session['assigned_upazila'] = user[9]
@@ -214,9 +212,6 @@ def dashboard():
     cursor.execute(query, params)
     records = cursor.fetchall()
     
-    cursor.execute("SELECT * FROM records WHERE is_deleted = 1")
-    trash_records = cursor.fetchall()
-    
     cursor.execute("SELECT * FROM users WHERE status = 'Pending'")
     pending_users = cursor.fetchall()
 
@@ -224,13 +219,19 @@ def dashboard():
     all_users = cursor.fetchall()
 
     cursor.execute("SELECT COUNT(*) FROM users WHERE assigned_upazila = 'District' OR assigned_upazila = 'All'")
-    total_users_count = cursor.fetchone()[0]
+    district_users_count = cursor.fetchone()[0]
     
     cursor.execute("SELECT COUNT(*) FROM users WHERE assigned_upazila != 'District' AND assigned_upazila != 'All'")
-    total_upazila_users_count = cursor.fetchone()[0]
+    upazila_users_count = cursor.fetchone()[0]
+
+    cursor.execute("SELECT * FROM messages WHERE msg_type = 'group' ORDER BY id DESC LIMIT 5")
+    group_notices = cursor.fetchall()
 
     cursor.execute("SELECT * FROM messages ORDER BY id DESC LIMIT 50")
     messages = cursor.fetchall()
+    
+    cursor.execute("SELECT DISTINCT sender FROM messages WHERE sender != ?", (session.get('user'),))
+    chat_senders = [row[0] for row in cursor.fetchall()]
     
     cursor.execute("SELECT * FROM users WHERE username = ?", (session.get('user'),))
     current_user_data = cursor.fetchone()
@@ -238,13 +239,14 @@ def dashboard():
     conn.close()
     upazilas = get_all_upazilas()
     
-    return render_template('index.html', page='dashboard', records=records, trash=trash_records, 
+    return render_template('index.html', page='dashboard', records=records, 
                            pending_users=pending_users, all_users=all_users, messages=messages,
+                           group_notices=group_notices, chat_senders=chat_senders,
                            current_user_data=current_user_data, upazilas=upazilas,
                            total_count=total_count, tel_count=tel_count, 
                            tel_wifi_count=tel_wifi_count, wifi_count=wifi_count,
-                           active_filter=filter_type, total_users_count=total_users_count,
-                           total_upazila_users_count=total_upazila_users_count)
+                           active_filter=filter_type, district_users_count=district_users_count,
+                           upazila_users_count=upazila_users_count)
 
 @app.route('/upazila/<upazila_name>')
 def upazila_page(upazila_name):
@@ -290,6 +292,9 @@ def upazila_page(upazila_name):
     cursor.execute("SELECT * FROM users WHERE username = ?", (session.get('user'),))
     current_user_data = cursor.fetchone()
 
+    cursor.execute("SELECT * FROM messages WHERE msg_type = 'group' ORDER BY id DESC LIMIT 5")
+    group_notices = cursor.fetchall()
+
     cursor.execute("SELECT * FROM messages ORDER BY id DESC LIMIT 50")
     messages = cursor.fetchall()
 
@@ -299,9 +304,20 @@ def upazila_page(upazila_name):
     return render_template('index.html', page='upazila_page', records=records, 
                            selected_upazila=upazila_name, upazilas=upazilas,
                            current_user_data=current_user_data, messages=messages,
-                           total_count=total_count, tel_count=tel_count,
-                           tel_wifi_count=tel_wifi_count, wifi_count=wifi_count,
-                           active_filter=filter_type)
+                           group_notices=group_notices, total_count=total_count, 
+                           tel_count=tel_count, tel_wifi_count=tel_wifi_count, 
+                           wifi_count=wifi_count, active_filter=filter_type)
+
+@app.route('/get_user_history/<int:user_id>')
+def get_user_history(user_id):
+    if session.get('role') != 'super_admin':
+        return jsonify([])
+    conn = sqlite3.connect('btcl_database.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, timestamp, action FROM user_logs WHERE user_id = ? ORDER BY id DESC LIMIT 20", (user_id,))
+    logs = cursor.fetchall()
+    conn.close()
+    return jsonify(logs)
 
 @app.route('/add_upazila', methods=['POST'])
 def add_upazila():
@@ -386,30 +402,13 @@ def update_record():
 
 @app.route('/delete_record', methods=['POST'])
 def delete_record():
-    if session.get('role') == 'user':
+    if session.get('role') == 'user' or session.get('role') == 'editor_admin':
         return "Access Denied!"
     rec_id = request.form['rec_id']
-    sec_pin = request.form['security_pin']
     
-    if sec_pin != SECURITY_PIN:
-        return "ভুল সিকিউরিটি পিন!"
-        
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     cursor.execute("UPDATE records SET is_deleted = 1 WHERE id = ?", (rec_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for('dashboard'))
-
-@app.route('/recover_record', methods=['POST'])
-def recover_record():
-    rec_id = request.form['rec_id']
-    sec_pin = request.form['security_pin']
-    if sec_pin != SECURITY_PIN:
-        return "ভুল সিকিউরিটি পিন!"
-    conn = sqlite3.connect('btcl_database.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE records SET is_deleted = 0 WHERE id = ?", (rec_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('dashboard'))
@@ -430,9 +429,6 @@ def delete_user():
     if session.get('role') != 'super_admin':
         return "Access Denied!"
     user_id = request.form['user_id']
-    sec_pin = request.form['security_pin']
-    if sec_pin != SECURITY_PIN:
-        return "ভুল সিকিউরিটি পিন!"
     conn = sqlite3.connect('btcl_database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT username FROM users WHERE id = ?", (user_id,))
